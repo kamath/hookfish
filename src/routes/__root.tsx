@@ -9,9 +9,8 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { bindModeFromFocus } from '../lib/mode'
-import { ensureUsername } from '../lib/username'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
@@ -82,11 +81,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const [username, setUsername] = useState<string>()
-  useEffect(() => {
-    setUsername(ensureUsername())
-    return bindModeFromFocus()
-  }, [])
+  useEffect(() => bindModeFromFocus(), [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
@@ -98,16 +93,13 @@ function AppShell() {
           Skip to content
         </a>
         <header className="shrink-0 border-b border-rule bg-paper">
-          <div className="flex h-12 items-center justify-between gap-4 px-3 md:px-4">
+          <div className="flex h-12 items-center px-3 md:px-4">
             <Link
               to="/"
               className="font-mono text-sm text-ink hover:text-signal focus-visible:border-signal"
             >
               client
             </Link>
-            <p className="truncate font-mono text-xs text-mute" translate="no">
-              {username ?? '…'}
-            </p>
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">

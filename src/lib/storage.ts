@@ -1,4 +1,3 @@
-const USERNAME_KEY = 'oc:username'
 const APIS_KEY = 'oc:apis'
 
 function authKey(apiId: string) {
@@ -37,14 +36,6 @@ function writeJson(key: string, value: unknown) {
     return
   }
   storage.setItem(key, JSON.stringify(value))
-}
-
-export function readUsername() {
-  return browserStorage()?.getItem(USERNAME_KEY) ?? undefined
-}
-
-export function writeUsername(username: string) {
-  browserStorage()?.setItem(USERNAME_KEY, username)
 }
 
 export function readApisJson() {
