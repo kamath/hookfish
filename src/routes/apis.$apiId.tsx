@@ -568,14 +568,13 @@ function ApiWorkbench({
                                 }
                                 holdOp(operation.id)
                               }}
-                              className={`flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 outline-none focus-visible:text-signal ${
-                                active ? 'bg-signal/10 text-ink' : 'text-mute'
-                              }`}
+                              data-oc-method={operation.method}
+                              data-oc-active={active || undefined}
+                              className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal"
                             >
                               <span
-                                className={`w-12 shrink-0 font-mono text-xs tabular-nums ${
-                                  active ? 'text-signal' : ''
-                                }`}
+                                data-oc-method-label
+                                className="w-12 shrink-0 font-mono text-xs tabular-nums"
                               >
                                 {operation.method.toUpperCase()}
                               </span>

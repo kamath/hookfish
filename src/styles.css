@@ -8,6 +8,13 @@
   --rule: #ddd9d1;
   --signal: #2557a7;
   --on-signal: #f7f6f3;
+  --method-get: #2f6f4e;
+  --method-post: #2557a7;
+  --method-put: #9a5b12;
+  --method-patch: #0f6e6e;
+  --method-delete: #a33b32;
+  --method-head: #5c4a8a;
+  --method-options: #5c4a8a;
   color-scheme: light;
 }
 
@@ -133,4 +140,40 @@ button[type='submit'][data-oc-current='true'] {
 
 [data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
   background-color: var(--signal);
+}
+
+[data-oc-method='get'] {
+  --method: var(--method-get);
+}
+
+[data-oc-method='post'] {
+  --method: var(--method-post);
+}
+
+[data-oc-method='put'] {
+  --method: var(--method-put);
+}
+
+[data-oc-method='patch'] {
+  --method: var(--method-patch);
+}
+
+[data-oc-method='delete'] {
+  --method: var(--method-delete);
+}
+
+[data-oc-method='head'] {
+  --method: var(--method-head);
+}
+
+[data-oc-method='options'] {
+  --method: var(--method-options);
+}
+
+[data-oc-method][data-oc-active] {
+  background-color: color-mix(in srgb, var(--method) 12%, var(--paper));
+}
+
+[data-oc-method][data-oc-active] [data-oc-method-label] {
+  color: var(--method);
 }
