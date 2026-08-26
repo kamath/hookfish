@@ -5,6 +5,7 @@ import { applyAuth } from './openapi'
 const BODY_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 export type ExecuteRequest = {
+  transport: 'http'
   method: string
   url: string
   headers: Record<string, string>
@@ -29,17 +30,21 @@ export function buildOperationRequest(input: {
   auth: Record<string, string>
   authSchemes: AuthScheme[]
 }): ExecuteRequest {
+  if (input.operation.binding.type !== 'http') {
+    throw new Error(`Unsupported executable binding: ${input.operation.binding.type}.`)
+  }
   if (!isHttpUrl(input.serverUrl)) {
     throw new Error('Choose an http or https server URL.')
   }
 
+  const binding = input.operation.binding
   const form = asRecord(input.formData)
   const path = asRecord(omitEmpty(form.path))
   const query = asRecord(omitEmpty(form.query))
   const header = asRecord(omitEmpty(form.header))
   const cookie = asRecord(omitEmpty(form.cookie))
   const url = new URL(
-    buildRequestUrl(input.serverUrl, input.operation.path, path, query),
+    buildRequestUrl(input.serverUrl, binding.path, path, query),
   )
   const headers = new Headers()
 
@@ -57,8 +62,8 @@ export function buildOperationRequest(input: {
   applyAuth(headers, url, input.authSchemes, input.auth)
 
   let body: string | undefined
-  if (BODY_METHODS.has(input.operation.method) && form.body !== undefined) {
-    const contentType = input.operation.contentType ?? 'application/json'
+  if (BODY_METHODS.has(binding.method) && form.body !== undefined) {
+    const contentType = binding.contentType ?? 'application/json'
     if (!headers.has('Content-Type')) {
       headers.set('Content-Type', contentType)
     }
@@ -77,7 +82,8 @@ export function buildOperationRequest(input: {
   }
 
   return {
-    method: input.operation.method.toUpperCase(),
+    transport: 'http',
+    method: binding.method.toUpperCase(),
     url: url.toString(),
     headers: headersToRecord(headers),
     body,

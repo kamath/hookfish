@@ -6,24 +6,49 @@ import { specToClient } from './openapi'
 import { fetchSpec } from './spec.functions'
 import { readApisJson, readDefaultsVersion, writeApisJson, writeDefaultsVersion } from './storage'
 
-function isApiSummary(value: unknown): value is ApiSummary {
+function sourceSummary(value: unknown): ApiSummary | undefined {
   if (!value || typeof value !== 'object') {
-    return false
+    return undefined
   }
   const row = value as Record<string, unknown>
-  return (
+  const sourceUrl =
+    typeof row.sourceUrl === 'string'
+      ? row.sourceUrl
+      : typeof row.specUrl === 'string'
+        ? row.specUrl
+        : undefined
+  const executableCount =
+    typeof row.executableCount === 'number'
+      ? row.executableCount
+      : typeof row.operationCount === 'number'
+        ? row.operationCount
+        : undefined
+  if (
     typeof row.id === 'string' &&
     typeof row.title === 'string' &&
-    typeof row.specUrl === 'string' &&
-    typeof row.operationCount === 'number' &&
+    sourceUrl &&
+    executableCount !== undefined &&
     typeof row.createdAt === 'string' &&
     (row.version === undefined || typeof row.version === 'string')
-  )
+  ) {
+    return {
+      id: row.id,
+      kind: typeof row.kind === 'string' ? row.kind : 'openapi',
+      title: row.title,
+      version: row.version as string | undefined,
+      sourceUrl,
+      executableCount,
+      createdAt: row.createdAt,
+    }
+  }
+  return undefined
 }
 
 function loadApis(): ApiSummary[] {
   const raw = readApisJson()
-  const stored = Array.isArray(raw) ? raw.filter(isApiSummary) : []
+  const stored = Array.isArray(raw)
+    ? raw.map(sourceSummary).filter((value): value is ApiSummary => Boolean(value))
+    : []
   const { apis, persist } = mergeDefaultSpecs(stored, readDefaultsVersion())
   if (persist) {
     saveApis(apis)
@@ -50,7 +75,7 @@ function rememberSpecMeta(id: string, client: ClientApi) {
     ...current,
     title: client.title,
     version: client.version,
-    operationCount: client.operations.length,
+    executableCount: client.executables.length,
   }
   saveApis(apis)
 }
@@ -66,10 +91,11 @@ export async function addApi(url: string): Promise<{ id: string }> {
   const apis = loadApis()
   apis.unshift({
     id,
+    kind: client.kind,
     title: client.title,
     version: client.version,
-    specUrl: url,
-    operationCount: client.operations.length,
+    sourceUrl: url,
+    executableCount: client.executables.length,
     createdAt: new Date().toISOString(),
   })
   saveApis(apis)
@@ -82,13 +108,13 @@ export async function getApi(id: string): Promise<ClientApi> {
     throw notFound()
   }
 
-  const spec = await fetchSpec({ data: { url: row.specUrl } })
-  const client = specToClient(spec, row.specUrl, row.id)
+  const spec = await fetchSpec({ data: { url: row.sourceUrl } })
+  const client = specToClient(spec, row.sourceUrl, row.id)
   rememberSpecMeta(row.id, client)
 
   return {
     ...client,
-    authStored: apiAuthStored(row.id),
+    credentialsStored: apiAuthStored(row.id),
   }
 }
 

@@ -108,7 +108,7 @@ function Home() {
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <label htmlFor="url" className="sr-only">
-          OpenAPI URL
+          Source URL
         </label>
         <div className="relative min-w-0 flex-1">
           <input
@@ -131,19 +131,19 @@ function Home() {
           </span>
         </div>
         <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
-          {add.isPending ? 'Reading…' : 'Open'}
+          {add.isPending ? 'Reading…' : 'Add source'}
         </button>
       </form>
       {add.isError ? (
         <p className="mt-3 text-sm text-signal" role="alert">
-          {queryErrorMessage(add.error, 'Could not read that spec.')}
+          {queryErrorMessage(add.error, 'Could not read that source.')}
         </p>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {apisQuery.isPending ? (
           <div className="mt-8">
-            <QueryMessage label="Loading specs…" />
+            <QueryMessage label="Loading sources…" />
           </div>
         ) : apisQuery.isError ? (
           <div className="mt-8">
@@ -155,7 +155,7 @@ function Home() {
             />
           </div>
         ) : apis.length === 0 ? (
-          <p className="mt-8 text-sm text-mute">Paste a spec URL to open a client.</p>
+          <p className="mt-8 text-sm text-mute">Add a source URL to list its executables.</p>
         ) : (
           <ul className="mt-8">
             {apis.map((api, index) => {
@@ -188,7 +188,7 @@ function Home() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{api.title}</span>
                       <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                        {api.operationCount} ops
+                        {api.kind} · {api.executableCount} executables
                         {api.version ? ` · ${api.version}` : ''}
                       </span>
                     </span>
@@ -208,7 +208,7 @@ function Home() {
         )}
         {remove.isError ? (
           <p className="mt-3 text-sm text-signal" role="alert">
-            {queryErrorMessage(remove.error, 'Could not remove that spec.')}
+            {queryErrorMessage(remove.error, 'Could not remove that source.')}
           </p>
         ) : null}
       </div>

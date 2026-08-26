@@ -1,31 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import validator from '@rjsf/validator-ajv8'
 import type { IChangeEvent } from '@rjsf/core'
 import type {
-  ClientApi,
-  ClientOperation,
+  Executable,
+  ExecutableSource,
   FormUiSchema,
-  InvokeResult,
+  ExecutionResult,
   JsonSchema,
 } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
-import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
-import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
+import { asRecord } from '../lib/build-request'
+import { executableAdapterFor } from '../lib/executable-adapters'
+import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, usePane } from '../lib/mode'
-import { buildOperationRequest } from '../lib/invoke'
-import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
-const AUTH_NOTICE = 'This request requires authorization.'
+const AUTH_NOTICE = 'This execution requires credentials.'
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
@@ -98,10 +97,10 @@ function mergeAuth(
   return next
 }
 
-export function OperationClient({
+export function ExecutableClient({
   api,
   operation,
-  serverUrl,
+  target,
   needsAuth,
   authSchema,
   authUiSchema,
@@ -111,9 +110,9 @@ export function OperationClient({
   onNextOperation,
   onSaveAuth,
 }: {
-  api: ClientApi
-  operation: ClientOperation
-  serverUrl: string
+  api: ExecutableSource
+  operation: Executable
+  target: string
   needsAuth: boolean
   authSchema?: JsonSchema
   authUiSchema?: FormUiSchema
@@ -125,24 +124,25 @@ export function OperationClient({
 }) {
   const [formData, setFormData] = useState<unknown>({})
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
-  const [result, setResult] = useState<InvokeResult | null>(null)
+  const [result, setResult] = useState<ExecutionResult | null>(null)
   const [askingAuth, setAskingAuth] = useState(false)
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const pane = usePane()
   const navigate = useNavigate()
+  const adapter = executableAdapterFor(api)
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
-      executeRequest({
-        data: buildOperationRequest({
-          serverUrl,
-          operation,
+      adapter.execute(
+        adapter.buildInvocation({
+          source: api,
+          executable: operation,
+          target,
           formData: next,
-          auth: readApiAuth(api.id),
-          authSchemes: api.authSchemes,
+          credentials: readApiAuth(api.id),
         }),
-      }),
+      ),
     onSuccess: (nextResult) => {
       setResult(nextResult)
       showResponse()
@@ -184,20 +184,23 @@ export function OperationClient({
     return () => window.clearTimeout(timer)
   }, [copied])
 
-  async function copyFetch() {
+  async function copyExport() {
+    if (!adapter.exportSnippet) {
+      return
+    }
     try {
       const data = asRecord(formDataRef.current)
       const ok = await copyText(
-        toFetch(
-          buildOperationRequest({
-            serverUrl,
-            operation,
+        adapter.exportSnippet(
+          adapter.buildInvocation({
+            source: api,
+            executable: operation,
+            target,
             formData: withoutAuth(data),
-            auth: withAuthPlaceholders(
+            credentials: withAuthPlaceholders(
               mergeAuth(readApiAuth(api.id), fieldsFromForm(data.auth)),
               Object.keys(asRecord(authSchema?.properties)),
             ),
-            authSchemes: api.authSchemes,
           }),
         ),
       )
@@ -209,7 +212,10 @@ export function OperationClient({
     }
   }
 
-  usePaneFlags('input', { hasResult: Boolean(result) })
+  usePaneFlags('input', {
+    hasResult: Boolean(result),
+    hasExport: Boolean(adapter.exportSnippet && api.labels.export),
+  })
   usePaneActions('input', {
     send: {
       callback: () => {
@@ -221,27 +227,20 @@ export function OperationClient({
       ignoreInputs: false,
     },
     output: () => showResponse(),
-    copyFetch: () => {
-      void copyFetch()
+    export: () => {
+      void copyExport()
     },
   })
   usePaneActions('response', {
     parent: () => showInput(false),
   })
 
-  const previewUrl = useMemo(() => {
-    const data = asRecord(formData)
-    try {
-      return buildRequestUrl(
-        serverUrl,
-        operation.path,
-        asRecord(omitEmpty(data.path)),
-        asRecord(omitEmpty(data.query)),
-      )
-    } catch {
-      return `${serverUrl}${operation.path}`
-    }
-  }, [formData, operation.path, serverUrl])
+  const preview = adapter.preview({
+    source: api,
+    executable: operation,
+    target,
+    formData,
+  })
 
   function onSubmit({ formData: next }: IChangeEvent) {
     setFormData(next)
@@ -289,13 +288,18 @@ export function OperationClient({
 
   if (pane === 'response' && result) {
     return (
-      <div className={`api-context api-${operation.method} h-full min-h-0`}>
+      <div
+        className="exec-context h-full min-h-0"
+        style={{ '--exec-color': operation.accent } as CSSProperties}
+      >
         <ResponsePane
           result={result}
           pending={pending}
           error={error}
           onBack={() => showInput(false)}
           onResend={() => invoke.mutate(lastSubmission)}
+          executeLabel={api.labels.executed}
+          executingLabel={api.labels.executing}
         />
       </div>
     )
@@ -321,16 +325,16 @@ export function OperationClient({
 
   return (
     <div
-      data-oc-operation
-      data-oc-method={operation.method}
-      className={`api-context api-${operation.method} h-full min-h-0 overflow-hidden`}
+      data-oc-executable
+      className="exec-context h-full min-h-0 overflow-hidden"
+      style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
-          <span data-oc-method-label className="api-ink font-mono text-xs tabular-nums">
-            {operation.method.toUpperCase()}
+          <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
+            {operation.badge}
           </span>
-          <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.path}</span>
+          <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
           {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
@@ -369,13 +373,13 @@ export function OperationClient({
             id="call-form"
             schema={
               (showAuth && authSchema
-                ? withAuthSchema(operation.schema, authSchema)
-                : operation.schema) as never
+                ? withAuthSchema(operation.inputSchema, authSchema)
+                : operation.inputSchema) as never
             }
             uiSchema={
               (showAuth && authSchema
-                ? withAuthUiSchema(operation.uiSchema, authUiSchema)
-                : operation.uiSchema) as never
+                ? withAuthUiSchema(operation.inputUiSchema, authUiSchema)
+                : operation.inputUiSchema) as never
             }
             validator={validator}
             formData={formData}
@@ -386,7 +390,7 @@ export function OperationClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
+              <p className="break-all font-mono text-xs text-mute">{preview}</p>
               {error ? (
                 <p className="text-xs text-error" role="alert">
                   {error}
@@ -398,27 +402,29 @@ export function OperationClient({
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
-                  aria-live="polite"
-                  aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
-                  onClick={() => {
-                    void copyFetch()
-                  }}
-                >
-                  {copied ? 'Copied' : 'Copy as fetch'}
-                  <KeyHints>
-                    <Kbd hotkey="Y" />
-                  </KeyHints>
-                </button>
+                {adapter.exportSnippet && api.labels.export ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                    aria-live="polite"
+                    aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
+                    onClick={() => {
+                      void copyExport()
+                    }}
+                  >
+                    {copied ? 'Copied' : api.labels.export}
+                    <KeyHints>
+                      <Kbd hotkey="Y" />
+                    </KeyHints>
+                  </button>
+                ) : null}
                 <button
                   type="submit"
-                  className={`${formPrimaryButtonClass} api-solid`}
+                  className={`${formPrimaryButtonClass} exec-solid`}
                   disabled={pending || authPending}
                 >
                   {pending ? (
-                    'Sending…'
+                    api.labels.executing
                   ) : authPending ? (
                     'Saving…'
                   ) : (
@@ -427,7 +433,7 @@ export function OperationClient({
                         <Kbd hotkey="Mod" />
                         <Kbd hotkey="Enter" />
                       </KeyHints>
-                      {showAuth ? 'Continue' : 'Send'}
+                      {showAuth ? 'Continue' : api.labels.execute}
                     </>
                   )}
                 </button>

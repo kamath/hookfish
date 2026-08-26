@@ -30,10 +30,10 @@ export const Route = createRootRouteWithContext<{
       },
       { name: 'color-scheme', content: 'light' },
       { name: 'theme-color', content: '#f7f6f3' },
-      { title: 'OpenAPI Client' },
+      { title: 'Executable Client' },
       {
         name: 'description',
-        content: 'Call any OpenAPI with typed fields.',
+        content: 'Browse, configure, and run executables from pluggable sources.',
       },
     ],
     links: [

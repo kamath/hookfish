@@ -605,19 +605,25 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
 
       operations.push({
         id: operationIdFor(method, path, operation, usedIds),
-        method,
-        path,
+        name: path,
+        badge: method.toUpperCase(),
+        accent: `var(--accent-http-${method})`,
         summary:
           typeof operation.summary === 'string' ? operation.summary : undefined,
         description:
           typeof operation.description === 'string'
             ? operation.description
             : undefined,
-        tags,
+        groups: tags,
         deprecated: operation.deprecated === true,
-        contentType: form.contentType,
-        schema: form.schema,
-        uiSchema: form.uiSchema,
+        binding: {
+          type: 'http',
+          method,
+          path,
+          contentType: form.contentType,
+        },
+        inputSchema: form.schema,
+        inputUiSchema: form.uiSchema,
       })
     }
   }
@@ -630,6 +636,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
 
   return {
     id,
+    kind: 'openapi',
     title:
       typeof info.title === 'string' && info.title.length > 0
         ? info.title
@@ -637,13 +644,25 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
     version: typeof info.version === 'string' ? info.version : undefined,
     description:
       typeof info.description === 'string' ? info.description : undefined,
-    specUrl,
-    servers: serversFromSpec(spec, specUrl),
-    operations,
-    tagGroups: tagsFromSpec(spec, operations),
-    authSchemes: specAuthSchemes(spec),
-    authSchema,
-    authUiSchema: authUiSchema(authSchema),
+    sourceUrl: specUrl,
+    targets: serversFromSpec(spec, specUrl),
+    executables: operations,
+    groups: tagsFromSpec(spec, operations),
+    labels: {
+      source: 'OpenAPI document',
+      sourcePlural: 'OpenAPI documents',
+      executable: 'endpoint',
+      executablePlural: 'endpoints',
+      target: 'Server',
+      execute: 'Send',
+      executing: 'Sending…',
+      executed: 'Resend',
+      export: 'Copy as fetch',
+      exported: 'Copied fetch',
+    },
+    adapterData: { authSchemes: specAuthSchemes(spec) },
+    credentialSchema: authSchema,
+    credentialUiSchema: authUiSchema(authSchema),
   }
 }
 
@@ -666,7 +685,7 @@ function tagsFromSpec(root: Json, operations: ClientOperation[]): TagGroup[] {
     names.push(name)
   }
   for (const operation of operations) {
-    for (const name of operation.tags) {
+    for (const name of operation.groups) {
       if (!names.includes(name)) {
         names.push(name)
       }

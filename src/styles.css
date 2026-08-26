@@ -9,14 +9,14 @@
   --signal: #2557a7;
   --error: #8b1e3f;
   --on-signal: #f7f6f3;
-  --method-get: #2f6f4e;
-  --method-post: #2557a7;
-  --method-put: #9a5b12;
-  --method-patch: #0f6e6e;
-  --method-delete: #a33b32;
-  --method-head: #5c4a8a;
-  --method-options: #5c4a8a;
-  --api-color: var(--signal);
+  --accent-http-get: #2f6f4e;
+  --accent-http-post: #2557a7;
+  --accent-http-put: #9a5b12;
+  --accent-http-patch: #0f6e6e;
+  --accent-http-delete: #a33b32;
+  --accent-http-head: #5c4a8a;
+  --accent-http-options: #5c4a8a;
+  --exec-color: var(--signal);
   color-scheme: light;
 }
 
@@ -179,93 +179,58 @@ button[type='submit'][data-oc-current='true'] {
   background-color: var(--signal);
 }
 
-[data-oc-method],
-.api-context {
-  --api-color: var(--signal);
+[data-oc-executable],
+.exec-context {
+  --exec-color: var(--signal);
 }
 
-.api-get,
-[data-oc-method='get'] {
-  --api-color: var(--method-get);
+.exec-active,
+.exec-context [data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--exec-color) 12%, var(--paper));
 }
 
-.api-post,
-[data-oc-method='post'] {
-  --api-color: var(--method-post);
+.exec-ink {
+  color: var(--exec-color);
 }
 
-.api-put,
-[data-oc-method='put'] {
-  --api-color: var(--method-put);
+.exec-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  border-inline-start-color: var(--exec-color);
 }
 
-.api-patch,
-[data-oc-method='patch'] {
-  --api-color: var(--method-patch);
+.exec-context .oc-nest .oc-fold[data-oc-current='true']::before {
+  background: var(--exec-color);
 }
 
-.api-delete,
-[data-oc-method='delete'] {
-  --api-color: var(--method-delete);
+.exec-context button[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--ink) 10%, var(--exec-color));
 }
 
-.api-head,
-[data-oc-method='head'] {
-  --api-color: var(--method-head);
+.exec-context [data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
+  background-color: var(--exec-color);
 }
 
-.api-options,
-[data-oc-method='options'] {
-  --api-color: var(--method-options);
-}
-
-.api-active,
-.api-context [data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--api-color) 12%, var(--paper));
-}
-
-.api-ink {
-  color: var(--api-color);
-}
-
-.api-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
-  border-inline-start-color: var(--api-color);
-}
-
-.api-context .oc-nest .oc-fold[data-oc-current='true']::before {
-  background: var(--api-color);
-}
-
-.api-context button[type='submit'][data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--ink) 10%, var(--api-color));
-}
-
-.api-context [data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
-  background-color: var(--api-color);
-}
-
-.api-solid {
+.exec-solid {
   color: var(--on-signal);
-  background-color: var(--api-color);
+  background-color: var(--exec-color);
 }
 
-.api-solid:hover {
-  background-color: color-mix(in srgb, var(--api-color) 82%, var(--ink));
+.exec-solid:hover {
+  background-color: color-mix(in srgb, var(--exec-color) 82%, var(--ink));
 }
 
-.api-context button.api-solid[type='submit'][data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--api-color) 72%, var(--ink));
+.exec-context button.exec-solid[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--exec-color) 72%, var(--ink));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent);
 }
 
-.api-solid:disabled {
+.exec-solid:disabled {
   background-color: var(--faint);
 }
 
-[data-oc-method][data-oc-active] {
-  background-color: color-mix(in srgb, var(--api-color) 12%, var(--paper));
+[data-oc-executable][data-oc-active] {
+  background-color: color-mix(in srgb, var(--exec-color) 12%, var(--paper));
 }
 
-[data-oc-method] [data-oc-method-label] {
-  color: var(--api-color);
+[data-oc-executable] [data-oc-executable-badge] {
+  color: var(--exec-color);
 }

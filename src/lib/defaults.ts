@@ -8,18 +8,20 @@ export const PETSTORE_SPEC_URL = 'https://petstore3.swagger.io/api/v3/openapi.js
 export const DEFAULT_SPECS: readonly ApiSummary[] = [
   {
     id: 'default-arcade',
+    kind: 'openapi',
     title: 'Arcade API',
     version: '0.1.0',
-    specUrl: ARCADE_SPEC_URL,
-    operationCount: 59,
+    sourceUrl: ARCADE_SPEC_URL,
+    executableCount: 59,
     createdAt: '2026-08-26T00:00:00.000Z',
   },
   {
     id: 'default-petstore',
+    kind: 'openapi',
     title: 'Swagger Petstore',
     version: '1.0.27',
-    specUrl: PETSTORE_SPEC_URL,
-    operationCount: 19,
+    sourceUrl: PETSTORE_SPEC_URL,
+    executableCount: 19,
     createdAt: '2026-08-26T00:00:00.000Z',
   },
 ]
@@ -47,8 +49,8 @@ export function mergeDefaultSpecs(
     return { apis, persist: false }
   }
 
-  const have = new Set(apis.map((api) => specUrlKey(api.specUrl)))
-  const additions = DEFAULT_SPECS.filter((spec) => !have.has(specUrlKey(spec.specUrl)))
+  const have = new Set(apis.map((api) => specUrlKey(api.sourceUrl)))
+  const additions = DEFAULT_SPECS.filter((spec) => !have.has(specUrlKey(spec.sourceUrl)))
   return {
     apis: additions.length > 0 ? [...additions, ...apis] : apis,
     persist: true,

@@ -11,20 +11,30 @@ export type HttpMethod =
   | 'head'
   | 'options'
 
-export type ClientOperation = {
-  id: string
+export type HttpBinding = {
+  type: 'http'
   method: HttpMethod
   path: string
-  summary?: string
-  description?: string
-  tags: string[]
-  deprecated?: boolean
   contentType?: string
-  schema: JsonSchema
-  uiSchema: FormUiSchema
 }
 
-export type TagGroup = {
+export type ExecutableBinding = HttpBinding | ({ type: string } & Record<string, unknown>)
+
+export type Executable = {
+  id: string
+  name: string
+  badge: string
+  accent: string
+  summary?: string
+  description?: string
+  groups: string[]
+  deprecated?: boolean
+  binding: ExecutableBinding
+  inputSchema: JsonSchema
+  inputUiSchema: FormUiSchema
+}
+
+export type ExecutableGroup = {
   name: string
   description?: string
 }
@@ -37,36 +47,65 @@ export type AuthScheme = {
   key?: string
 }
 
-export type ClientApi = {
+export type SourceLabels = {
+  source: string
+  sourcePlural: string
+  executable: string
+  executablePlural: string
+  target: string
+  execute: string
+  executing: string
+  executed: string
+  export?: string
+  exported?: string
+}
+
+export type ExecutableSource = {
   id: string
+  kind: string
   title: string
   version?: string
   description?: string
-  specUrl: string
-  servers: string[]
-  operations: ClientOperation[]
-  tagGroups: TagGroup[]
-  authSchemes: AuthScheme[]
-  authSchema?: JsonSchema
-  authUiSchema?: FormUiSchema
-  authStored?: boolean
+  sourceUrl: string
+  targets: string[]
+  executables: Executable[]
+  groups: ExecutableGroup[]
+  labels: SourceLabels
+  adapterData?: unknown
+  credentialSchema?: JsonSchema
+  credentialUiSchema?: FormUiSchema
+  credentialsStored?: boolean
 }
 
-export type ApiSummary = {
+export type SourceSummary = {
   id: string
+  kind: string
   title: string
   version?: string
-  specUrl: string
-  operationCount: number
+  sourceUrl: string
+  executableCount: number
   createdAt: string
 }
 
-export type InvokeResult = {
-  status: number
-  statusText: string
-  headers: Array<{ name: string; value: string }>
+export type ExecutionResult = {
+  status?: {
+    code?: number
+    text: string
+  }
+  details?: {
+    label: string
+    items: Array<{ name: string; value: string }>
+  }
   body: string
   elapsedMs: number
-  url: string
-  method: string
+  target?: string
+  action?: string
 }
+
+// Compatibility aliases for the OpenAPI storage and parser modules. UI code should
+// consume the protocol-neutral names above.
+export type ClientOperation = Executable
+export type TagGroup = ExecutableGroup
+export type ClientApi = ExecutableSource
+export type ApiSummary = SourceSummary
+export type InvokeResult = ExecutionResult

@@ -20,6 +20,7 @@ assert.deepEqual(withAuthPlaceholders({ api_key: '  ' }, ['api_key']), {
 
 assert.equal(
   toFetch({
+    transport: 'http',
     method: 'GET',
     url: 'https://example.com/pets',
     headers: { api_key: 'INSERT_API_KEY' },
@@ -33,6 +34,7 @@ assert.equal(
 
 assert.equal(
   toFetch({
+    transport: 'http',
     method: 'GET',
     url: 'https://petstore3.swagger.io/api/v3/pet/findByStatus?status=available',
     headers: {},
@@ -42,6 +44,7 @@ assert.equal(
 
 assert.equal(
   toFetch({
+    transport: 'http',
     method: 'GET',
     url: 'https://example.com/pets',
     headers: { Accept: 'application/json' },
@@ -54,6 +57,7 @@ assert.equal(
 )
 
 const fetchPost = toFetch({
+  transport: 'http',
   method: 'POST',
   url: 'https://petstore3.swagger.io/api/v3/pet',
   headers: {
