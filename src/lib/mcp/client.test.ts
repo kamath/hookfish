@@ -191,7 +191,10 @@ const invocation = mcpExecutableAdapter.buildInvocation({
   executable: tool,
   target: modern.targets[0] ?? '',
   formData: { text: 'hello' },
-  credentials: {},
+  credentials: {
+    bearerToken: 'must-not-be-forwarded',
+    headers: '{"X-Test":"must-not-be-forwarded"}',
+  },
 })
 const execution = await mcpExecutableAdapter.execute(invocation)
 assert.ok(execution.inputRequired)
@@ -204,6 +207,8 @@ assert.equal(modernCall?.headers.get('mcp-protocol-version'), '2026-07-28')
 assert.equal(modernCall?.headers.get('mcp-method'), 'tools/call')
 assert.equal(modernCall?.headers.get('mcp-name'), 'echo')
 assert.equal(modernCall?.headers.get('mcp-param-text'), 'hello')
+assert.equal(modernCall?.headers.get('authorization'), null)
+assert.equal(modernCall?.headers.get('x-test'), null)
 assert.ok(mcpExecutableAdapter.continue)
 const continued = await mcpExecutableAdapter.continue(
   invocation,

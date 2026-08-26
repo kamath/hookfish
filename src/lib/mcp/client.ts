@@ -13,7 +13,6 @@ type McpConnection = {
   client: Client
   transport: StreamableHTTPClientTransport
   endpoint: string
-  credentialKey: string
   trace: ProtocolTraceEntry[]
   startedAt: number
 }
@@ -82,30 +81,6 @@ function proxyFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>) {
   }
 }
 
-function extraHeaders(credentials: Record<string, string>) {
-  const raw = credentials.headers
-  if (!raw) {
-    return {}
-  }
-  let value: unknown
-  try {
-    value = JSON.parse(raw)
-  } catch {
-    throw new Error('Additional MCP headers must be a JSON object.')
-  }
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Additional MCP headers must be a JSON object.')
-  }
-  const headers: Record<string, string> = {}
-  for (const [name, item] of Object.entries(value)) {
-    if (typeof item !== 'string') {
-      throw new Error(`MCP header "${name}" must have a string value.`)
-    }
-    headers[name] = item
-  }
-  return headers
-}
-
 function emitChanged(sourceId: string) {
   for (const listener of changeListeners.get(sourceId) ?? []) {
     listener()
@@ -130,15 +105,9 @@ function askForJson(label: string, request: unknown, fallback: unknown) {
 export async function getMcpConnection(
   sourceId: string,
   endpoint: string,
-  credentials: Record<string, string>,
 ) {
-  const credentialKey = JSON.stringify(credentials)
   const current = connections.get(sourceId)
-  if (
-    current &&
-    current.endpoint === endpoint &&
-    current.credentialKey === credentialKey
-  ) {
+  if (current && current.endpoint === endpoint) {
     return current
   }
   if (current) {
@@ -152,12 +121,6 @@ export async function getMcpConnection(
   }
   const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
     fetch: proxyFetch(pending),
-    requestInit: { headers: extraHeaders(credentials) },
-    authProvider: credentials.bearerToken
-      ? {
-          token: async () => credentials.bearerToken,
-        }
-      : undefined,
   })
   const client = new Client(CLIENT_INFO, {
     versionNegotiation: { mode: 'auto' },
@@ -192,7 +155,6 @@ export async function getMcpConnection(
     client,
     transport,
     endpoint,
-    credentialKey,
     trace: pending.trace,
     startedAt: pending.startedAt,
   }

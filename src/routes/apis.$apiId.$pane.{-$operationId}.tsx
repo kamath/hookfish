@@ -629,11 +629,7 @@ function ApiWorkbench({
             ) : null}
           </div>
         </div>
-        <McpServerPanel
-          source={api}
-          pending={authPending}
-          onSaveCredentials={onSaveAuth}
-        />
+        <McpServerPanel source={api} />
       </div>
 
       <div

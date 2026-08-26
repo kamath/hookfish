@@ -66,18 +66,5 @@ registerSourceAdapter({
   label: 'MCP',
   inputLabel: 'Streamable HTTP endpoint',
   placeholder: 'https://example.com/mcp',
-  credentialFields: [
-    {
-      name: 'bearerToken',
-      label: 'Bearer token (optional)',
-      type: 'password',
-      placeholder: 'Token',
-    },
-    {
-      name: 'headers',
-      label: 'Additional headers as JSON (optional)',
-      placeholder: '{"X-API-Key":"…"}',
-    },
-  ],
   load: loadMcpSource,
 })

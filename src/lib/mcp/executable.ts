@@ -10,7 +10,6 @@ type McpInvocation = {
   transport: 'mcp'
   sourceId: string
   endpoint: string
-  credentials: Record<string, string>
   binding: McpBinding
   params: Record<string, unknown>
 }
@@ -69,11 +68,7 @@ async function executeMcp(
   },
 ): Promise<ExecutionResult> {
   const invocation = asInvocation(value)
-  const connection = await getMcpConnection(
-    invocation.sourceId,
-    invocation.endpoint,
-    invocation.credentials,
-  )
+  const connection = await getMcpConnection(invocation.sourceId, invocation.endpoint)
   const mark = traceMark(connection)
   const params = {
     ...invocation.params,
@@ -157,13 +152,12 @@ console.log(result)`
 }
 
 export const mcpExecutableAdapter: ExecutableAdapter = {
-  buildInvocation: ({ source, executable, target, formData, credentials }) => {
+  buildInvocation: ({ source, executable, target, formData }) => {
     const binding = mcpBinding(executable.binding)
     return {
       transport: 'mcp',
       sourceId: source.id,
       endpoint: target,
-      credentials,
       binding,
       params: invocationParams(binding, formData),
     } satisfies McpInvocation

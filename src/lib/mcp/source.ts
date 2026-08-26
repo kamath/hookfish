@@ -157,9 +157,9 @@ function promptExecutable(prompt: Prompt) {
 export async function loadMcpSource(
   endpoint: string,
   id: string,
-  credentials: Record<string, string>,
+  _credentials: Record<string, string>,
 ): Promise<ExecutableSource> {
-  const { client, transport } = await getMcpConnection(id, endpoint, credentials)
+  const { client, transport } = await getMcpConnection(id, endpoint)
   const [tools, resources, templates, prompts] = await Promise.all([
     client.listTools(),
     client.listResources(),
@@ -219,23 +219,5 @@ export async function loadMcpSource(
       instructions,
       sessionId: transport.sessionId,
     } satisfies McpAdapterData & { sessionId?: string },
-    credentialSchema: {
-      type: 'object',
-      title: 'Connection credentials',
-      properties: {
-        bearerToken: {
-          type: 'string',
-          title: 'Bearer token',
-        },
-        headers: {
-          type: 'string',
-          title: 'Additional headers as JSON',
-        },
-      },
-    },
-    credentialUiSchema: {
-      bearerToken: { 'ui:widget': 'password' },
-    },
-    credentialsRequired: false,
   }
 }
