@@ -216,7 +216,7 @@ export function OperationClient({
     () => {
       void copyFetch()
     },
-    { enabled: pane === 'form' && mode === 'command' && showAuth },
+    { enabled: pane === 'form' && mode === 'command' },
   )
 
   const previewUrl = useMemo(() => {
@@ -341,20 +341,18 @@ export function OperationClient({
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                {showAuth ? (
-                  <button
-                    type="button"
-                    className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
-                    aria-live="polite"
-                    aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
-                    onClick={() => {
-                      void copyFetch()
-                    }}
-                  >
-                    Copy as fetch
-                    <Kbd hotkey="Y" />
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                  aria-live="polite"
+                  aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
+                  onClick={() => {
+                    void copyFetch()
+                  }}
+                >
+                  {copied ? 'Copied' : 'Copy as fetch'}
+                  <Kbd hotkey="Y" />
+                </button>
                 <button
                   type="submit"
                   className={`${formPrimaryButtonClass} api-solid`}
