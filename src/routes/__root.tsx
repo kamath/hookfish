@@ -1,4 +1,4 @@
-import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
   Link,
@@ -11,7 +11,6 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
 import { bindModeFromFocus } from '../lib/mode'
-import { sessionQueryOptions } from '../lib/queries'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
@@ -82,7 +81,6 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const session = useQuery(sessionQueryOptions)
   useEffect(() => bindModeFromFocus(), [])
 
   return (
@@ -95,23 +93,13 @@ function AppShell() {
           Skip to content
         </a>
         <header className="shrink-0 border-b border-rule bg-paper">
-          <div className="flex h-12 items-center justify-between gap-4 px-3 md:px-4">
+          <div className="flex h-12 items-center px-3 md:px-4">
             <Link
               to="/"
               className="font-mono text-sm text-ink hover:text-signal focus-visible:border-signal"
             >
               client
             </Link>
-            <p
-              className={`truncate font-mono text-xs ${session.isError ? 'text-signal' : 'text-mute'}`}
-              translate="no"
-            >
-              {session.isPending
-                ? '…'
-                : session.isError
-                  ? 'session failed'
-                  : session.data.username}
-            </p>
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">

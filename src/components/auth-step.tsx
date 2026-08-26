@@ -119,7 +119,7 @@ export function AuthStep({
       <p className="mt-2 text-sm text-ink">
         {stored ? 'Replace a stored key, or leave a field blank to keep it.' : 'Sign in to the API first.'}
       </p>
-      <p className="mt-1 text-xs text-mute">Keys stay on the server.</p>
+        <p className="mt-1 text-xs text-mute">Keys stay on this device.</p>
       <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
         <SwissForm
           id="auth-form"

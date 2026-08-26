@@ -1,6 +1,6 @@
 # OpenAPI Client
 
-A Cloudflare-ready [TanStack Start](https://tanstack.com/start) app. First visit assigns a unique `word-word-number` username. Paste an OpenAPI URL to get a typed client built with [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form).
+A Cloudflare-ready [TanStack Start](https://tanstack.com/start) app. Specs and keys live in the browser. The server only fetches OpenAPI documents and executes requests. Paste an OpenAPI URL to get a typed client built with [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form).
 
 ```bash
 npm install

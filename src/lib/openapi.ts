@@ -1,5 +1,5 @@
-import { parse as parseYaml } from 'yaml'
 import type {
+  AuthScheme,
   ClientApi,
   ClientOperation,
   FormUiSchema,
@@ -7,7 +7,6 @@ import type {
   JsonSchema,
   TagGroup,
 } from './client-types'
-import { isHttpUrl } from './build-request'
 
 const METHODS: HttpMethod[] = [
   'get',
@@ -18,8 +17,6 @@ const METHODS: HttpMethod[] = [
   'head',
   'options',
 ]
-
-const MAX_SPEC_BYTES = 2_000_000
 
 type Json = Record<string, unknown>
 
@@ -337,6 +334,31 @@ function collectSecurityNames(root: Json): Set<string> {
   return names
 }
 
+function specAuthSchemes(root: Json): AuthScheme[] {
+  const schemes = isObject(root.components)
+    ? root.components.securitySchemes
+    : root.securityDefinitions
+  if (!isObject(schemes)) {
+    return []
+  }
+
+  const result: AuthScheme[] = []
+  for (const [name, rawScheme] of Object.entries(schemes)) {
+    const scheme = deref(rawScheme, root)
+    if (!isObject(scheme)) {
+      continue
+    }
+    result.push({
+      name,
+      type: String(scheme.type ?? ''),
+      scheme: typeof scheme.scheme === 'string' ? scheme.scheme : undefined,
+      in: typeof scheme.in === 'string' ? scheme.in : undefined,
+      key: typeof scheme.name === 'string' ? scheme.name : undefined,
+    })
+  }
+  return result
+}
+
 function specAuthFields(root: Json): JsonSchema | undefined {
   const schemes = isObject(root.components)
     ? root.components.securitySchemes
@@ -619,6 +641,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
     servers: serversFromSpec(spec, specUrl),
     operations,
     tagGroups: tagsFromSpec(spec, operations),
+    authSchemes: specAuthSchemes(spec),
     authSchema,
     authUiSchema: authUiSchema(authSchema),
   }
@@ -656,75 +679,14 @@ function tagsFromSpec(root: Json, operations: ClientOperation[]): TagGroup[] {
   }))
 }
 
-export async function fetchSpec(specUrl: string): Promise<unknown> {
-  if (!isHttpUrl(specUrl)) {
-    throw new Error('Enter an http or https OpenAPI URL.')
-  }
-
-  const response = await fetch(specUrl, {
-    headers: {
-      Accept: 'application/json, application/yaml, text/yaml, text/plain, */*',
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Could not fetch the spec (${response.status}).`)
-  }
-
-  const buffer = await response.arrayBuffer()
-  if (buffer.byteLength > MAX_SPEC_BYTES) {
-    throw new Error('The spec is larger than 2 MB.')
-  }
-
-  const text = new TextDecoder().decode(buffer).trim()
-  if (!text) {
-    throw new Error('The spec was empty.')
-  }
-
-  try {
-    if (text.startsWith('{') || text.startsWith('[')) {
-      return JSON.parse(text)
-    }
-    return parseYaml(text)
-  } catch {
-    throw new Error('The response was not valid JSON or YAML.')
-  }
-}
-
-export function findOperation(
-  spec: unknown,
-  specUrl: string,
-  operationId: string,
-): ClientOperation {
-  const client = specToClient(spec, specUrl, 'tmp')
-  const operation = client.operations.find((item) => item.id === operationId)
-  if (!operation) {
-    throw new Error('That operation is not in this spec.')
-  }
-  return operation
-}
-
 export function applyAuth(
   headers: Headers,
   url: URL,
-  spec: unknown,
+  schemes: AuthScheme[],
   formAuth: Record<string, unknown>,
 ) {
-  if (!isObject(spec)) {
-    return
-  }
-
-  const schemes = isObject(spec.components)
-    ? spec.components.securitySchemes
-    : spec.securityDefinitions
-  if (!isObject(schemes)) {
-    return
-  }
-
-  for (const [name, rawScheme] of Object.entries(schemes)) {
-    const scheme = isObject(rawScheme) ? rawScheme : {}
-    const type = String(scheme.type ?? '')
+  for (const scheme of schemes) {
+    const { name, type } = scheme
     const token = formAuth[name]
 
     if (type === 'http' && scheme.scheme === 'basic') {
@@ -744,8 +706,8 @@ export function applyAuth(
     }
 
     if (type === 'apiKey') {
-      const location = String(scheme.in ?? 'header')
-      const key = String(scheme.name ?? name)
+      const location = scheme.in ?? 'header'
+      const key = scheme.key ?? name
       if (location === 'query') {
         url.searchParams.set(key, token)
       } else if (location === 'cookie') {

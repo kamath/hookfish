@@ -8,7 +8,9 @@ import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
-import { invokeOperation } from '../lib/invoke.functions'
+import { readApiAuth } from '../lib/auth'
+import { buildOperationRequest } from '../lib/invoke'
+import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { Kbd } from './hints'
@@ -30,13 +32,14 @@ export function OperationClient({
   const { mode, pane } = useChrome()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
-      invokeOperation({
-        data: {
-          apiId: api.id,
-          operationId: operation.id,
+      executeRequest({
+        data: buildOperationRequest({
           serverUrl,
-          formData: asRecord(next),
-        },
+          operation,
+          formData: next,
+          auth: readApiAuth(api.id),
+          authSchemes: api.authSchemes,
+        }),
       }),
     onSuccess: (nextResult) => {
       setResult(nextResult)

@@ -29,6 +29,14 @@ export type TagGroup = {
   description?: string
 }
 
+export type AuthScheme = {
+  name: string
+  type: string
+  scheme?: string
+  in?: string
+  key?: string
+}
+
 export type ClientApi = {
   id: string
   title: string
@@ -38,6 +46,7 @@ export type ClientApi = {
   servers: string[]
   operations: ClientOperation[]
   tagGroups: TagGroup[]
+  authSchemes: AuthScheme[]
   authSchema?: JsonSchema
   authUiSchema?: FormUiSchema
   authStored?: boolean

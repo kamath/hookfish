@@ -5,7 +5,7 @@ import { AuthStep } from '../components/auth-step'
 import { HintBar, Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
-import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
+import { fieldsFromForm, saveApiAuth } from '../lib/auth'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
@@ -28,6 +28,7 @@ type Search = {
 }
 
 export const Route = createFileRoute('/apis/$apiId')({
+  ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
     op: typeof search.op === 'string' ? search.op : undefined,
     q: typeof search.q === 'string' ? search.q : undefined,
@@ -105,10 +106,9 @@ function ApiClientPage() {
   const [editing, setEditing] = useState(false)
 
   const saveAuth = useMutation({
-    mutationFn: (value: Record<string, unknown>) =>
-      saveApiAuth({
-        data: { apiId, fields: fieldsFromForm(value) },
-      }),
+    mutationFn: async (value: Record<string, unknown>) => {
+      saveApiAuth(apiId, fieldsFromForm(value))
+    },
     onSuccess: async () => {
       setEditing(false)
       await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })

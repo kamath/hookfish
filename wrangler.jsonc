@@ -4,32 +4,8 @@
   "compatibility_date": "2026-08-25",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "VAULT",
-        "class_name": "UserVault"
-      }
-    ]
-  },
-  "exports": {
-    "UserVault": {
-      "type": "durable-object",
-      "storage": "sqlite"
-    }
-  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
-  },
-  "vars": {
-    "AUTH_WRAP_KEY": "oc-local-wrap"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "openapi-client",
-      "migrations_dir": "migrations"
-    }
-  ]
+  }
 }
