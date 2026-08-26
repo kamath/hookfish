@@ -33,12 +33,15 @@ official MCP TypeScript client with automatic protocol negotiation:
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions
 - legacy Streamable HTTP `2025-03-26` through `2025-11-25`, including initialization,
   browser-held session IDs, GET event streams, and session termination
+- OAuth 2.1 authorization-code flows with PKCE, dynamic client registration, and
+  Client ID Metadata Documents; registrations and tokens stay in browser storage
 - tools, resources, resource templates, and prompts rendered through the shared executable UI
 - request/response and notification traces plus capability metadata
 - sampling, elicitation, and roots requests with editable manual JSON responses
 
 The `/api/mcp-proxy` route streams requests and responses without retaining state. MCP
-connections, legacy session identifiers, and cached listings remain in the browser.
+connections, OAuth credentials, legacy session identifiers, and cached listings remain in
+the browser.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
 ```bash

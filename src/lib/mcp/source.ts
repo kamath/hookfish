@@ -12,6 +12,7 @@ import type {
   McpBinding,
 } from '../client-types'
 import { getMcpConnection } from './client'
+import { hasMcpOAuthTokens } from './oauth'
 
 export type McpAdapterData = {
   era: 'modern' | 'legacy'
@@ -22,6 +23,7 @@ export type McpAdapterData = {
     version: string
   }
   instructions?: string
+  oauthAuthorized?: boolean
 }
 
 const FORM_UI: FormUiSchema = {
@@ -218,6 +220,7 @@ export async function loadMcpSource(
       serverInfo,
       instructions,
       sessionId: transport.sessionId,
+      oauthAuthorized: hasMcpOAuthTokens(id),
     } satisfies McpAdapterData & { sessionId?: string },
   }
 }
