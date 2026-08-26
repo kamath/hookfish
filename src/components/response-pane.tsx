@@ -101,12 +101,16 @@ export function ResponsePane({
   error,
   onBack,
   onResend,
+  onCopyFetch,
+  copied,
 }: {
   result: InvokeResult
   pending: boolean
   error: string | null
   onBack: () => void
   onResend: () => void
+  onCopyFetch?: () => void
+  copied?: boolean
 }) {
   const body = useMemo(() => parseBody(result.body), [result.body])
   const [headersVisible, setHeadersVisible] = useState(false)
@@ -241,6 +245,13 @@ export function ResponsePane({
       callback: () => toggleSelectedChildren(),
     },
     {
+      hotkey: 'Y',
+      callback: () => {
+        onCopyFetch?.()
+      },
+      options: { enabled: Boolean(onCopyFetch) },
+    },
+    {
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
@@ -266,6 +277,18 @@ export function ResponsePane({
           &nbsp;ms
         </p>
         <div className="ml-auto flex items-center gap-3">
+          {onCopyFetch ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 border-0 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink shadow-none outline-none hover:bg-ink/15"
+              aria-live="polite"
+              aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
+              onClick={onCopyFetch}
+            >
+              <Kbd hotkey="Y" />
+              {copied ? 'Copied' : 'Copy as fetch'}
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"

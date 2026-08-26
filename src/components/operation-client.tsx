@@ -36,6 +36,33 @@ async function copyText(text: string) {
   }
 }
 
+function CopyFetchButton({
+  copied,
+  onCopy,
+  size,
+}: {
+  copied: boolean
+  onCopy: () => void
+  size: 'form' | 'toolbar'
+}) {
+  const className =
+    size === 'toolbar'
+      ? 'inline-flex items-center gap-2 border-0 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink shadow-none outline-none hover:bg-ink/15'
+      : 'inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15'
+  return (
+    <button
+      type="button"
+      className={className}
+      aria-live="polite"
+      aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
+      onClick={onCopy}
+    >
+      <Kbd hotkey="Y" />
+      {copied ? 'Copied' : 'Copy as fetch'}
+    </button>
+  )
+}
+
 export function OperationClient({
   api,
   operation,
@@ -62,6 +89,7 @@ export function OperationClient({
   const [result, setResult] = useState<InvokeResult | null>(null)
   const [askingAuth, setAskingAuth] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [authReady, setAuthReady] = useState(!needsAuth)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const { mode, pane } = useChrome()
@@ -86,7 +114,11 @@ export function OperationClient({
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
-  const canCopyFetch = !needsAuth && !showAuth
+  const canCopyFetch = !showAuth && (!needsAuth || authReady)
+
+  useEffect(() => {
+    setAuthReady(!needsAuth)
+  }, [needsAuth])
 
   useEffect(() => {
     setAskingAuth(false)
@@ -169,6 +201,7 @@ export function OperationClient({
 
   async function onAuthContinue(value: Record<string, unknown>) {
     await onSaveAuth(value)
+    setAuthReady(true)
     setAskingAuth(false)
     invoke.mutate(formDataRef.current)
   }
@@ -189,6 +222,14 @@ export function OperationClient({
           error={error}
           onBack={() => showForm(false)}
           onResend={() => invoke.mutate(lastSubmission)}
+          onCopyFetch={
+            canCopyFetch
+              ? () => {
+                  void copyFetch()
+                }
+              : undefined
+          }
+          copied={copied}
         />
       </div>
     )
@@ -248,18 +289,13 @@ export function OperationClient({
               {showAuth ? null : (
                 <div className="flex flex-wrap items-center gap-2">
                   {canCopyFetch ? (
-                    <button
-                      type="button"
-                      className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
-                      aria-live="polite"
-                      aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
-                      onClick={() => {
+                    <CopyFetchButton
+                      copied={copied}
+                      size="form"
+                      onCopy={() => {
                         void copyFetch()
                       }}
-                    >
-                      <Kbd hotkey="Y" />
-                      {copied ? 'Copied' : 'Copy as fetch'}
-                    </button>
+                    />
                   ) : null}
                   <button
                     type="submit"

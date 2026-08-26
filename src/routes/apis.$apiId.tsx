@@ -106,6 +106,9 @@ function ApiClientPage() {
       saveApiAuth(apiId, fieldsFromForm(value))
     },
     onSuccess: async () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current ? { ...current, authStored: true } : current,
+      )
       await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
     },
   })
@@ -115,6 +118,9 @@ function ApiClientPage() {
       clearApiAuth(apiId)
     },
     onSuccess: async () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current ? { ...current, authStored: false } : current,
+      )
       await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
     },
   })
@@ -553,6 +559,7 @@ function ApiWorkbench({
               { hotkey: 'Mod+Enter', label: 'resend' },
               { hotkey: 'H', label: 'headers' },
               { hotkey: 'A', label: 'toggle children' },
+              ...(!needsAuth ? copyHint : []),
               ...clearAuthHint,
               { hotkey: 'Escape', label: 'request' },
             ]
