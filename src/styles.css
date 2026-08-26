@@ -193,11 +193,7 @@ button[type='submit'][data-oc-current='true'] {
   background-color: color-mix(in srgb, var(--method) 12%, var(--paper));
 }
 
-[data-oc-method][data-oc-active] [data-oc-method-label] {
-  color: var(--method);
-}
-
-[data-oc-operation] [data-oc-method-label] {
+[data-oc-method] [data-oc-method-label] {
   color: var(--method);
 }
 
