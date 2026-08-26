@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
-import { enterCommand, enterEdit, isInsertMode } from './mode'
-import { consumePointerIntent } from './keys'
+import { enterCommand, enterEdit, isInsertMode, useChrome, type Pane } from './mode'
+import { consumePointerIntent, usePaneHotkeys, useStepKeys } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -355,6 +355,55 @@ export function selectDefaultInput(rootId: string): boolean {
 
 export function selectFirstInput(rootId: string): boolean {
   return selectDefaultInput(rootId)
+}
+
+export function useFormPaneNavigation(
+  pane: Pane,
+  formId: string,
+  options?: { stepKeys?: boolean },
+) {
+  const chrome = useChrome()
+  useStepKeys((delta) => {
+    moveFormTab(formId, delta)
+  }, options?.stepKeys !== false && chrome.pane === pane)
+
+  usePaneHotkeys(pane, ['command'], [
+    {
+      hotkey: { key: 'Tab' },
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+    },
+    {
+      hotkey: { key: 'Tab', shift: true },
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+    },
+    {
+      hotkey: 'Enter',
+      callback: () => {
+        confirmForm(formId)
+      },
+    },
+    {
+      hotkey: 'I',
+      callback: () => {
+        insertCurrentInput(formId)
+      },
+    },
+  ])
+
+  usePaneHotkeys(pane, ['edit'], [
+    {
+      hotkey: 'Escape',
+      callback: (event) => {
+        event.preventDefault()
+        exitInsert(formId)
+      },
+      options: { ignoreInputs: false },
+    },
+  ])
 }
 
 export function insertCurrentInput(rootId: string): boolean {

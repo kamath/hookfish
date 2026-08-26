@@ -16,6 +16,7 @@
   --method-delete: #a33b32;
   --method-head: #5c4a8a;
   --method-options: #5c4a8a;
+  --api-color: var(--signal);
   color-scheme: light;
 }
 

@@ -1,22 +1,15 @@
-import { useEffect, useState } from 'react'
-import validator from '@rjsf/validator-ajv8'
-import type { IChangeEvent } from '@rjsf/core'
+import { useEffect } from 'react'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
-import { asRecord } from '../lib/build-request'
 import {
   bindFormTabSync,
-  confirmForm,
-  exitInsert,
   insertCurrentInput,
-  moveFormTab,
-  selectDefaultInput,
+  useFormPaneNavigation,
 } from '../lib/form-nav'
-import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { usePaneHotkeys } from '../lib/keys'
 import { activate, useChrome } from '../lib/mode'
-import { queryErrorMessage } from '../lib/queries'
-import { formPrimaryButtonClass } from '../lib/ui'
+import { submitForm } from '../lib/focus'
 import { HintBar } from './hints'
-import { SwissForm } from './swiss-form'
+import { AuthFields } from './auth-fields'
 
 export function AuthStep({
   title,
@@ -26,6 +19,7 @@ export function AuthStep({
   pending,
   error,
   onContinue,
+  onClear,
   onLeave,
 }: {
   title: string
@@ -35,58 +29,48 @@ export function AuthStep({
   pending?: boolean
   error?: unknown
   onContinue: (value: Record<string, unknown>) => void | Promise<void>
+  onClear?: () => void
   onLeave: () => void
 }) {
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
   const { mode } = useChrome()
+  const canClear = Boolean(stored && onClear)
 
   useEffect(() => {
-    activate('auth', 'command')
-    const timer = window.setTimeout(() => selectDefaultInput('auth-form'), 0)
+    activate('auth', 'edit')
+    const timer = window.setTimeout(() => insertCurrentInput('auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => bindFormTabSync('auth-form'), [])
 
-  useStepKeys((delta) => {
-    moveFormTab('auth-form', delta)
-  })
+  useFormPaneNavigation('auth', 'auth-form')
 
   usePaneHotkeys('auth', ['command', 'edit'], [
     {
       hotkey: 'Mod+Enter',
       callback: () => {
         if (!pending) {
-          void onContinue(formData)
+          submitForm('auth-form')
         }
       },
       options: { ignoreInputs: false },
+    },
+    {
+      hotkey: 'Mod+Backspace',
+      callback: () => {
+        if (!pending) {
+          onClear?.()
+        }
+      },
+      options: { enabled: canClear, ignoreInputs: false },
     },
   ])
 
   usePaneHotkeys('auth', ['command'], [
     {
-      hotkey: 'I',
+      hotkey: 'A',
       callback: () => {
-        insertCurrentInput('auth-form')
-      },
-    },
-    {
-      hotkey: { key: 'Tab' },
-      callback: () => {
-        moveFormTab('auth-form', 1)
-      },
-    },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: () => {
-        moveFormTab('auth-form', -1)
-      },
-    },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        confirmForm('auth-form')
+        onLeave()
       },
     },
     {
@@ -103,65 +87,48 @@ export function AuthStep({
     },
   ])
 
-  useEditHotkeys([
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        exitInsert('auth-form')
-      },
-    },
-  ])
-
   return (
-    <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden px-3 py-8 md:px-4">
-      <p className="text-sm text-mute">{title}</p>
-      <p className="mt-2 text-sm text-ink">
-        {stored ? 'Replace a stored key, or leave a field blank to keep it.' : 'Sign in to the API first.'}
-      </p>
-        <p className="mt-1 text-xs text-mute">Keys stay on this device.</p>
-      <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
-        <SwissForm
-          id="auth-form"
-          idPrefix="auth"
-          schema={schema as never}
-          uiSchema={uiSchema as never}
-          validator={validator}
-          formData={formData}
-          onChange={(event: IChangeEvent) => setFormData(asRecord(event.formData))}
-          onSubmit={({ formData: next }) => {
-            void onContinue(asRecord(next))
-          }}
-          showErrorList={false}
-          omitExtraData
-        >
-          {error ? (
-            <p className="mb-3 text-xs text-error" role="alert">
-              {queryErrorMessage(error, 'Could not save those keys.')}
-            </p>
-          ) : null}
-          <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
-            {pending ? 'Saving…' : 'Continue'}
-          </button>
-        </SwissForm>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
+      <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
+        <span className="min-w-0 truncate text-sm text-ink">{title}</span>
+        <span className="min-w-0 truncate text-xs text-mute">
+          {stored
+            ? 'Replace a stored key, or leave a field blank to keep it.'
+            : 'Sign in to the API first. Keys stay on this device.'}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-4">
+        <AuthFields
+          schema={schema}
+          uiSchema={uiSchema}
+          stored={stored}
+          pending={pending}
+          error={error}
+          onContinue={onContinue}
+          onClear={onClear}
+        />
       </div>
       <HintBar
         items={
           mode === 'edit'
             ? [
                 { hotkey: 'Mod+Enter', label: 'continue' },
+                ...(canClear ? [{ hotkey: 'Mod+Backspace', label: 'clear' }] : []),
                 { hotkey: 'Escape', label: 'command' },
               ]
             : [
-                { hotkey: 'Mod+Enter', label: 'continue' },
-                { hotkey: 'J', label: 'next input' },
-                { hotkey: 'K', label: 'previous input' },
+                { hotkey: 'J', label: 'next' },
+                { hotkey: 'K', label: 'previous' },
                 { hotkey: 'I', label: 'insert' },
+                { hotkey: 'Enter', label: 'expand' },
+                { hotkey: 'Mod+Enter', label: 'continue' },
+                ...(canClear ? [{ hotkey: 'Mod+Backspace', label: 'clear' }] : []),
+                { hotkey: 'A', label: 'close' },
+                { hotkey: 'Escape', label: 'back' },
                 { hotkey: 'Backspace', label: 'back' },
-                { hotkey: 'Escape', label: 'specs' },
               ]
         }
       />
-    </main>
+    </div>
   )
 }
