@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { QueryMessage } from '../components/query-status'
-import { addApi, removeApi } from '../lib/apis.functions'
+import { addApi, removeApi } from '../lib/apis'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
@@ -11,6 +11,7 @@ import { inputClass, primaryButtonClass } from '../lib/ui'
 import { HintBar } from '../components/hints'
 
 export const Route = createFileRoute('/')({
+  ssr: false,
   component: Home,
 })
 
@@ -25,7 +26,7 @@ function Home() {
   const apis = apisQuery.data ?? []
 
   const add = useMutation({
-    mutationFn: (url: string) => addApi({ data: { url } }),
+    mutationFn: (url: string) => addApi(url),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
       await router.navigate({ to: '/apis/$apiId', params: { apiId: id } })
@@ -36,7 +37,9 @@ function Home() {
   })
 
   const remove = useMutation({
-    mutationFn: (id: string) => removeApi({ data: { id } }),
+    mutationFn: async (id: string) => {
+      removeApi(id)
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
     },

@@ -1,16 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
-import { notFound } from '@tanstack/react-router'
 import { z } from 'zod'
 import type { InvokeResult } from './client-types'
-import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
-import { getDb } from './db.server'
-import { readApiAuth } from './auth.server'
-import { applyAuth, fetchSpec, findOperation } from './openapi.server'
-import { ensureUser } from './session.server'
+import { isHttpUrl } from './build-request'
 
 const MAX_RESPONSE_CHARS = 200_000
-
-const BODY_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 async function readLimited(response: Response): Promise<string> {
   const contentLength = Number(response.headers.get('content-length') ?? '0')
@@ -43,87 +36,32 @@ async function readLimited(response: Response): Promise<string> {
   return text
 }
 
-export const invokeOperation = createServerFn({
+export const executeRequest = createServerFn({
   method: 'POST',
-  strict: { input: false },
 })
   .validator(
     z.object({
-      apiId: z.string(),
-      operationId: z.string(),
-      serverUrl: z.string().trim(),
-      formData: z.unknown(),
+      method: z.string().trim().min(1),
+      url: z.string().trim().min(1),
+      headers: z.record(z.string(), z.string()).optional(),
+      body: z.string().optional(),
     }),
   )
   .handler(async ({ data }): Promise<InvokeResult> => {
-    if (!isHttpUrl(data.serverUrl)) {
-      throw new Error('Choose an http or https server URL.')
+    if (!isHttpUrl(data.url)) {
+      throw new Error('Choose an http or https URL.')
     }
 
-    const username = await ensureUser()
-    const db = await getDb()
-    const row = await db
-      .prepare(
-        'SELECT spec_url FROM apis WHERE id = ? AND username = ?',
-      )
-      .bind(data.apiId, username)
-      .first<{ spec_url: string }>()
-
-    if (!row) {
-      throw notFound()
-    }
-
-    const spec = await fetchSpec(row.spec_url)
-    const operation = findOperation(spec, row.spec_url, data.operationId)
-    const form = asRecord(data.formData)
-    const path = asRecord(omitEmpty(form.path))
-    const query = asRecord(omitEmpty(form.query))
-    const header = asRecord(omitEmpty(form.header))
-    const cookie = asRecord(omitEmpty(form.cookie))
-    const auth = await readApiAuth(data.apiId)
-    const url = new URL(
-      buildRequestUrl(data.serverUrl, operation.path, path, query),
-    )
     const headers = new Headers()
-
-    for (const [name, value] of Object.entries(header)) {
-      headers.set(name, String(value))
-    }
-
-    const cookieHeader = Object.entries(cookie)
-      .map(([name, value]) => `${name}=${String(value)}`)
-      .join('; ')
-    if (cookieHeader) {
-      headers.set('Cookie', cookieHeader)
-    }
-
-    applyAuth(headers, url, spec, auth)
-
-    let body: string | undefined
-    if (BODY_METHODS.has(operation.method) && form.body !== undefined) {
-      const contentType = operation.contentType ?? 'application/json'
-      if (!headers.has('Content-Type')) {
-        headers.set('Content-Type', contentType)
-      }
-
-      if (contentType.includes('application/x-www-form-urlencoded')) {
-        const params = new URLSearchParams()
-        for (const [key, value] of Object.entries(asRecord(form.body))) {
-          if (value !== undefined && value !== null) {
-            params.set(key, String(value))
-          }
-        }
-        body = params.toString()
-      } else {
-        body = JSON.stringify(form.body)
-      }
+    for (const [name, value] of Object.entries(data.headers ?? {})) {
+      headers.set(name, value)
     }
 
     const started = Date.now()
-    const response = await fetch(url.toString(), {
-      method: operation.method.toUpperCase(),
+    const response = await fetch(data.url, {
+      method: data.method.toUpperCase(),
       headers,
-      body,
+      body: data.body,
       signal: AbortSignal.timeout(20_000),
     })
     const elapsedMs = Date.now() - started
@@ -138,7 +76,7 @@ export const invokeOperation = createServerFn({
       })),
       body: responseBody,
       elapsedMs,
-      url: url.toString(),
-      method: operation.method.toUpperCase(),
+      url: data.url,
+      method: data.method.toUpperCase(),
     }
   })

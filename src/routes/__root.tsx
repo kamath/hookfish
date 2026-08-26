@@ -1,4 +1,4 @@
-import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
   Link,
@@ -9,9 +9,9 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { bindModeFromFocus } from '../lib/mode'
-import { sessionQueryOptions } from '../lib/queries'
+import { ensureUsername } from '../lib/username'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
@@ -82,8 +82,11 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const session = useQuery(sessionQueryOptions)
-  useEffect(() => bindModeFromFocus(), [])
+  const [username, setUsername] = useState<string>()
+  useEffect(() => {
+    setUsername(ensureUsername())
+    return bindModeFromFocus()
+  }, [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
@@ -102,15 +105,8 @@ function AppShell() {
             >
               client
             </Link>
-            <p
-              className={`truncate font-mono text-xs ${session.isError ? 'text-signal' : 'text-mute'}`}
-              translate="no"
-            >
-              {session.isPending
-                ? '…'
-                : session.isError
-                  ? 'session failed'
-                  : session.data.username}
+            <p className="truncate font-mono text-xs text-mute" translate="no">
+              {username ?? '…'}
             </p>
           </div>
         </header>

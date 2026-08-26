@@ -1,23 +1,17 @@
 import { queryOptions } from '@tanstack/react-query'
 import { isNotFound } from '@tanstack/react-router'
-import { getApi, listApis } from './apis.functions'
-import { getSession } from './session.functions'
-
-export const sessionQueryOptions = queryOptions({
-  queryKey: ['session'],
-  queryFn: () => getSession(),
-  staleTime: Infinity,
-})
+import { getApi, listApis } from './apis'
 
 export const apisQueryOptions = queryOptions({
   queryKey: ['apis'],
   queryFn: () => listApis(),
+  staleTime: Infinity,
 })
 
 export function apiQueryOptions(id: string) {
   return queryOptions({
     queryKey: ['api', id],
-    queryFn: () => getApi({ data: { id } }),
+    queryFn: () => getApi(id),
     retry: (count, error) => {
       if (isNotFound(error)) {
         return false
