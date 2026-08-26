@@ -567,7 +567,7 @@ function ApiWorkbench({
     : []
   const authHint = onEditAuth ? [{ hotkey: 'A', label: 'auth' }] : []
   const sendHint = [{ hotkey: 'Mod+Enter', label: 'send' }]
-  const copyHint = [{ hotkey: 'C', label: 'copy curl' }]
+  const copyHint = [{ hotkey: 'Y', label: 'copy curl' }]
   const hints =
     mode === 'edit'
       ? [

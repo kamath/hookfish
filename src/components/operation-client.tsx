@@ -149,7 +149,7 @@ export function OperationClient({
     { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
   )
   useHotkey(
-    'C',
+    'Y',
     () => {
       void copyCurl()
     },
@@ -255,7 +255,7 @@ export function OperationClient({
                       void copyCurl()
                     }}
                   >
-                    <Kbd hotkey="C" />
+                    <Kbd hotkey="Y" />
                     {copied ? 'Copied' : 'Copy as cURL'}
                   </button>
                   <button
