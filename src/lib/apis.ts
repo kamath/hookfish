@@ -1,9 +1,10 @@
 import { notFound } from '@tanstack/react-router'
 import type { ApiSummary, ClientApi } from './client-types'
 import { apiAuthStored, clearApiAuth } from './auth'
+import { DEFAULTS_VERSION, mergeDefaultSpecs } from './defaults'
 import { specToClient } from './openapi'
 import { fetchSpec } from './spec.functions'
-import { readApisJson, writeApisJson } from './storage'
+import { readApisJson, readDefaultsVersion, writeApisJson, writeDefaultsVersion } from './storage'
 
 function isApiSummary(value: unknown): value is ApiSummary {
   if (!value || typeof value !== 'object') {
@@ -22,10 +23,13 @@ function isApiSummary(value: unknown): value is ApiSummary {
 
 function loadApis(): ApiSummary[] {
   const raw = readApisJson()
-  if (!Array.isArray(raw)) {
-    return []
+  const stored = Array.isArray(raw) ? raw.filter(isApiSummary) : []
+  const { apis, persist } = mergeDefaultSpecs(stored, readDefaultsVersion())
+  if (persist) {
+    saveApis(apis)
+    writeDefaultsVersion(DEFAULTS_VERSION)
   }
-  return raw.filter(isApiSummary)
+  return apis
 }
 
 function saveApis(apis: ApiSummary[]) {
