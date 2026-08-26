@@ -2,7 +2,17 @@ import { useEffect, useRef } from 'react'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import { getMode, getView, modeAtom, store, viewAtom, type Mode, type View } from './chrome'
+import {
+  enterCommand,
+  getMode,
+  getView,
+  modeAtom,
+  store,
+  viewAtom,
+  type Mode,
+  type View,
+} from './chrome'
+import { blurActive, isEditing } from './focus'
 
 export type ViewBinding = {
   id: string
@@ -42,12 +52,12 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     { id: 'clearEscape', hotkey: 'Escape', label: 'clear filter', flag: 'hasFilter' },
     { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
     { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
-    { id: 'confirmFilter', hotkey: 'Enter', label: 'open', modes: ['edit'] },
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
   form: [
     { id: 'previousRoute', hotkey: 'H', label: 'previous route', flag: 'canPreviousRoute' },
     { id: 'nextRoute', hotkey: 'L', label: 'next route', flag: 'canNextRoute' },
+    { id: 'expand', hotkey: 'Enter', label: 'edit' },
     { id: 'copyFetch', hotkey: 'Y', label: 'copy fetch' },
     { id: 'send', hotkey: 'Mod+Enter', label: 'send', modes: ['command', 'edit'] },
     {
@@ -203,6 +213,34 @@ export function bindStepKeys() {
     event.preventDefault()
     event.stopImmediatePropagation()
     step(key === 'j' ? 1 : -1)
+  }
+  document.addEventListener('keydown', onKeyDown, { capture: true })
+  return () => document.removeEventListener('keydown', onKeyDown, { capture: true })
+}
+
+export function bindEnterMode() {
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key !== 'Enter' ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      getMode() !== 'edit' ||
+      !isEditing()
+    ) {
+      return
+    }
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    const active = document.activeElement
+    if (active instanceof HTMLElement) {
+      const root = active.closest<HTMLElement>('[data-oc-mode]')
+      if (root) {
+        root.dataset.ocMode = 'command'
+      }
+    }
+    blurActive()
+    enterCommand()
   }
   document.addEventListener('keydown', onKeyDown, { capture: true })
   return () => document.removeEventListener('keydown', onKeyDown, { capture: true })

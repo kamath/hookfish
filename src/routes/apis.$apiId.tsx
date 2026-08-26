@@ -392,15 +392,6 @@ function ApiWorkbench({
     },
     prevServer: () => cycleServer(-1),
     nextServer: () => cycleServer(1),
-    confirmFilter: (event) => {
-      if (document.activeElement?.id !== 'operation-filter' || !selected) {
-        return
-      }
-      event.preventDefault()
-      activate('list', 'command')
-      blurActive()
-      document.getElementById(`op-${selected.id}`)?.focus()
-    },
     command: (event) => {
       event.preventDefault()
       blurActive()
