@@ -95,7 +95,6 @@ function Home() {
     },
     sourceType: {
       callback: () => {
-        activate('specs', 'edit')
         sourceKindRef.current?.focus()
         sourceKindRef.current?.showPicker?.()
       },
@@ -146,11 +145,9 @@ function Home() {
             ref={sourceKindRef}
             id="source-kind"
             name="source-kind"
+            data-oc-command-focus="true"
             className="min-h-11 appearance-none bg-ink/5 py-2 pl-3 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
             value={sourceKind}
-            onFocus={() => {
-              activate('specs', 'edit')
-            }}
             onChange={(event) => {
               setSourceKind(event.target.value)
               event.currentTarget.blur()
