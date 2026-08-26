@@ -167,11 +167,6 @@ function NavGroup({
               </span>
               <span className="flex min-w-0 items-baseline">
                 <span className="min-w-0 truncate">{title}</span>
-                {required ? (
-                  <span className="shrink-0 text-signal" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
               </span>
               {extrasHidden ? (
                 <span className="shrink-0 text-ink/40">{optionalParamsLabel(optionalCount)}</span>
@@ -181,11 +176,6 @@ function NavGroup({
             <span className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink">
               <span className="flex min-w-0 items-baseline">
                 <span className="min-w-0 truncate">{title}</span>
-                {required ? (
-                  <span className="shrink-0 text-signal" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
               </span>
             </span>
           )}
@@ -293,7 +283,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
-        className={`${formInputClass} ${invalid ? 'border-signal' : ''}`}
+        className={`${formInputClass} ${invalid ? 'border-error' : ''}`}
         readOnly={readonly}
         disabled={disabled}
         autoFocus={autofocus}
@@ -333,7 +323,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
-      className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-signal' : ''}`}
+      className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-error' : ''}`}
       value={value || ''}
       placeholder={placeholder}
       required={required}
@@ -387,7 +377,7 @@ function SelectWidget(props: WidgetProps) {
       id={id}
       name={htmlName || id}
       multiple={multiple}
-      className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-signal' : ''}`}
+      className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-error' : ''}`}
       value={selectValue}
       required={required}
       disabled={disabled || readonly}
@@ -609,7 +599,7 @@ function FieldErrorTemplate(props: FieldErrorProps) {
   return (
     <ul id={errorId(fieldPathId)} className="m-0 list-none p-0" aria-live="polite">
       {errors.filter(Boolean).map((error, index) => (
-        <li key={index} className="pt-0.5 text-xs text-signal">
+        <li key={index} className="pt-0.5 text-xs text-error">
           {error}
         </li>
       ))}
@@ -687,6 +677,19 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
       registry={registry}
     />
   ) : null
+
+  if (options.inline === true) {
+    return (
+      <fieldset
+        className={`${className ?? ''} min-w-0 border-0 p-0`}
+        id={fieldPathId.$id}
+      >
+        {descriptionNode}
+        {properties.map((property) => property.content)}
+        {addNode}
+      </fieldset>
+    )
+  }
 
   if (title && fieldPathId.path.length > 0) {
     const more =
@@ -1019,5 +1022,22 @@ const theme: ThemeProps = {
 const ThemedForm = withTheme(theme)
 
 export function SwissForm(props: ComponentProps<typeof ThemedForm>) {
-  return <ThemedForm noHtml5Validate {...props} />
+  return (
+    <div
+      className="contents"
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Enter' &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          event.target instanceof HTMLInputElement &&
+          !['button', 'submit', 'reset'].includes(event.target.type)
+        ) {
+          event.preventDefault()
+        }
+      }}
+    >
+      <ThemedForm noHtml5Validate {...props} />
+    </div>
+  )
 }

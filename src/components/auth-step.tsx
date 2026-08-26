@@ -3,10 +3,16 @@ import validator from '@rjsf/validator-ajv8'
 import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { bindFormTabSync, confirmForm, insertCurrentInput, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import {
+  bindFormTabSync,
+  confirmForm,
+  exitInsert,
+  insertCurrentInput,
+  moveFormTab,
+  selectDefaultInput,
+} from '../lib/form-nav'
 import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { activate, enterCommand, useChrome } from '../lib/mode'
-import { blurActive } from '../lib/focus'
+import { activate, useChrome } from '../lib/mode'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
@@ -102,8 +108,7 @@ export function AuthStep({
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
-        enterCommand()
-        blurActive()
+        exitInsert('auth-form')
       },
     },
   ])
@@ -131,7 +136,7 @@ export function AuthStep({
           omitExtraData
         >
           {error ? (
-            <p className="mb-3 text-xs text-signal" role="alert">
+            <p className="mb-3 text-xs text-error" role="alert">
               {queryErrorMessage(error, 'Could not save those keys.')}
             </p>
           ) : null}

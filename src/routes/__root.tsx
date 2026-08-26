@@ -15,7 +15,7 @@ import { sessionQueryOptions } from '../lib/queries'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
-  hotkey: { preventDefault: true, requireReset: true },
+  hotkey: { preventDefault: true },
 }
 
 export const Route = createRootRouteWithContext<{

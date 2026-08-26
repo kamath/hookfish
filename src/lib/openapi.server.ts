@@ -426,6 +426,7 @@ function operationToForm(
   const uiSchema: FormUiSchema = {
     'ui:submitButtonOptions': { norender: true },
     'ui:options': { autocomplete: 'off' },
+    path: { 'ui:options': { inline: true } },
   }
 
   const groups: Record<string, Record<string, JsonSchema>> = {
