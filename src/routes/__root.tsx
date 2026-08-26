@@ -10,6 +10,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
+import { bindEnterMode, bindStepKeys } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
 import appCss from '../styles.css?url'
 
@@ -81,7 +82,16 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  useEffect(() => bindModeFromFocus(), [])
+  useEffect(() => {
+    const unbindFocus = bindModeFromFocus()
+    const unbindEnter = bindEnterMode()
+    const unbindSteps = bindStepKeys()
+    return () => {
+      unbindFocus()
+      unbindEnter()
+      unbindSteps()
+    }
+  }, [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>

@@ -4,4 +4,4 @@ export {
   isInsertMode,
   setInsertMode,
   subscribeFormMode,
-} from './mode'
+} from './chrome'

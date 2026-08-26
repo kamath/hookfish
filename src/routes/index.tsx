@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { ARCADE_SPEC_URL } from '../lib/defaults'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { activate, enterCommand, useChrome } from '../lib/mode'
+import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
+import { activate, enterCommand } from '../lib/mode'
 import { inputClass, primaryButtonClass } from '../lib/ui'
-import { HintBar } from '../components/hints'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -21,16 +21,17 @@ function Home() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
-  const { mode } = useChrome()
   const [selected, setSelected] = useState(0)
-  const [help, setHelp] = useState(false)
   const apis = apisQuery.data ?? []
 
   const add = useMutation({
     mutationFn: (url: string) => addApi(url),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
-      await router.navigate({ to: '/apis/$apiId', params: { apiId: id } })
+      await router.navigate({
+        to: '/apis/$apiId/{-$operationId}',
+        params: { apiId: id, operationId: undefined },
+      })
     },
     onError: () => {
       urlRef.current?.focus()
@@ -57,54 +58,30 @@ function Home() {
     })
   }
 
-  useStepKeys(move, apis.length > 0)
-
-  useEditHotkeys([
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        enterCommand()
-        blurActive()
-        setHelp(false)
-      },
-    },
-  ])
-
-  usePaneHotkeys('home', ['command'], [
-    {
-      hotkey: 'I',
-      callback: () => {
-        activate('home', 'edit')
-        urlRef.current?.focus()
-      },
-    },
-    {
-      hotkey: 'Enter',
+  useViewFlags('home', { hasSpecs: apis.length > 0 })
+  useStepKeys('home', move, apis.length > 0)
+  useViewActions('home', {
+    open: {
       callback: () => {
         const api = apis[selected]
         if (api) {
-          void router.navigate({ to: '/apis/$apiId', params: { apiId: api.id } })
+          void router.navigate({
+            to: '/apis/$apiId/{-$operationId}',
+            params: { apiId: api.id, operationId: undefined },
+          })
         }
       },
-      options: { enabled: apis.length > 0 },
+      enabled: apis.length > 0,
     },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        blurActive()
-      },
+    insert: () => {
+      activate('home', 'edit')
+      urlRef.current?.focus()
     },
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        setHelp(false)
-      },
+    command: () => {
+      enterCommand()
+      blurActive()
     },
-    {
-      hotkey: { key: '/', shift: true },
-      callback: () => setHelp((value) => !value),
-    },
-  ])
+  })
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -120,43 +97,37 @@ function Home() {
     remove.mutate(id)
   }
 
-  const hints =
-    mode === 'edit'
-      ? [{ hotkey: 'Escape', label: 'command' }]
-      : [
-          { hotkey: 'Enter', label: 'open' },
-          ...(apis.length > 0
-            ? [
-                { hotkey: 'J', label: 'next spec' },
-                { hotkey: 'K', label: 'previous spec' },
-              ]
-            : []),
-          { hotkey: 'I', label: 'insert' },
-          { hotkey: { key: '/', shift: true }, label: 'keys' },
-        ]
-
   return (
     <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4">
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <label htmlFor="url" className="sr-only">
           OpenAPI URL
         </label>
-        <input
-          ref={urlRef}
-          id="url"
-          name="url"
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          spellCheck={false}
-          required
-          className={inputClass}
-          placeholder={ARCADE_SPEC_URL}
-          onFocus={() => {
-            activate('home', 'edit')
-          }}
-        />
-        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
+        <div className="relative min-w-0 flex-1">
+          <input
+            ref={urlRef}
+            id="url"
+            name="url"
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
+            required
+            className={`${inputClass} pr-10`}
+            placeholder={ARCADE_SPEC_URL}
+            onFocus={() => {
+              activate('home', 'edit')
+            }}
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+            <Kbd hotkey="I" />
+          </span>
+        </div>
+        <button
+          type="submit"
+          className={`${primaryButtonClass} shrink-0`}
+          disabled={add.isPending}
+        >
           {add.isPending ? 'Reading…' : 'Open'}
         </button>
       </form>
@@ -186,21 +157,33 @@ function Home() {
           <ul className="mt-8">
             {apis.map((api, index) => {
               const active = index === selected
+              const navigationHint = active
+                ? 'Enter'
+                : index === selected - 1
+                  ? 'K'
+                  : index === selected + 1
+                    ? 'J'
+                    : undefined
               return (
                 <li
                   key={api.id}
                   className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                 >
                   <Link
-                    to="/apis/$apiId"
-                    params={{ apiId: api.id }}
-                    className="min-w-0 flex-1 px-1 outline-none focus-visible:text-signal"
+                    to="/apis/$apiId/{-$operationId}"
+                    params={{ apiId: api.id, operationId: undefined }}
+                    className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
                     onFocus={() => setSelected(index)}
                   >
-                    <span className="block truncate text-sm text-ink">{api.title}</span>
-                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                      {api.operationCount} ops
-                      {api.version ? ` · ${api.version}` : ''}
+                    <span className="inline-flex w-8 shrink-0 justify-end">
+                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink">{api.title}</span>
+                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                        {api.operationCount} ops
+                        {api.version ? ` · ${api.version}` : ''}
+                      </span>
                     </span>
                   </Link>
                   <button
@@ -222,13 +205,6 @@ function Home() {
           </p>
         ) : null}
       </div>
-
-      {help ? (
-        <p className="pb-2 text-xs text-mute">
-          URL is first. Enter opens it. After Escape, j and k move through saved specs.
-        </p>
-      ) : null}
-      <HintBar items={hints} />
     </main>
   )
 }

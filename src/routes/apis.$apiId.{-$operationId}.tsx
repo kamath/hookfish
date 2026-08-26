@@ -1,34 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { HintBar, Kbd } from '../components/hints'
+import { Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
-import {
-  moveFormTab,
-  selectDefaultInput,
-  useFormPaneNavigation,
-} from '../lib/form-nav'
+import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
-import { consumePointerIntent, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { consumePointerIntent, useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
 import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
 type Search = {
-  op?: string
   q?: string
 }
 
-export const Route = createFileRoute('/apis/$apiId')({
+export const Route = createFileRoute('/apis/$apiId/{-$operationId}')({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
-    op: typeof search.op === 'string' ? search.op : undefined,
     q: typeof search.q === 'string' ? search.q : undefined,
   }),
   component: ApiClientPage,
@@ -176,17 +169,18 @@ function ApiWorkbench({
   authPending: boolean
   authError: unknown
 }) {
+  const { operationId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
-  const { mode, pane } = useChrome()
+  const { pane } = useChrome()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
-  const [heldOp, setHeldOp] = useState(search.op)
-  const heldOpRef = useRef(search.op)
+  const [heldOp, setHeldOp] = useState(operationId)
+  const heldOpRef = useRef(operationId)
   const localOpRef = useRef(false)
   useEffect(() => {
-    activate(search.op ? 'form' : 'list', 'command')
-  }, [api.id])
+    activate(operationId ? 'form' : 'list', 'command')
+  }, [api.id, operationId])
 
   const ranked = useMemo(() => {
     const query = search.q?.trim() ?? ''
@@ -212,20 +206,27 @@ function ApiWorkbench({
     [groups, ranked],
   )
   const selected =
-    orderedOperations.find((operation) => operation.id === (heldOp ?? search.op)) ??
+    orderedOperations.find((operation) => operation.id === (heldOp ?? operationId)) ??
     orderedOperations[0]
+  const selectedIndex = selected
+    ? orderedOperations.findIndex((operation) => operation.id === selected.id)
+    : -1
   const manyServers = api.servers.length > 1
 
   useEffect(() => {
+    if (!operationId) {
+      localOpRef.current = false
+      return
+    }
     if (localOpRef.current) {
-      if (search.op === heldOpRef.current) {
+      if (operationId === heldOpRef.current) {
         localOpRef.current = false
       }
       return
     }
-    heldOpRef.current = search.op
-    setHeldOp(search.op)
-  }, [search.op])
+    heldOpRef.current = operationId
+    setHeldOp(operationId)
+  }, [operationId])
 
   function holdOp(id: string, fromKeys = false) {
     localOpRef.current = fromKeys
@@ -285,20 +286,33 @@ function ApiWorkbench({
     document.getElementById('operation-filter')?.focus()
   }
 
-  function openSelected(insert: boolean) {
+  function openSelected() {
     if (!selected) {
       return
     }
     holdOp(selected.id)
     activate('form', 'command')
     void navigate({
-      search: (previous) => ({ ...previous, op: selected.id }),
+      to: '/apis/$apiId/{-$operationId}',
+      params: { apiId: api.id, operationId: selected.id },
+      resetScroll: false,
+    })
+  }
+
+  function navigateOperation(delta: number) {
+    const next = orderedOperations[selectedIndex + delta]
+    if (!next) {
+      return
+    }
+    holdOp(next.id)
+    activate('form', 'command')
+    void navigate({
+      to: '/apis/$apiId/{-$operationId}',
+      params: { apiId: api.id, operationId: next.id },
       replace: true,
       resetScroll: false,
     })
-    if (insert) {
-      window.setTimeout(() => selectDefaultInput('call-form'), 0)
-    }
+    revealOperation(next.id)
   }
 
   function stepBack() {
@@ -307,13 +321,20 @@ function ApiWorkbench({
       return
     }
     if (getPane() === 'form') {
+      const parentOperationId = heldOpRef.current ?? operationId
       activate('list', 'command')
       blurActive()
       void navigate({
-        search: (previous) => ({ ...previous, op: undefined }),
+        to: '/apis/$apiId/{-$operationId}',
+        params: { apiId: api.id, operationId: undefined },
         replace: true,
         resetScroll: false,
       })
+      if (parentOperationId) {
+        window.setTimeout(() => {
+          document.getElementById(`op-${parentOperationId}`)?.focus()
+        }, 0)
+      }
       return
     }
     if (search.q) {
@@ -339,167 +360,114 @@ function ApiWorkbench({
     }
   }
 
-  function nudge(delta: number) {
-    if (getPane() === 'form') {
-      moveFormTab('call-form', delta)
-      return
-    }
-    if (getPane() === 'response') {
-      return
-    }
-    move(delta)
-  }
+  const canClear = Boolean(onClearAuth)
+  useViewFlags('list', {
+    canClear,
+    manyServers,
+    hasFilter: Boolean(search.q),
+    noFilter: !search.q,
+  })
+  useViewFlags('form', {
+    canClear,
+    canNextRoute: selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1,
+    canPreviousRoute: selectedIndex > 0,
+    manyServers,
+  })
+  useStepKeys('list', move)
+  useFormPaneNavigation('form', 'call-form')
 
-  useStepKeys(nudge, pane !== 'response')
-  useFormPaneNavigation('form', 'call-form', { stepKeys: false })
-
-  useHotkey(
-    'Mod+Backspace',
-    () => {
-      if (!authPending) {
-        void onClearAuth?.()
-      }
+  useViewActions('list', {
+    filter: () => {
+      focusFilter()
     },
-    { enabled: Boolean(onClearAuth), ignoreInputs: false },
-  )
-
-  usePaneHotkeys('list', ['edit'], [
-    {
-      hotkey: 'Enter',
-      callback: (event) => {
-        if (document.activeElement?.id !== 'operation-filter' || !selected) {
-          return
+    fields: () => {
+      openSelected()
+    },
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
         }
-        event.preventDefault()
-        activate('list', 'command')
-        blurActive()
-        document.getElementById(`op-${selected.id}`)?.focus()
       },
-      options: { ignoreInputs: false },
+      ignoreInputs: false,
     },
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        blurActive()
-        activate('list', 'command')
-      },
-      options: { ignoreInputs: false },
+    escape: () => {
+      stepBack()
     },
-  ])
+    clearEscape: () => {
+      stepBack()
+    },
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+    command: (event) => {
+      event.preventDefault()
+      blurActive()
+      activate('list', 'command')
+    },
+  })
 
-  usePaneHotkeys('list', ['command'], [
-    {
-      hotkey: '/',
+  useViewActions('form', {
+    previousRoute: () => navigateOperation(-1),
+    nextRoute: () => navigateOperation(1),
+    clearAuth: {
       callback: () => {
-        focusFilter()
+        if (!authPending) {
+          void onClearAuth?.()
+        }
       },
+      ignoreInputs: false,
     },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        openSelected(true)
-      },
+    routes: () => {
+      stepBack()
     },
-    {
-      hotkey: 'I',
-      callback: () => {
-        openSelected(false)
-      },
-    },
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: '[',
-      callback: () => cycleServer(-1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: ']',
-      callback: () => cycleServer(1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: 'N',
-      callback: () => {
-        void home({ to: '/' })
-      },
-    },
-  ])
-
-  usePaneHotkeys('form', ['command'], [
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: '[',
-      callback: () => cycleServer(-1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: ']',
-      callback: () => cycleServer(1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: 'N',
-      callback: () => {
-        void home({ to: '/' })
-      },
-    },
-  ])
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+  })
 
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
+    const index = orderedOperations.findIndex((item) => item.id === operation.id)
+    const navigationHint =
+      pane !== 'list'
+        ? undefined
+        : active
+          ? 'Enter'
+          : index === selectedIndex - 1
+            ? 'K'
+            : index === selectedIndex + 1
+              ? 'J'
+              : undefined
     const description = oneLine(operation.summary ?? operation.description)
     return (
       <li key={operation.id}>
         <Link
           id={`op-${operation.id}`}
-          to="/apis/$apiId"
-          params={{ apiId: api.id }}
-          search={(previous) => ({
-            ...previous,
-            op: operation.id,
-          })}
+          to="/apis/$apiId/{-$operationId}"
+          params={{ apiId: api.id, operationId: operation.id }}
           resetScroll={false}
           onClick={() => {
             holdOp(operation.id)
             activate('form', 'command')
           }}
           onPointerEnter={() => {
-            if (
-              pane !== 'list' ||
-              heldOpRef.current === operation.id ||
-              !consumePointerIntent()
-            ) {
+            if (!consumePointerIntent()) {
               return
             }
-            holdOp(operation.id)
+            if (pane !== 'list') {
+              blurActive()
+              activate('list', 'command')
+            }
+            if (heldOpRef.current !== operation.id) {
+              holdOp(operation.id)
+            }
           }}
           data-oc-method={operation.method}
           data-oc-active={active || undefined}
-          className={`api-${operation.method} flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal`}
+          className={`api-${operation.method} flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none`}
         >
+          <span className="inline-flex w-8 shrink-0 justify-end">
+            {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+          </span>
           <span
             data-oc-method-label
             className="w-12 shrink-0 font-mono text-xs tabular-nums"
@@ -519,71 +487,21 @@ function ApiWorkbench({
     )
   }
 
-  const serverHints = manyServers
-    ? [
-        { hotkey: '[', label: 'previous server' },
-        { hotkey: ']', label: 'next server' },
-      ]
-    : []
-  const authHint = onClearAuth
-    ? [{ hotkey: 'Mod+Backspace', label: 'clear auth' }]
-    : []
-  const sendHint = [{ hotkey: 'Mod+Enter', label: 'send' }]
-  const copyHint = [{ hotkey: 'Y', label: 'copy fetch' }]
-  const hints =
-    mode === 'edit'
-      ? [
-          { hotkey: 'Escape', label: 'command' },
-          ...(pane === 'form' ? sendHint : []),
-        ]
-      : pane === 'form'
-        ? [
-            { hotkey: 'J', label: 'next' },
-            { hotkey: 'K', label: 'previous' },
-            { hotkey: 'I', label: 'insert' },
-            { hotkey: 'Enter', label: 'expand' },
-            ...copyHint,
-            ...sendHint,
-            ...authHint,
-            { hotkey: 'Escape', label: 'operations' },
-            { hotkey: 'Backspace', label: 'back' },
-            ...serverHints,
-            { hotkey: 'N', label: 'home' },
-          ]
-        : pane === 'response'
-          ? [
-              { hotkey: 'J', label: 'next line' },
-              { hotkey: 'K', label: 'previous line' },
-              { hotkey: 'Tab', label: 'next line' },
-              { hotkey: 'Enter', label: 'expand' },
-              { hotkey: 'Mod+Enter', label: 'resend' },
-              { hotkey: 'H', label: 'headers' },
-              { hotkey: 'A', label: 'toggle children' },
-              { hotkey: 'Escape', label: 'request' },
-            ]
-        : [
-            { hotkey: '/', label: 'filter' },
-            { hotkey: 'J', label: 'next' },
-            { hotkey: 'K', label: 'previous' },
-            { hotkey: 'Enter', label: 'fields' },
-            { hotkey: 'I', label: 'fields' },
-            ...authHint,
-            {
-              hotkey: 'Escape',
-              label: search.q ? 'clear filter' : 'specs',
-            },
-            { hotkey: 'Backspace', label: search.q ? 'clear filter' : 'back' },
-            ...serverHints,
-            { hotkey: 'N', label: 'home' },
-          ]
-
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
       <div className="shrink-0 border-b border-rule">
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (
-            <>
+            <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+                aria-label="Previous server"
+                onClick={() => cycleServer(-1)}
+              >
+                <Kbd hotkey="[" />
+              </button>
               <label htmlFor="server-url" className="sr-only">
                 Server
               </label>
@@ -594,28 +512,52 @@ function ApiWorkbench({
                 inputMode="url"
                 autoComplete="off"
                 spellCheck={false}
-                className={`${inputClass} max-w-xl flex-1`}
+                className={`${inputClass} min-w-0 flex-1`}
                 value={serverUrl}
                 onFocus={() => {
                   enterEdit()
                 }}
                 onChange={(event) => setServerUrl(event.target.value)}
               />
-            </>
+              <button
+                type="button"
+                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+                aria-label="Next server"
+                onClick={() => cycleServer(1)}
+              >
+                <Kbd hotkey="]" />
+              </button>
+            </div>
           ) : null}
-          {onClearAuth ? (
-            <button
-              type="button"
-              className="ml-auto inline-flex items-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
-              disabled={authPending}
-              onClick={() => {
-                void onClearAuth()
-              }}
-            >
-              Clear Auth
-              <Kbd hotkey="Mod+Backspace" />
-            </button>
-          ) : null}
+          <div className="ml-auto flex items-center gap-3">
+            {pane !== 'response' ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
+                onClick={stepBack}
+              >
+                {pane === 'form'
+                  ? 'Routes'
+                  : search.q
+                    ? 'Clear filter'
+                    : 'Specs'}
+                <Kbd hotkey="Escape" />
+              </button>
+            ) : null}
+            {onClearAuth ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
+                disabled={authPending}
+                onClick={() => {
+                  void onClearAuth()
+                }}
+              >
+                Clear Auth
+                <Kbd hotkey="Mod+Backspace" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -642,7 +584,9 @@ function ApiWorkbench({
                 type="search"
                 autoComplete="off"
                 spellCheck={false}
-                className="min-h-9 w-full appearance-none bg-ink/10 px-2.5 pr-9 text-sm text-ink outline-none placeholder:text-mute"
+                className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                  search.q ? 'pr-16' : 'pr-9'
+                }`}
                 value={search.q ?? ''}
                 onFocus={() => {
                   activate('list', 'edit')
@@ -663,7 +607,7 @@ function ApiWorkbench({
                 <button
                   type="button"
                   aria-label="Clear route filter"
-                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                  className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
                   onClick={() => {
                     void navigate({
                       search: (previous) => ({ ...previous, q: undefined }),
@@ -684,15 +628,14 @@ function ApiWorkbench({
                     <path d="M3 3l10 10M13 3L3 13" />
                   </svg>
                 </button>
-              ) : (
-                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                  <Kbd hotkey="/" />
-                </span>
-              )}
+              ) : null}
+              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                <Kbd hotkey="/" />
+              </span>
             </div>
           </div>
           <nav
-            aria-label="Operations"
+            aria-label="Routes"
             data-operation-list
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >
@@ -739,11 +682,18 @@ function ApiWorkbench({
             authUiSchema={api.authUiSchema}
             authPending={authPending}
             authError={authError}
+            onPreviousOperation={
+              selectedIndex > 0 ? () => navigateOperation(-1) : undefined
+            }
+            onNextOperation={
+              selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
+                ? () => navigateOperation(1)
+                : undefined
+            }
             onSaveAuth={onSaveAuth}
           />
         ) : null}
       </div>
-      <HintBar items={hints} />
     </main>
   )
 }

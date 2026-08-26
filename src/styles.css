@@ -123,6 +123,14 @@ kbd {
   background-color: var(--paper);
 }
 
+[data-oc-insert-hint] {
+  display: none;
+}
+
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+  display: inline-flex;
+}
+
 [data-oc-mode='insert'] [data-oc-current='true'] {
   background-color: transparent;
 }

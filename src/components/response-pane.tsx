@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { InvokeResult } from '../lib/client-types'
-import { usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { Kbd } from './hints'
+import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
+import { Kbd, KeyHints } from './hints'
 
 type ResponseNode = {
   id: string
@@ -120,7 +120,7 @@ export function ResponsePane({
     () =>
       body.root
         ? visibleNodes(body.root, expanded)
-        : (body.lines ?? []).map((value, index) => ({
+        : (body.lines ?? []).map((value, index): ResponseNode => ({
             id: `line.${index}`,
             value,
             depth: 0,
@@ -197,57 +197,33 @@ export function ResponsePane({
     })
   }
 
-  useStepKeys(move, true)
-  usePaneHotkeys('response', ['command'], [
-    {
-      hotkey: 'Enter',
-      callback: (event) => {
-        event.preventDefault()
-        if (rows[selected]?.collection || rows[selected]?.toggleId) {
-          toggleSelected()
-        }
-      },
+  const canToggleChildren =
+    selected === 1 && Boolean(rows[selected]?.collection)
+  useViewFlags('response', {
+    canToggleChildren,
+    hasHeaders: result.headers.length > 0,
+  })
+  useStepKeys('response', move)
+  useViewActions('response', {
+    expand: (event) => {
+      event.preventDefault()
+      if (rows[selected]?.collection || rows[selected]?.toggleId) {
+        toggleSelected()
+      }
     },
-    {
-      hotkey: 'Mod+Enter',
-      callback: (event) => {
-        event.preventDefault()
-        if (!pending) {
-          onResend()
-        }
-      },
-      options: { ignoreInputs: false },
+    resend: (event) => {
+      event.preventDefault()
+      if (!pending) {
+        onResend()
+      }
     },
-    {
-      hotkey: { key: 'Tab' },
-      callback: (event) => {
-        event.preventDefault()
-        move(1)
-      },
+    headers: () => setHeadersVisible((visible) => !visible),
+    children: () => toggleSelectedChildren(),
+    request: (event) => {
+      event.preventDefault()
+      onBack()
     },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: (event) => {
-        event.preventDefault()
-        move(-1)
-      },
-    },
-    {
-      hotkey: 'H',
-      callback: () => setHeadersVisible((visible) => !visible),
-    },
-    {
-      hotkey: 'A',
-      callback: () => toggleSelectedChildren(),
-    },
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        onBack()
-      },
-    },
-  ])
+  })
 
   return (
     <section
@@ -272,7 +248,9 @@ export function ResponsePane({
             onClick={onBack}
           >
             Edit request
-            <Kbd hotkey="Escape" />
+            <KeyHints>
+              <Kbd hotkey="Escape" />
+            </KeyHints>
           </button>
           <button
             type="button"
@@ -281,7 +259,9 @@ export function ResponsePane({
             onClick={onResend}
           >
             {pending ? 'Sending…' : 'Resend'}
-            <Kbd hotkey="Mod+Enter" />
+            <KeyHints>
+              <Kbd hotkey="Mod+Enter" />
+            </KeyHints>
           </button>
         </div>
       </div>
@@ -297,11 +277,12 @@ export function ResponsePane({
           <div className="mb-3">
             <button
               type="button"
-              className="font-mono text-xs text-mute hover:text-ink"
+              className="inline-flex items-center gap-2 font-mono text-xs text-mute hover:text-ink"
               aria-expanded={headersVisible}
               onClick={() => setHeadersVisible((visible) => !visible)}
             >
               {headersVisible ? '▾' : '▸'} Headers ({result.headers.length})
+              <Kbd hotkey="H" />
             </button>
             {headersVisible ? (
               <dl className="mt-2 space-y-1 border-l border-rule pl-3">
@@ -327,6 +308,8 @@ export function ResponsePane({
                   : index === selected + 1
                     ? 'J'
                     : undefined
+            const childrenHint =
+              index === 1 && index === selected && node.collection ? 'A' : undefined
             return (
               <button
                 key={node.id}
@@ -364,6 +347,11 @@ export function ResponsePane({
                   <span className="inline-block w-4 text-faint">
                     {node.collection ? (isExpanded ? '▾' : '▸') : ''}
                   </span>
+                  {childrenHint ? (
+                    <span className="mr-2 inline-flex">
+                      <Kbd hotkey={childrenHint} />
+                    </span>
+                  ) : null}
                 </span>
                 {node.label !== undefined ? (
                   <span className="text-mute">{node.label}: </span>

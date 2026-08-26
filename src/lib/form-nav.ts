@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
-import { enterCommand, enterEdit, isInsertMode, useChrome, type Pane } from './mode'
-import { consumePointerIntent, usePaneHotkeys, useStepKeys } from './keys'
+import { enterCommand, enterEdit, isInsertMode, type View } from './chrome'
+import { consumePointerIntent, useStepKeys, useViewActions } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -353,57 +353,51 @@ export function selectDefaultInput(rootId: string): boolean {
   return true
 }
 
+export function selectDefaultFormItem(rootId: string): boolean {
+  const root = formRoot(rootId)
+  const items = listFormInputs(rootId)
+  if (!root) {
+    return false
+  }
+
+  const target = firstRequiredInput(root) ?? submitControl(root, items)
+  if (!target) {
+    return false
+  }
+
+  blurActive()
+  enterCommand()
+  markItem(root, target)
+  syncMode(root)
+  scrollMark(target)
+  return true
+}
+
 export function selectFirstInput(rootId: string): boolean {
   return selectDefaultInput(rootId)
 }
 
 export function useFormPaneNavigation(
-  pane: Pane,
+  view: View,
   formId: string,
   options?: { stepKeys?: boolean },
 ) {
-  const chrome = useChrome()
-  useStepKeys((delta) => {
+  useStepKeys(view, (delta) => {
     moveFormTab(formId, delta)
-  }, options?.stepKeys !== false && chrome.pane === pane)
+  }, options?.stepKeys !== false)
 
-  usePaneHotkeys(pane, ['command'], [
-    {
-      hotkey: { key: 'Tab' },
-      callback: () => {
-        moveFormTab(formId, 1)
-      },
+  useViewActions(view, {
+    expand: () => {
+      confirmForm(formId)
     },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: () => {
-        moveFormTab(formId, -1)
-      },
+    insert: () => {
+      insertCurrentInput(formId)
     },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        confirmForm(formId)
-      },
+    command: (event) => {
+      event.preventDefault()
+      exitInsert(formId)
     },
-    {
-      hotkey: 'I',
-      callback: () => {
-        insertCurrentInput(formId)
-      },
-    },
-  ])
-
-  usePaneHotkeys(pane, ['edit'], [
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        exitInsert(formId)
-      },
-      options: { ignoreInputs: false },
-    },
-  ])
+  })
 }
 
 export function insertMatchingInput(
@@ -423,6 +417,25 @@ export function insertMatchingInput(
   scrollMark(target)
   blurActive()
   scheduleInsertFocus(target)
+  return true
+}
+
+export function selectMatchingFormItem(
+  rootId: string,
+  match: (item: HTMLElement) => boolean,
+): boolean {
+  const root = formRoot(rootId)
+  const items = listFormInputs(rootId)
+  const target = items.find((item) => isEditableControl(item) && match(item))
+  if (!root || !target) {
+    return false
+  }
+
+  blurActive()
+  enterCommand()
+  markItem(root, target)
+  syncMode(root)
+  scrollMark(target)
   return true
 }
 

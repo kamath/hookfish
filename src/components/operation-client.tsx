@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
-import { bindFormTabSync, insertMatchingInput, selectDefaultInput } from '../lib/form-nav'
+import {
+  bindFormTabSync,
+  selectDefaultFormItem,
+  selectMatchingFormItem,
+} from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
+import { useViewActions, useViewFlags } from '../lib/keys'
 import { activate, useChrome } from '../lib/mode'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
-import { Kbd } from './hints'
+import { Kbd, KeyHints } from './hints'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
@@ -100,6 +104,8 @@ export function OperationClient({
   authUiSchema,
   authPending,
   authError,
+  onPreviousOperation,
+  onNextOperation,
   onSaveAuth,
 }: {
   api: ClientApi
@@ -110,6 +116,8 @@ export function OperationClient({
   authUiSchema?: FormUiSchema
   authPending?: boolean
   authError?: unknown
+  onPreviousOperation?: () => void
+  onNextOperation?: () => void
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
   const [formData, setFormData] = useState<unknown>({})
@@ -119,7 +127,7 @@ export function OperationClient({
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
-  const { mode, pane } = useChrome()
+  const { pane } = useChrome()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
       executeRequest({
@@ -145,7 +153,7 @@ export function OperationClient({
   useEffect(() => {
     setAskingAuth(false)
     setCopied(false)
-    const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 
@@ -157,7 +165,7 @@ export function OperationClient({
     }
     const timer = window.setTimeout(
       () =>
-        insertMatchingInput('call-form', (item) => {
+        selectMatchingFormItem('call-form', (item) => {
           const prefix = `${operation.id}_auth`
           return item.id === prefix || item.id.startsWith(`${prefix}_`)
         }),
@@ -199,28 +207,22 @@ export function OperationClient({
     }
   }
 
-  useHotkey(
-    'Mod+Enter',
-    () => {
-      if (pending || authPending) {
-        return
-      }
-      submitForm('call-form')
+  useViewFlags('form', { hasResult: Boolean(result) })
+  useViewActions('form', {
+    send: {
+      callback: () => {
+        if (pending || authPending) {
+          return
+        }
+        submitForm('call-form')
+      },
+      ignoreInputs: false,
     },
-    { enabled: pane === 'form', ignoreInputs: false },
-  )
-  useHotkey(
-    'O',
-    () => activate('response', 'command'),
-    { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
-  )
-  useHotkey(
-    'Y',
-    () => {
+    output: () => activate('response', 'command'),
+    copyFetch: () => {
       void copyFetch()
     },
-    { enabled: pane === 'form' && mode === 'command' },
-  )
+  })
 
   const previewUrl = useMemo(() => {
     const data = asRecord(formData)
@@ -260,7 +262,7 @@ export function OperationClient({
   function showForm(insert: boolean) {
     activate('form', 'command')
     if (insert) {
-      window.setTimeout(() => selectDefaultInput('call-form'), 0)
+      window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     }
   }
 
@@ -298,16 +300,36 @@ export function OperationClient({
           {operation.deprecated ? (
             <span className="text-xs text-signal">deprecated</span>
           ) : null}
-          {result ? (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
-              onClick={() => activate('response', 'command')}
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!onPreviousOperation}
+              onClick={onPreviousOperation}
             >
-              View output
-              <Kbd hotkey="O" />
+              Previous
+              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
             </button>
-          ) : null}
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!onNextOperation}
+              onClick={onNextOperation}
+            >
+              Next
+              {onNextOperation ? <Kbd hotkey="L" /> : null}
+            </button>
+            {result ? (
+              <button
+                type="button"
+                className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15"
+                onClick={() => activate('response', 'command')}
+              >
+                View output
+                <Kbd hotkey="O" />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="px-3 py-3 md:px-4">
@@ -354,7 +376,9 @@ export function OperationClient({
                   }}
                 >
                   {copied ? 'Copied' : 'Copy as fetch'}
-                  <Kbd hotkey="Y" />
+                  <KeyHints>
+                    <Kbd hotkey="Y" />
+                  </KeyHints>
                 </button>
                 <button
                   type="submit"
@@ -367,10 +391,10 @@ export function OperationClient({
                     'Saving…'
                   ) : (
                     <>
-                      <span className="mr-2 inline-flex gap-1">
+                      <KeyHints className="mr-2 inline-flex gap-1">
                         <Kbd hotkey="Mod" />
                         <Kbd hotkey="Enter" />
-                      </span>
+                      </KeyHints>
                       {showAuth ? 'Continue' : 'Send'}
                     </>
                   )}

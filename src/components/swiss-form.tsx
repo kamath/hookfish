@@ -38,6 +38,7 @@ import type {
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils'
 import { formGhostButtonClass, formInputClass, labelClass, typeClass } from '../lib/ui'
+import { Kbd } from './hints'
 
 function isNestSchema(schema: RJSFSchema | undefined): boolean {
   if (!schema) {
@@ -527,10 +528,18 @@ function FieldTemplate(props: FieldTemplateProps) {
   return (
     <WrapIfAdditionalTemplate {...props}>
       <div
-        className={`mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
+        className={`relative mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
         data-oc-nav={nest ? undefined : 'field'}
         data-oc-required={required && !nest ? 'true' : undefined}
       >
+        {!nest ? (
+          <span
+            data-oc-insert-hint
+            className="pointer-events-none absolute right-2 top-2 z-[1]"
+          >
+            <Kbd hotkey="I" />
+          </span>
+        ) : null}
         {displayLabel && !isCheckbox ? (
           <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
             <span className="shrink-0">
