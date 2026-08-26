@@ -4,11 +4,6 @@ import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import { getMode, getView, modeAtom, store, viewAtom, type Mode, type View } from './chrome'
 
-export type KeyHint = {
-  hotkey: RegisterableHotkey
-  label: string
-}
-
 export type ViewBinding = {
   id: string
   hotkey: RegisterableHotkey
@@ -99,30 +94,8 @@ export type ViewFlags = Partial<Record<View, Record<string, boolean>>>
 
 export const viewFlagsAtom = atom<ViewFlags>({})
 
-export const visibleHintsAtom = atom((get): KeyHint[] => {
-  if (get(modeAtom) === 'edit') {
-    return []
-  }
-  const view = get(viewAtom)
-  const flags = get(viewFlagsAtom)[view] ?? {}
-  return viewKeymaps[view].flatMap((binding) => {
-    const modes = binding.modes ?? ['command']
-    if (binding.hint === false || !modes.includes('command')) {
-      return []
-    }
-    if (binding.flag && !flags[binding.flag]) {
-      return []
-    }
-    return [{ hotkey: binding.hotkey, label: binding.label }]
-  })
-})
-
 export function useShowKeybindings() {
   return useAtomValue(modeAtom) === 'command'
-}
-
-export function useVisibleHints() {
-  return useAtomValue(visibleHintsAtom)
 }
 
 export function useViewFlags(view: View, flags: Record<string, boolean>) {

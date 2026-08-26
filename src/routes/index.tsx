@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { Kbd, KeyHints } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { ARCADE_SPEC_URL } from '../lib/defaults'
@@ -120,8 +121,15 @@ function Home() {
             activate('home', 'edit')
           }}
         />
-        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
+        <button
+          type="submit"
+          className={`${primaryButtonClass} shrink-0 gap-2`}
+          disabled={add.isPending}
+        >
           {add.isPending ? 'Reading…' : 'Open'}
+          <KeyHints>
+            <Kbd hotkey="Enter" />
+          </KeyHints>
         </button>
       </form>
       {add.isError ? (
@@ -150,6 +158,13 @@ function Home() {
           <ul className="mt-8">
             {apis.map((api, index) => {
               const active = index === selected
+              const navigationHint = active
+                ? 'Enter'
+                : index === selected - 1
+                  ? 'K'
+                  : index === selected + 1
+                    ? 'J'
+                    : undefined
               return (
                 <li
                   key={api.id}
@@ -158,13 +173,18 @@ function Home() {
                   <Link
                     to="/apis/$apiId"
                     params={{ apiId: api.id }}
-                    className="min-w-0 flex-1 px-1 outline-none focus-visible:text-signal"
+                    className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
                     onFocus={() => setSelected(index)}
                   >
-                    <span className="block truncate text-sm text-ink">{api.title}</span>
-                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                      {api.operationCount} ops
-                      {api.version ? ` · ${api.version}` : ''}
+                    <span className="inline-flex w-8 shrink-0 justify-end">
+                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink">{api.title}</span>
+                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                        {api.operationCount} ops
+                        {api.version ? ` · ${api.version}` : ''}
+                      </span>
                     </span>
                   </Link>
                   <button

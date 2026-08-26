@@ -439,6 +439,20 @@ function ApiWorkbench({
 
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
+    const index = orderedOperations.findIndex((item) => item.id === operation.id)
+    const selectedIndex = selected
+      ? orderedOperations.findIndex((item) => item.id === selected.id)
+      : -1
+    const navigationHint =
+      pane !== 'list'
+        ? undefined
+        : active
+          ? 'Enter'
+          : index === selectedIndex - 1
+            ? 'K'
+            : index === selectedIndex + 1
+              ? 'J'
+              : undefined
     const description = oneLine(operation.summary ?? operation.description)
     return (
       <li key={operation.id}>
@@ -469,6 +483,9 @@ function ApiWorkbench({
           data-oc-active={active || undefined}
           className={`api-${operation.method} flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal`}
         >
+          <span className="inline-flex w-8 shrink-0 justify-end">
+            {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+          </span>
           <span
             data-oc-method-label
             className="w-12 shrink-0 font-mono text-xs tabular-nums"
