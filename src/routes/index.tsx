@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
+import { ARCADE_SPEC_URL } from '../lib/defaults'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
@@ -150,7 +151,7 @@ function Home() {
           spellCheck={false}
           required
           className={inputClass}
-          placeholder="https://petstore3.swagger.io/api/v3/openapi.json"
+          placeholder={ARCADE_SPEC_URL}
           onFocus={() => {
             activate('home', 'edit')
           }}
