@@ -196,6 +196,30 @@ export function currentFormItem(rootId: string): HTMLElement | undefined {
   return undefined
 }
 
+function itemFromTarget(root: HTMLElement, target: HTMLElement, items: HTMLElement[]) {
+  const field = target.closest<HTMLElement>('[data-oc-nav="field"]')
+  if (field && root.contains(field)) {
+    return editableIn(field) ?? items[indexOfItem(items, field)]
+  }
+
+  const toggle = target.closest<HTMLElement>('[data-oc-toggle], .oc-fold, button[type="submit"]')
+  if (toggle && root.contains(toggle)) {
+    const index = indexOfItem(items, toggle)
+    return index === -1 ? toggle : items[index]
+  }
+
+  const index = indexOfItem(items, target)
+  return index === -1 ? undefined : items[index]
+}
+
+function isSameMark(root: HTMLElement, item: HTMLElement) {
+  const marked = root.querySelector<HTMLElement>('[data-oc-current="true"]')
+  if (!marked) {
+    return false
+  }
+  return marked === item || marked.contains(item) || item.contains(marked)
+}
+
 export function bindFormTabSync(rootId: string) {
   const root = formRoot(rootId)
   if (!root) {
@@ -219,9 +243,29 @@ export function bindFormTabSync(rootId: string) {
     syncMode(root)
   }
 
+  const onPointerOver = (event: PointerEvent) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) {
+      return
+    }
+    const items = listFormInputs(rootId)
+    const next = itemFromTarget(root, target, items)
+    if (!next || isSameMark(root, next)) {
+      return
+    }
+    if (isEditing()) {
+      blurActive()
+      setInsertMode(false)
+    }
+    markItem(root, next)
+    syncMode(root)
+  }
+
   root.addEventListener('focusin', onFocusIn)
+  root.addEventListener('pointerover', onPointerOver)
   return () => {
     root.removeEventListener('focusin', onFocusIn)
+    root.removeEventListener('pointerover', onPointerOver)
   }
 }
 

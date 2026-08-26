@@ -491,10 +491,16 @@ function ApiWorkbench({
                                 op: operation.id,
                               })}
                               onClick={() => setPane('form')}
+                              onPointerEnter={() => {
+                                if (pane !== 'list' || heldOpRef.current === operation.id) {
+                                  return
+                                }
+                                heldOpRef.current = operation.id
+                                setHeldOp(operation.id)
+                                opCommit.set(operation.id)
+                              }}
                               className={`flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 outline-none focus-visible:text-signal ${
-                                active
-                                  ? 'bg-signal/10 text-ink'
-                                  : 'text-mute hover:bg-rule/40 hover:text-ink'
+                                active ? 'bg-signal/10 text-ink' : 'text-mute'
                               }`}
                             >
                               <span
