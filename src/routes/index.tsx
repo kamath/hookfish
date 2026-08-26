@@ -140,8 +140,9 @@ function Home() {
         <label htmlFor="source-kind" className="sr-only">
           Source type
         </label>
-        <div className="relative shrink-0">
-          <select
+        <div className="flex min-w-0 flex-1">
+          <div className="relative shrink-0">
+            <select
             ref={sourceKindRef}
             id="source-kind"
             name="source-kind"
@@ -161,23 +162,23 @@ function Home() {
                 {option.label}
               </option>
             ))}
-          </select>
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 16 16"
-            className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-mute"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <path d="m4 6 4 4 4-4" />
-          </svg>
-        </div>
-        <label htmlFor="url" className="sr-only">
-          {sourceOption?.inputLabel ?? 'Source URL'}
-        </label>
-        <div className="relative min-w-0 flex-1">
-          <input
+            </select>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-mute"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="m4 6 4 4 4-4" />
+            </svg>
+          </div>
+          <label htmlFor="url" className="sr-only">
+            {sourceOption?.inputLabel ?? 'Source URL'}
+          </label>
+          <div className="relative min-w-0 flex-1">
+            <input
             ref={urlRef}
             id="url"
             name="url"
@@ -197,10 +198,11 @@ function Home() {
                 event.currentTarget.form?.requestSubmit()
               }
             }}
-          />
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-            <Kbd hotkey="I" />
-          </span>
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              <Kbd hotkey="I" />
+            </span>
+          </div>
         </div>
         {(sourceOption?.credentialFields ?? []).map((field) => (
           <label key={field.name} className="min-w-0 flex-1">
