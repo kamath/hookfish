@@ -15,6 +15,7 @@ import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { AuthFields } from './auth-fields'
 import { Kbd } from './hints'
+import { RequestSnippet } from './request-snippet'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
@@ -114,6 +115,24 @@ export function OperationClient({
     }
   }, [formData, operation.path, serverUrl])
 
+  const previewRequest = useMemo(() => {
+    try {
+      return buildOperationRequest({
+        serverUrl,
+        operation,
+        formData,
+        auth: readApiAuth(api.id),
+        authSchemes: api.authSchemes,
+      })
+    } catch {
+      return {
+        method: operation.method.toUpperCase(),
+        url: previewUrl,
+        headers: {},
+      }
+    }
+  }, [api.authSchemes, api.id, formData, operation, previewUrl, serverUrl])
+
   function onSubmit({ formData: next }: IChangeEvent) {
     setFormData(next)
     setLastSubmission(next)
@@ -197,7 +216,7 @@ export function OperationClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
+              <RequestSnippet request={previewRequest} />
               {error ? (
                 <p className="text-xs text-error" role="alert">
                   {error}

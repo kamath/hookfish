@@ -1,5 +1,8 @@
+import { isSnippetFormat, type SnippetFormat } from './export-snippet'
+
 const APIS_KEY = 'oc:apis'
 const DEFAULTS_VERSION_KEY = 'oc:defaults-version'
+const SNIPPET_FORMAT_KEY = 'oc:snippet-format'
 
 function authKey(apiId: string) {
   return `oc:auth:${apiId}`
@@ -71,4 +74,13 @@ export function writeAuth(apiId: string, fields: Record<string, string>) {
 
 export function clearAuth(apiId: string) {
   browserStorage()?.removeItem(authKey(apiId))
+}
+
+export function readSnippetFormat(): SnippetFormat {
+  const raw = readJson<unknown>(SNIPPET_FORMAT_KEY, 'curl')
+  return typeof raw === 'string' && isSnippetFormat(raw) ? raw : 'curl'
+}
+
+export function writeSnippetFormat(format: SnippetFormat) {
+  writeJson(SNIPPET_FORMAT_KEY, format)
 }
