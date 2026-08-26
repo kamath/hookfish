@@ -13,21 +13,17 @@ export function AuthFields({
   idPrefix = 'auth',
   schema,
   uiSchema,
-  stored,
   pending,
   error,
   onContinue,
-  onClear,
 }: {
   id?: string
   idPrefix?: string
   schema: JsonSchema
   uiSchema: FormUiSchema
-  stored?: boolean
   pending?: boolean
   error?: unknown
   onContinue: (value: Record<string, unknown>) => void | Promise<void>
-  onClear?: () => void
 }) {
   const [formData, setFormData] = useState<Record<string, unknown>>({})
 
@@ -52,36 +48,23 @@ export function AuthFields({
             {queryErrorMessage(error, 'Could not save those keys.')}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="submit"
-            className={`${formPrimaryButtonClass} api-solid`}
-            disabled={pending}
-          >
-            {pending ? (
-              'Saving…'
-            ) : (
-              <>
-                <span className="mr-2 inline-flex gap-1">
-                  <Kbd hotkey="Mod" />
-                  <Kbd hotkey="Enter" />
-                </span>
-                Continue
-              </>
-            )}
-          </button>
-          {stored && onClear ? (
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={pending}
-              onClick={onClear}
-            >
-              Clear
-              <Kbd hotkey="Mod+Backspace" />
-            </button>
-          ) : null}
-        </div>
+        <button
+          type="submit"
+          className={`${formPrimaryButtonClass} api-solid`}
+          disabled={pending}
+        >
+          {pending ? (
+            'Saving…'
+          ) : (
+            <>
+              <span className="mr-2 inline-flex gap-1">
+                <Kbd hotkey="Mod" />
+                <Kbd hotkey="Enter" />
+              </span>
+              Continue
+            </>
+          )}
+        </button>
       </div>
     </SwissForm>
   )

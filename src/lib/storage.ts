@@ -72,3 +72,4 @@ export function writeAuth(apiId: string, fields: Record<string, string>) {
 export function clearAuth(apiId: string) {
   browserStorage()?.removeItem(authKey(apiId))
 }
+

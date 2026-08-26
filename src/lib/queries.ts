@@ -12,6 +12,7 @@ export function apiQueryOptions(id: string) {
   return queryOptions({
     queryKey: ['api', id],
     queryFn: () => getApi(id),
+    staleTime: Infinity,
     retry: (count, error) => {
       if (isNotFound(error)) {
         return false

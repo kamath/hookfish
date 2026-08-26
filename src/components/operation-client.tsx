@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
-import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, insertCurrentInput, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
 import { readApiAuth } from '../lib/auth'
+import { toFetch } from '../lib/export-snippet'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
@@ -17,6 +17,51 @@ import { AuthFields } from './auth-fields'
 import { Kbd } from './hints'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.left = '-9999px'
+    document.body.appendChild(area)
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    return ok
+  }
+}
+
+function CopyFetchButton({
+  copied,
+  onCopy,
+  size,
+}: {
+  copied: boolean
+  onCopy: () => void
+  size: 'form' | 'toolbar'
+}) {
+  const className =
+    size === 'toolbar'
+      ? 'inline-flex items-center gap-2 border-0 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink shadow-none outline-none hover:bg-ink/15'
+      : 'inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15'
+  return (
+    <button
+      type="button"
+      className={className}
+      aria-live="polite"
+      aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
+      onClick={onCopy}
+    >
+      <Kbd hotkey="Y" />
+      {copied ? 'Copied' : 'Copy as fetch'}
+    </button>
+  )
+}
 
 export function OperationClient({
   api,
@@ -43,6 +88,8 @@ export function OperationClient({
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
   const [result, setResult] = useState<InvokeResult | null>(null)
   const [askingAuth, setAskingAuth] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [authReady, setAuthReady] = useState(!needsAuth)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const { mode, pane } = useChrome()
@@ -67,9 +114,15 @@ export function OperationClient({
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
+  const canCopyFetch = !showAuth && (!needsAuth || authReady)
+
+  useEffect(() => {
+    setAuthReady(!needsAuth)
+  }, [needsAuth])
 
   useEffect(() => {
     setAskingAuth(false)
+    setCopied(false)
     const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
@@ -83,6 +136,35 @@ export function OperationClient({
     const timer = window.setTimeout(() => insertCurrentInput('inline-auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [showAuth])
+
+  useEffect(() => {
+    if (!copied) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopied(false), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  async function copyFetch() {
+    try {
+      const ok = await copyText(
+        toFetch(
+          buildOperationRequest({
+            serverUrl,
+            operation,
+            formData: formDataRef.current,
+            auth: readApiAuth(api.id),
+            authSchemes: api.authSchemes,
+          }),
+        ),
+      )
+      if (ok) {
+        setCopied(true)
+      }
+    } catch {
+      setCopied(false)
+    }
+  }
 
   useHotkey(
     'Mod+Enter',
@@ -99,20 +181,13 @@ export function OperationClient({
     () => activate('response', 'command'),
     { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
   )
-
-  const previewUrl = useMemo(() => {
-    const data = asRecord(formData)
-    try {
-      return buildRequestUrl(
-        serverUrl,
-        operation.path,
-        asRecord(omitEmpty(data.path)),
-        asRecord(omitEmpty(data.query)),
-      )
-    } catch {
-      return `${serverUrl}${operation.path}`
-    }
-  }, [formData, operation.path, serverUrl])
+  useHotkey(
+    'Y',
+    () => {
+      void copyFetch()
+    },
+    { enabled: pane === 'form' && mode === 'command' && canCopyFetch },
+  )
 
   function onSubmit({ formData: next }: IChangeEvent) {
     setFormData(next)
@@ -126,6 +201,7 @@ export function OperationClient({
 
   async function onAuthContinue(value: Record<string, unknown>) {
     await onSaveAuth(value)
+    setAuthReady(true)
     setAskingAuth(false)
     invoke.mutate(formDataRef.current)
   }
@@ -146,6 +222,14 @@ export function OperationClient({
           error={error}
           onBack={() => showForm(false)}
           onResend={() => invoke.mutate(lastSubmission)}
+          onCopyFetch={
+            canCopyFetch
+              ? () => {
+                  void copyFetch()
+                }
+              : undefined
+          }
+          copied={copied}
         />
       </div>
     )
@@ -197,30 +281,40 @@ export function OperationClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
               {error ? (
                 <p className="text-xs text-error" role="alert">
                   {error}
                 </p>
               ) : null}
               {showAuth ? null : (
-                <button
-                  type="submit"
-                  className={`${formPrimaryButtonClass} api-solid`}
-                  disabled={pending}
-                >
-                  {pending ? (
-                    'Sending…'
-                  ) : (
-                    <>
-                      <span className="mr-2 inline-flex gap-1">
-                        <Kbd hotkey="Mod" />
-                        <Kbd hotkey="Enter" />
-                      </span>
-                      Send
-                    </>
-                  )}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {canCopyFetch ? (
+                    <CopyFetchButton
+                      copied={copied}
+                      size="form"
+                      onCopy={() => {
+                        void copyFetch()
+                      }}
+                    />
+                  ) : null}
+                  <button
+                    type="submit"
+                    className={`${formPrimaryButtonClass} api-solid`}
+                    disabled={pending}
+                  >
+                    {pending ? (
+                      'Sending…'
+                    ) : (
+                      <>
+                        <span className="mr-2 inline-flex gap-1">
+                          <Kbd hotkey="Mod" />
+                          <Kbd hotkey="Enter" />
+                        </span>
+                        Send
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </SwissForm>
