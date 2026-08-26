@@ -270,6 +270,15 @@ function ApiWorkbench({
     revealOperation(next.id)
   }
 
+  useEffect(() => {
+    const first = ranked?.[0]
+    if (!first) {
+      return
+    }
+    holdOp(first.id, true)
+    revealOperation(first.id)
+  }, [search.q])
+
   function focusFilter() {
     activate('list', 'edit')
     document.getElementById('operation-filter')?.focus()
