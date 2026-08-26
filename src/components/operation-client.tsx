@@ -86,13 +86,15 @@ export function OperationClient({
 
   return (
     <div
+      data-oc-operation
+      data-oc-method={operation.method}
       className={`grid h-full min-h-0 grid-cols-1 overflow-hidden ${
         result ? 'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]' : ''
       }`}
     >
       <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto lg:border-r lg:border-rule">
         <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
-          <span className="font-mono text-xs tabular-nums text-signal">
+          <span data-oc-method-label className="font-mono text-xs tabular-nums">
             {operation.method.toUpperCase()}
           </span>
           <span className="min-w-0 truncate font-mono text-xs text-ink">
@@ -116,7 +118,7 @@ export function OperationClient({
             omitExtraData
             idPrefix={operation.id}
           >
-            <div className="flex flex-col gap-2 border-t border-rule pt-3">
+            <div className="flex flex-col gap-2 pt-3">
               <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
               {error ? (
                 <p className="text-xs text-signal" role="alert">

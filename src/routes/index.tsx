@@ -43,8 +43,7 @@ function Home() {
   })
 
   useEffect(() => {
-    activate('home', 'edit')
-    urlRef.current?.focus()
+    activate('home', 'command')
   }, [])
 
   function move(delta: number) {
@@ -180,13 +179,13 @@ function Home() {
         ) : apis.length === 0 ? (
           <p className="mt-8 text-sm text-mute">Paste a spec URL to open a client.</p>
         ) : (
-          <ul className="mt-8 divide-y divide-rule border-y border-rule">
+          <ul className="mt-8">
             {apis.map((api, index) => {
               const active = index === selected
               return (
                 <li
                   key={api.id}
-                  className={`flex items-center gap-3 py-3 ${active ? 'bg-signal/10' : ''}`}
+                  className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                 >
                   <Link
                     to="/apis/$apiId"

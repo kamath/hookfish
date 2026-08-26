@@ -149,6 +149,10 @@ button[type='submit'][data-oc-current='true'] {
   background-color: var(--signal);
 }
 
+[data-oc-method] {
+  --method: var(--signal);
+}
+
 [data-oc-method='get'] {
   --method: var(--method-get);
 }
@@ -183,4 +187,20 @@ button[type='submit'][data-oc-current='true'] {
 
 [data-oc-method][data-oc-active] [data-oc-method-label] {
   color: var(--method);
+}
+
+[data-oc-operation] [data-oc-method-label] {
+  color: var(--method);
+}
+
+[data-oc-operation] button[type='submit'] {
+  background-color: var(--method);
+}
+
+[data-oc-operation] button[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--ink) 10%, var(--method));
+}
+
+[data-oc-mode='insert'] [data-oc-operation] button[type='submit'][data-oc-current='true'] {
+  background-color: var(--method);
 }

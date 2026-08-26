@@ -167,11 +167,6 @@ function NavGroup({
               </span>
               <span className="flex min-w-0 items-baseline">
                 <span className="min-w-0 truncate">{title}</span>
-                {required ? (
-                  <span className="shrink-0 text-signal" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
               </span>
               {extrasHidden ? (
                 <span className="shrink-0 text-ink/40">{optionalParamsLabel(optionalCount)}</span>
@@ -181,11 +176,6 @@ function NavGroup({
             <span className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink">
               <span className="flex min-w-0 items-baseline">
                 <span className="min-w-0 truncate">{title}</span>
-                {required ? (
-                  <span className="shrink-0 text-signal" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
               </span>
             </span>
           )}

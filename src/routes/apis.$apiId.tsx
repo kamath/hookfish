@@ -9,10 +9,16 @@ import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
-import { confirmForm, insertCurrentInput, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import {
+  confirmForm,
+  exitInsert,
+  insertCurrentInput,
+  moveFormTab,
+  selectDefaultInput,
+} from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
 import { consumePointerIntent, useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { activate, enterCommand, enterEdit, getPane, useChrome } from '../lib/mode'
+import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
@@ -344,8 +350,7 @@ function ApiWorkbench({
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
-        enterCommand()
-        blurActive()
+        exitInsert('call-form')
       },
     },
   ])
@@ -595,7 +600,7 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div className="relative w-52">
+            <div className="relative w-full max-w-[26rem]">
               <label htmlFor="operation-filter" className="sr-only">
                 Filter routes
               </label>
