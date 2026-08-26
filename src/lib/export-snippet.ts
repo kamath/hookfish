@@ -30,6 +30,30 @@ function jsProperty(name: string): string {
   return /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name)
 }
 
+export function authPlaceholder(key: string): string {
+  const token = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_')
+    .toUpperCase()
+  return `INSERT_${token || 'KEY'}`
+}
+
+export function withAuthPlaceholders(
+  auth: Record<string, string>,
+  keys: readonly string[],
+): Record<string, string> {
+  const next = { ...auth }
+  for (const key of keys) {
+    if (!next[key]?.trim()) {
+      next[key] = authPlaceholder(key)
+    }
+  }
+  return next
+}
+
 export function toFetch(request: ExecuteRequest): string {
   const options: string[] = []
   if (request.method !== 'GET') {

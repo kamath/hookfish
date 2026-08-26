@@ -6,7 +6,7 @@ import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
-import { toFetch } from '../lib/export-snippet'
+import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, insertMatchingInput, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
@@ -183,7 +183,10 @@ export function OperationClient({
             serverUrl,
             operation,
             formData: withoutAuth(data),
-            auth: mergeAuth(readApiAuth(api.id), fieldsFromForm(data.auth)),
+            auth: withAuthPlaceholders(
+              mergeAuth(readApiAuth(api.id), fieldsFromForm(data.auth)),
+              Object.keys(asRecord(authSchema?.properties)),
+            ),
             authSchemes: api.authSchemes,
           }),
         ),
