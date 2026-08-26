@@ -659,6 +659,10 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   const requiredProperties = properties.filter((property) => requiredNames.has(property.name))
   const extraProperties = properties.filter((property) => !requiredNames.has(property.name))
   const canAdd = canExpand(schema, uiSchema, formData)
+  const notice = typeof options.notice === 'string' ? options.notice : undefined
+  const noticeNode = notice ? (
+    <p className="mb-2 mt-3 text-sm text-ink">{notice}</p>
+  ) : null
   const descriptionNode = description ? (
     <DescriptionField
       id={descriptionId(fieldPathId)}
@@ -684,6 +688,7 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
         className={`${className ?? ''} min-w-0 border-0 p-0`}
         id={fieldPathId.$id}
       >
+        {noticeNode}
         {descriptionNode}
         {properties.map((property) => property.content)}
         {addNode}
@@ -701,26 +706,29 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
       ) : undefined
 
     return (
-      <NavGroup
-        id={fieldPathId.$id}
-        title={title}
-        required={required}
-        extra={showOptional ? optionalDataControl : undefined}
-        hasRequired={requiredProperties.length > 0}
-        optionalCount={extraProperties.length}
-        forceOpen={requiredProperties.some((property) =>
-          branchHasErrors(errorSchema, property.name),
-        )}
-        forceMore={extraProperties.some((property) =>
-          branchHasErrors(errorSchema, property.name),
-        )}
-        more={more}
-      >
-        <div className={className}>
-          {descriptionNode}
-          {requiredProperties.map((property) => property.content)}
-        </div>
-      </NavGroup>
+      <div className="min-w-0">
+        {noticeNode}
+        <NavGroup
+          id={fieldPathId.$id}
+          title={title}
+          required={required}
+          extra={showOptional ? optionalDataControl : undefined}
+          hasRequired={requiredProperties.length > 0}
+          optionalCount={extraProperties.length}
+          forceOpen={requiredProperties.some((property) =>
+            branchHasErrors(errorSchema, property.name),
+          )}
+          forceMore={extraProperties.some((property) =>
+            branchHasErrors(errorSchema, property.name),
+          )}
+          more={more}
+        >
+          <div className={className}>
+            {descriptionNode}
+            {requiredProperties.map((property) => property.content)}
+          </div>
+        </NavGroup>
+      </div>
     )
   }
 

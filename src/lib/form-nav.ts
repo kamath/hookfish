@@ -406,6 +406,26 @@ export function useFormPaneNavigation(
   ])
 }
 
+export function insertMatchingInput(
+  rootId: string,
+  match: (item: HTMLElement) => boolean,
+): boolean {
+  const root = formRoot(rootId)
+  const items = listFormInputs(rootId)
+  const target = items.find((item) => isEditableControl(item) && match(item))
+  if (!root || !target) {
+    return false
+  }
+
+  markItem(root, target)
+  enterEdit()
+  syncMode(root)
+  scrollMark(target)
+  blurActive()
+  scheduleInsertFocus(target)
+  return true
+}
+
 export function insertCurrentInput(rootId: string): boolean {
   const root = formRoot(rootId)
   const items = listFormInputs(rootId)
