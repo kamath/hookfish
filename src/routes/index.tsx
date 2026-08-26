@@ -123,7 +123,10 @@ function Home() {
       id="main"
       className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4"
     >
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start"
+      >
         <label htmlFor="source-kind" className="sr-only">
           Source type
         </label>

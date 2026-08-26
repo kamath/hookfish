@@ -5,6 +5,9 @@ const REQUEST_HEADER_BLOCKLIST = new Set([
   'connection',
   'content-length',
   'host',
+  'origin',
+  'referer',
+  'cookie',
   'transfer-encoding',
   'x-forwarded-for',
   'x-forwarded-host',
@@ -21,7 +24,11 @@ const RESPONSE_HEADER_BLOCKLIST = new Set([
 function filteredHeaders(source: Headers, blocked: Set<string>) {
   const headers = new Headers()
   source.forEach((value, name) => {
-    if (!blocked.has(name.toLowerCase()) && !name.toLowerCase().startsWith('cf-')) {
+    if (
+      !blocked.has(name.toLowerCase()) &&
+      !name.toLowerCase().startsWith('cf-') &&
+      !name.toLowerCase().startsWith('sec-')
+    ) {
       headers.set(name, value)
     }
   })
