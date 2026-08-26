@@ -8,6 +8,7 @@ import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import {
   bindFormTabSync,
+  exitInsert,
   insertMatchingInput,
   selectDefaultInput,
 } from '../lib/form-nav'
@@ -332,7 +333,26 @@ export function OperationClient({
           </div>
         </div>
 
-        <div className="px-3 py-3 md:px-4">
+        <div
+          className="px-3 py-3 md:px-4"
+          onKeyDownCapture={(event) => {
+            const target = event.target
+            if (
+              !showAuth ||
+              event.key !== 'Enter' ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.altKey ||
+              !(target instanceof HTMLInputElement) ||
+              !target.id.startsWith(`${operation.id}_auth`)
+            ) {
+              return
+            }
+            event.preventDefault()
+            event.stopPropagation()
+            exitInsert('call-form')
+          }}
+        >
           <SwissForm
             id="call-form"
             schema={

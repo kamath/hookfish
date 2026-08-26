@@ -456,14 +456,16 @@ function ApiWorkbench({
             activate('form', 'command')
           }}
           onPointerEnter={() => {
-            if (
-              pane !== 'list' ||
-              heldOpRef.current === operation.id ||
-              !consumePointerIntent()
-            ) {
+            if (!consumePointerIntent()) {
               return
             }
-            holdOp(operation.id)
+            if (pane !== 'list') {
+              blurActive()
+              activate('list', 'command')
+            }
+            if (heldOpRef.current !== operation.id) {
+              holdOp(operation.id)
+            }
           }}
           data-oc-method={operation.method}
           data-oc-active={active || undefined}
