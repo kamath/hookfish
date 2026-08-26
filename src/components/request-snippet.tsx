@@ -7,7 +7,7 @@ import {
   type SnippetFormat,
 } from '../lib/export-snippet'
 import { readSnippetFormat, writeSnippetFormat } from '../lib/storage'
-import { formGhostButtonClass, formInputClass } from '../lib/ui'
+import { formInputClass } from '../lib/ui'
 
 async function copyText(text: string) {
   try {
@@ -48,32 +48,14 @@ export function RequestSnippet({ request }: { request: ExecuteRequest }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-xs text-mute">
-        {snippet}
-      </pre>
-      <div className="inline-flex self-start">
-        <button
-          type="button"
-          className={`${formGhostButtonClass} border-r-0`}
-          aria-live="polite"
-          aria-label={copied ? 'Copied' : 'Copy request'}
-          onClick={() => {
-            void copyText(snippet).then((ok) => {
-              if (ok) {
-                setCopied(true)
-              }
-            })
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
+      <div className="flex items-center gap-2">
         <label className="sr-only" htmlFor="snippet-format">
-          Copy as
+          Snippet library
         </label>
         <span className="relative inline-flex">
           <select
             id="snippet-format"
-            className={`${formInputClass} w-auto min-h-8 min-w-[6.75rem] max-w-none appearance-none border-l-0 py-1 pr-6 pl-2`}
+            className={`${formInputClass} w-auto min-h-8 min-w-[7rem] max-w-none appearance-none py-1 pr-6 pl-2`}
             value={format}
             onChange={(event) => {
               const next = event.target.value
@@ -90,12 +72,29 @@ export function RequestSnippet({ request }: { request: ExecuteRequest }) {
           </select>
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center font-mono text-[10px] text-mute"
+            className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[10px] text-mute"
           >
-            ▾
+            ▼
           </span>
         </span>
+        <button
+          type="button"
+          className="inline-flex min-h-8 items-center bg-ink/10 px-2.5 py-1 text-xs font-medium text-ink hover:bg-ink/15 focus-visible:bg-ink/15 outline-none"
+          aria-live="polite"
+          onClick={() => {
+            void copyText(snippet).then((ok) => {
+              if (ok) {
+                setCopied(true)
+              }
+            })
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
       </div>
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-xs text-mute">
+        {snippet}
+      </pre>
     </div>
   )
 }
