@@ -422,44 +422,6 @@ export function ResponsePane({
               >
                 <button
                   type="button"
-                  className="inline-flex min-h-6 w-14 shrink-0 items-center justify-end gap-1 pr-2 text-faint outline-none hover:text-ink"
-                  aria-label={
-                    isCopied
-                      ? 'Copied JSON node'
-                      : `Copy ${node.label ?? 'JSON node'} and descendants`
-                  }
-                  title={isCopied ? 'Copied' : 'Copy node and descendants'}
-                  onClick={() => {
-                    setSelected(index)
-                    void copyNode(node)
-                  }}
-                >
-                  {isActive ? <Kbd hotkey="Y" /> : null}
-                  {isCopied ? (
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
-                      <path
-                        d="m3 8.5 3 3 7-7"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
-                      <path
-                        d="M5.5 5.5h7v7h-7zM3.5 10.5h-1v-7h7v1"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinejoin="round"
-                        strokeWidth="1.25"
-                      />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  type="button"
                   className={`flex min-h-6 min-w-0 flex-1 pr-3 text-left outline-none ${
                     isActive ? 'items-start' : 'items-center'
                   }`}
@@ -516,6 +478,45 @@ export function ResponsePane({
                     </span>
                   </span>
                 </button>
+                {isActive ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-6 shrink-0 items-center gap-1 px-1 text-faint outline-none hover:text-ink"
+                    aria-label={
+                      isCopied
+                        ? 'Copied JSON node'
+                        : `Copy ${node.label ?? 'JSON node'} and descendants`
+                    }
+                    title={isCopied ? 'Copied' : 'Copy node and descendants'}
+                    onClick={() => {
+                      void copyNode(node)
+                    }}
+                  >
+                    <Kbd hotkey="Y" />
+                    {isCopied ? (
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path
+                          d="m3 8.5 3 3 7-7"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                        />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path
+                          d="M5.5 5.5h7v7h-7zM3.5 10.5h-1v-7h7v1"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinejoin="round"
+                          strokeWidth="1.25"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                ) : null}
               </div>
             )
           })}
