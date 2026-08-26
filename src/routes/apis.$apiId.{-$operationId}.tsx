@@ -214,6 +214,10 @@ function ApiWorkbench({
   const manyServers = api.servers.length > 1
 
   useEffect(() => {
+    if (!operationId) {
+      localOpRef.current = false
+      return
+    }
     if (localOpRef.current) {
       if (operationId === heldOpRef.current) {
         localOpRef.current = false
@@ -317,6 +321,7 @@ function ApiWorkbench({
       return
     }
     if (getPane() === 'form') {
+      const parentOperationId = heldOpRef.current ?? operationId
       activate('list', 'command')
       blurActive()
       void navigate({
@@ -325,6 +330,11 @@ function ApiWorkbench({
         replace: true,
         resetScroll: false,
       })
+      if (parentOperationId) {
+        window.setTimeout(() => {
+          document.getElementById(`op-${parentOperationId}`)?.focus()
+        }, 0)
+      }
       return
     }
     if (search.q) {
