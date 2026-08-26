@@ -580,7 +580,7 @@ function ApiWorkbench({
             { hotkey: 'K', label: 'previous' },
             { hotkey: 'I', label: 'insert' },
             { hotkey: 'Enter', label: 'expand' },
-            ...copyHint,
+            ...(!needsAuth ? copyHint : []),
             ...sendHint,
             ...authHint,
             { hotkey: 'Escape', label: 'operations' },

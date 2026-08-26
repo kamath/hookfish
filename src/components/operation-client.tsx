@@ -86,6 +86,7 @@ export function OperationClient({
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
+  const canCopyCurl = !needsAuth && !showAuth
 
   useEffect(() => {
     setAskingAuth(false)
@@ -153,7 +154,7 @@ export function OperationClient({
     () => {
       void copyCurl()
     },
-    { enabled: pane === 'form' && mode === 'command' },
+    { enabled: pane === 'form' && mode === 'command' && canCopyCurl },
   )
 
   function onSubmit({ formData: next }: IChangeEvent) {
@@ -246,18 +247,20 @@ export function OperationClient({
               ) : null}
               {showAuth ? null : (
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
-                    aria-live="polite"
-                    aria-label={copied ? 'Copied cURL' : 'Copy as cURL'}
-                    onClick={() => {
-                      void copyCurl()
-                    }}
-                  >
-                    <Kbd hotkey="Y" />
-                    {copied ? 'Copied' : 'Copy as cURL'}
-                  </button>
+                  {canCopyCurl ? (
+                    <button
+                      type="button"
+                      className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
+                      aria-live="polite"
+                      aria-label={copied ? 'Copied cURL' : 'Copy as cURL'}
+                      onClick={() => {
+                        void copyCurl()
+                      }}
+                    >
+                      <Kbd hotkey="Y" />
+                      {copied ? 'Copied' : 'Copy as cURL'}
+                    </button>
+                  ) : null}
                   <button
                     type="submit"
                     className={`${formPrimaryButtonClass} api-solid`}
