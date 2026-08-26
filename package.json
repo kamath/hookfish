@@ -1,59 +1,24 @@
 {
-  "name": "openapi-client",
+  "name": "hookfish-workspace",
   "private": true,
-  "type": "module",
-  "imports": {
-    "#/*": "./src/*"
-  },
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "generate-routes": "tsr generate",
-    "build": "vite build",
-    "typecheck": "tsc --noEmit",
-    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/mcp/client.test.ts",
-    "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
-    "cf-typegen": "wrangler types"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/client": "^2.0.0",
-    "@rjsf/core": "^6.8.0",
-    "@rjsf/utils": "^6.8.0",
-    "@rjsf/validator-ajv8": "^6.8.0",
-    "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/react-devtools": "latest",
-    "@tanstack/react-hotkeys": "^0.10.0",
-    "@tanstack/react-query": "^5.102.4",
-    "@tanstack/react-router": "latest",
-    "@tanstack/react-router-devtools": "latest",
-    "@tanstack/react-start": "latest",
-    "ajv": "^8.20.0",
-    "jotai": "^2.20.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.18",
-    "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "build": "turbo run build",
+    "dev": "turbo run dev --filter=@hookfish/web",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.26.0",
-    "@tanstack/devtools-vite": "latest",
-    "@tanstack/router-cli": "^1.132.0",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "tsx": "^4.23.12",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "wrangler": "^4.70.0"
+    "turbo": "^2.10.12"
+  },
+  "packageManager": "pnpm@10.33.3",
+  "engines": {
+    "node": ">=22.12.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
       "lightningcss",
-      "sharp",
-      "workerd"
+      "sharp"
     ]
   }
 }

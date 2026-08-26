@@ -1,6 +1,11 @@
 # Executable Client
 
-A Cloudflare-ready [TanStack Start](https://tanstack.com/start) app for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
+A fully local [TanStack Start](https://tanstack.com/start) app for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
+
+This repository is a pnpm/Turborepo workspace:
+
+- `apps/web` contains the TanStack Start app.
+- `packages/cli` builds the `hookfish` npm package and bundles the production web app.
 
 ```bash
 pnpm install
@@ -14,16 +19,18 @@ Open `http://localhost:3000`. Try:
 ## Adding a source type
 
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
-`src/lib/client-types.ts`. Register source discovery/loading in `src/lib/source-adapters.ts`;
+`apps/web/src/lib/client-types.ts`. Register source discovery/loading in
+`apps/web/src/lib/source-adapters.ts`;
 the source selector is populated from that registry. A source parser supplies executable
 names, badges, accent colors, JSON Schema inputs, targets, credentials, and UI labels.
 
 Register execution behavior with `registerExecutableAdapter()` in
-`src/lib/executable-adapters.ts`. An adapter builds a serializable invocation, previews it,
-executes it, and can optionally export a code snippet. For example, an MCP adapter can map
-tools/resources/prompts to executables, use their names and input schemas directly, execute
-JSON-RPC through an MCP server function, and export client/call setup code. The list, form,
-keyboard navigation, theming, and result viewer do not need protocol-specific changes.
+`apps/web/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
+previews it, executes it, and can optionally export a code snippet. For example, an MCP
+adapter can map tools/resources/prompts to executables, use their names and input schemas
+directly, execute JSON-RPC through an MCP server function, and export client/call setup code.
+The list, form, keyboard navigation, theming, and result viewer do not need protocol-specific
+changes.
 
 ## MCP inspector
 
@@ -44,6 +51,21 @@ connections, OAuth credentials, legacy session identifiers, and cached listings 
 the browser.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
+Build every workspace package:
+
 ```bash
-pnpm deploy
+pnpm build
+```
+
+The resulting CLI package runs the production app with Node—no Wrangler or
+Cloudflare runtime is required:
+
+```bash
+pnpm --filter hookfish start -- --port 3000
+```
+
+To inspect the independently publishable npm tarball:
+
+```bash
+pnpm --filter hookfish pack
 ```

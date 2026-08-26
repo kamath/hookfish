@@ -1,0 +1,47 @@
+{
+  "name": "hookfish",
+  "version": "0.13.0",
+  "description": "Run the Hookfish OpenAPI client locally",
+  "type": "module",
+  "bin": {
+    "hookfish": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "web"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/bundle-web.mjs",
+    "start": "node dist/index.js",
+    "test": "node --test scripts/cli.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "keywords": [
+    "openapi",
+    "api-client",
+    "tanstack-start"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kamath/hookfish.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/kamath/hookfish#readme",
+  "bugs": {
+    "url": "https://github.com/kamath/hookfish/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

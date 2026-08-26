@@ -13,5 +13,7 @@ __unconfig*
 todos.json
 .cta.json
 .pnpm-store
+.turbo
+*.tgz
 package-lock.json
 worker-configuration.d.ts
