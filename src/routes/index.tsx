@@ -6,10 +6,9 @@ import { addApi, removeApi } from '../lib/apis'
 import { ARCADE_SPEC_URL } from '../lib/defaults'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { activate, enterCommand, useChrome } from '../lib/mode'
+import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
+import { activate, enterCommand } from '../lib/mode'
 import { inputClass, primaryButtonClass } from '../lib/ui'
-import { HintBar } from '../components/hints'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -21,7 +20,6 @@ function Home() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
-  const { mode } = useChrome()
   const [selected, setSelected] = useState(0)
   const [help, setHelp] = useState(false)
   const apis = apisQuery.data ?? []
@@ -57,54 +55,35 @@ function Home() {
     })
   }
 
-  useStepKeys(move, apis.length > 0)
-
-  useEditHotkeys([
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        enterCommand()
-        blurActive()
-        setHelp(false)
-      },
-    },
-  ])
-
-  usePaneHotkeys('home', ['command'], [
-    {
-      hotkey: 'I',
-      callback: () => {
-        activate('home', 'edit')
-        urlRef.current?.focus()
-      },
-    },
-    {
-      hotkey: 'Enter',
+  useViewFlags('home', { hasSpecs: apis.length > 0 })
+  useStepKeys('home', move, apis.length > 0)
+  useViewActions('home', {
+    open: {
       callback: () => {
         const api = apis[selected]
         if (api) {
           void router.navigate({ to: '/apis/$apiId', params: { apiId: api.id } })
         }
       },
-      options: { enabled: apis.length > 0 },
+      enabled: apis.length > 0,
     },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        blurActive()
-      },
+    insert: () => {
+      activate('home', 'edit')
+      urlRef.current?.focus()
     },
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        setHelp(false)
-      },
+    keys: () => setHelp((value) => !value),
+    blur: () => {
+      blurActive()
     },
-    {
-      hotkey: { key: '/', shift: true },
-      callback: () => setHelp((value) => !value),
+    dismissHelp: () => {
+      setHelp(false)
     },
-  ])
+    command: () => {
+      enterCommand()
+      blurActive()
+      setHelp(false)
+    },
+  })
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -119,21 +98,6 @@ function Home() {
     }
     remove.mutate(id)
   }
-
-  const hints =
-    mode === 'edit'
-      ? [{ hotkey: 'Escape', label: 'command' }]
-      : [
-          { hotkey: 'Enter', label: 'open' },
-          ...(apis.length > 0
-            ? [
-                { hotkey: 'J', label: 'next spec' },
-                { hotkey: 'K', label: 'previous spec' },
-              ]
-            : []),
-          { hotkey: 'I', label: 'insert' },
-          { hotkey: { key: '/', shift: true }, label: 'keys' },
-        ]
 
   return (
     <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4">
@@ -228,7 +192,6 @@ function Home() {
           URL is first. Enter opens it. After Escape, j and k move through saved specs.
         </p>
       ) : null}
-      <HintBar items={hints} />
     </main>
   )
 }

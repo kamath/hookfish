@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { HintBar, Kbd } from '../components/hints'
+import { Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
@@ -15,7 +14,7 @@ import {
   useFormPaneNavigation,
 } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
-import { consumePointerIntent, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { consumePointerIntent, useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
 import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
@@ -179,7 +178,7 @@ function ApiWorkbench({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
-  const { mode, pane } = useChrome()
+  const { pane } = useChrome()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
   const [heldOp, setHeldOp] = useState(search.op)
   const heldOpRef = useRef(search.op)
@@ -350,123 +349,93 @@ function ApiWorkbench({
     move(delta)
   }
 
-  useStepKeys(nudge, pane !== 'response')
+  const canClear = Boolean(onClearAuth)
+  useViewFlags('list', {
+    canClear,
+    manyServers,
+    hasFilter: Boolean(search.q),
+    noFilter: !search.q,
+  })
+  useViewFlags('form', {
+    canClear,
+    manyServers,
+  })
+  useStepKeys('list', nudge)
+  useStepKeys('form', nudge)
   useFormPaneNavigation('form', 'call-form', { stepKeys: false })
 
-  useHotkey(
-    'Mod+Backspace',
-    () => {
-      if (!authPending) {
-        void onClearAuth?.()
-      }
+  useViewActions('list', {
+    filter: () => {
+      focusFilter()
     },
-    { enabled: Boolean(onClearAuth), ignoreInputs: false },
-  )
-
-  usePaneHotkeys('list', ['edit'], [
-    {
-      hotkey: 'Enter',
-      callback: (event) => {
-        if (document.activeElement?.id !== 'operation-filter' || !selected) {
-          return
+    fields: () => {
+      openSelected(true)
+    },
+    insert: () => {
+      openSelected(false)
+    },
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
         }
-        event.preventDefault()
-        activate('list', 'command')
-        blurActive()
-        document.getElementById(`op-${selected.id}`)?.focus()
       },
-      options: { ignoreInputs: false },
+      ignoreInputs: false,
     },
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        blurActive()
-        activate('list', 'command')
-      },
-      options: { ignoreInputs: false },
+    escape: () => {
+      stepBack()
     },
-  ])
+    clearEscape: () => {
+      stepBack()
+    },
+    back: () => {
+      stepBack()
+    },
+    clearBack: () => {
+      stepBack()
+    },
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+    home: () => {
+      void home({ to: '/' })
+    },
+    confirmFilter: (event) => {
+      if (document.activeElement?.id !== 'operation-filter' || !selected) {
+        return
+      }
+      event.preventDefault()
+      activate('list', 'command')
+      blurActive()
+      document.getElementById(`op-${selected.id}`)?.focus()
+    },
+    command: (event) => {
+      event.preventDefault()
+      blurActive()
+      activate('list', 'command')
+    },
+  })
 
-  usePaneHotkeys('list', ['command'], [
-    {
-      hotkey: '/',
+  useViewActions('form', {
+    clearAuth: {
       callback: () => {
-        focusFilter()
+        if (!authPending) {
+          void onClearAuth?.()
+        }
       },
+      ignoreInputs: false,
     },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        openSelected(true)
-      },
+    operations: () => {
+      stepBack()
     },
-    {
-      hotkey: 'I',
-      callback: () => {
-        openSelected(false)
-      },
+    back: () => {
+      stepBack()
     },
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        stepBack()
-      },
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+    home: () => {
+      void home({ to: '/' })
     },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: '[',
-      callback: () => cycleServer(-1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: ']',
-      callback: () => cycleServer(1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: 'N',
-      callback: () => {
-        void home({ to: '/' })
-      },
-    },
-  ])
-
-  usePaneHotkeys('form', ['command'], [
-    {
-      hotkey: 'Escape',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: 'Backspace',
-      callback: () => {
-        stepBack()
-      },
-    },
-    {
-      hotkey: '[',
-      callback: () => cycleServer(-1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: ']',
-      callback: () => cycleServer(1),
-      options: { enabled: manyServers },
-    },
-    {
-      hotkey: 'N',
-      callback: () => {
-        void home({ to: '/' })
-      },
-    },
-  ])
+  })
 
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
@@ -518,64 +487,6 @@ function ApiWorkbench({
       </li>
     )
   }
-
-  const serverHints = manyServers
-    ? [
-        { hotkey: '[', label: 'previous server' },
-        { hotkey: ']', label: 'next server' },
-      ]
-    : []
-  const authHint = onClearAuth
-    ? [{ hotkey: 'Mod+Backspace', label: 'clear auth' }]
-    : []
-  const sendHint = [{ hotkey: 'Mod+Enter', label: 'send' }]
-  const copyHint = [{ hotkey: 'Y', label: 'copy fetch' }]
-  const hints =
-    mode === 'edit'
-      ? [
-          { hotkey: 'Escape', label: 'command' },
-          ...(pane === 'form' ? sendHint : []),
-        ]
-      : pane === 'form'
-        ? [
-            { hotkey: 'J', label: 'next' },
-            { hotkey: 'K', label: 'previous' },
-            { hotkey: 'I', label: 'insert' },
-            { hotkey: 'Enter', label: 'expand' },
-            ...copyHint,
-            ...sendHint,
-            ...authHint,
-            { hotkey: 'Escape', label: 'operations' },
-            { hotkey: 'Backspace', label: 'back' },
-            ...serverHints,
-            { hotkey: 'N', label: 'home' },
-          ]
-        : pane === 'response'
-          ? [
-              { hotkey: 'J', label: 'next line' },
-              { hotkey: 'K', label: 'previous line' },
-              { hotkey: 'Tab', label: 'next line' },
-              { hotkey: 'Enter', label: 'expand' },
-              { hotkey: 'Mod+Enter', label: 'resend' },
-              { hotkey: 'H', label: 'headers' },
-              { hotkey: 'A', label: 'toggle children' },
-              { hotkey: 'Escape', label: 'request' },
-            ]
-        : [
-            { hotkey: '/', label: 'filter' },
-            { hotkey: 'J', label: 'next' },
-            { hotkey: 'K', label: 'previous' },
-            { hotkey: 'Enter', label: 'fields' },
-            { hotkey: 'I', label: 'fields' },
-            ...authHint,
-            {
-              hotkey: 'Escape',
-              label: search.q ? 'clear filter' : 'specs',
-            },
-            { hotkey: 'Backspace', label: search.q ? 'clear filter' : 'back' },
-            ...serverHints,
-            { hotkey: 'N', label: 'home' },
-          ]
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
@@ -743,7 +654,6 @@ function ApiWorkbench({
           />
         ) : null}
       </div>
-      <HintBar items={hints} />
     </main>
   )
 }

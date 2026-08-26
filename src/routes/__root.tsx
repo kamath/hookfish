@@ -10,6 +10,8 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
+import { HintBar } from '../components/hints'
+import { bindStepKeys } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
 import appCss from '../styles.css?url'
 
@@ -81,7 +83,14 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  useEffect(() => bindModeFromFocus(), [])
+  useEffect(() => {
+    const unbindFocus = bindModeFromFocus()
+    const unbindSteps = bindStepKeys()
+    return () => {
+      unbindFocus()
+      unbindSteps()
+    }
+  }, [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
@@ -105,6 +114,7 @@ function AppShell() {
         <div className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </div>
+        <HintBar />
       </div>
     </HotkeysProvider>
   )

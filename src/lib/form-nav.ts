@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
-import { enterCommand, enterEdit, isInsertMode, useChrome, type Pane } from './mode'
-import { consumePointerIntent, usePaneHotkeys, useStepKeys } from './keys'
+import { enterCommand, enterEdit, isInsertMode, type View } from './chrome'
+import { consumePointerIntent, useStepKeys, useViewActions } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -358,52 +358,32 @@ export function selectFirstInput(rootId: string): boolean {
 }
 
 export function useFormPaneNavigation(
-  pane: Pane,
+  view: View,
   formId: string,
   options?: { stepKeys?: boolean },
 ) {
-  const chrome = useChrome()
-  useStepKeys((delta) => {
+  useStepKeys(view, (delta) => {
     moveFormTab(formId, delta)
-  }, options?.stepKeys !== false && chrome.pane === pane)
+  }, options?.stepKeys !== false)
 
-  usePaneHotkeys(pane, ['command'], [
-    {
-      hotkey: { key: 'Tab' },
-      callback: () => {
-        moveFormTab(formId, 1)
-      },
+  useViewActions(view, {
+    tabNext: () => {
+      moveFormTab(formId, 1)
     },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: () => {
-        moveFormTab(formId, -1)
-      },
+    tabPrev: () => {
+      moveFormTab(formId, -1)
     },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        confirmForm(formId)
-      },
+    expand: () => {
+      confirmForm(formId)
     },
-    {
-      hotkey: 'I',
-      callback: () => {
-        insertCurrentInput(formId)
-      },
+    insert: () => {
+      insertCurrentInput(formId)
     },
-  ])
-
-  usePaneHotkeys(pane, ['edit'], [
-    {
-      hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        exitInsert(formId)
-      },
-      options: { ignoreInputs: false },
+    command: (event) => {
+      event.preventDefault()
+      exitInsert(formId)
     },
-  ])
+  })
 }
 
 export function insertMatchingInput(

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
@@ -9,12 +8,13 @@ import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, insertMatchingInput, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
+import { useViewActions, useViewFlags } from '../lib/keys'
 import { activate, useChrome } from '../lib/mode'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
-import { Kbd } from './hints'
+import { Kbd, KeyHints } from './hints'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
@@ -119,7 +119,7 @@ export function OperationClient({
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
-  const { mode, pane } = useChrome()
+  const { pane } = useChrome()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
       executeRequest({
@@ -199,28 +199,22 @@ export function OperationClient({
     }
   }
 
-  useHotkey(
-    'Mod+Enter',
-    () => {
-      if (pending || authPending) {
-        return
-      }
-      submitForm('call-form')
+  useViewFlags('form', { hasResult: Boolean(result) })
+  useViewActions('form', {
+    send: {
+      callback: () => {
+        if (pending || authPending) {
+          return
+        }
+        submitForm('call-form')
+      },
+      ignoreInputs: false,
     },
-    { enabled: pane === 'form', ignoreInputs: false },
-  )
-  useHotkey(
-    'O',
-    () => activate('response', 'command'),
-    { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
-  )
-  useHotkey(
-    'Y',
-    () => {
+    output: () => activate('response', 'command'),
+    copyFetch: () => {
       void copyFetch()
     },
-    { enabled: pane === 'form' && mode === 'command' },
-  )
+  })
 
   const previewUrl = useMemo(() => {
     const data = asRecord(formData)
@@ -305,7 +299,9 @@ export function OperationClient({
               onClick={() => activate('response', 'command')}
             >
               View output
-              <Kbd hotkey="O" />
+              <KeyHints>
+                <Kbd hotkey="O" />
+              </KeyHints>
             </button>
           ) : null}
         </div>
@@ -354,7 +350,9 @@ export function OperationClient({
                   }}
                 >
                   {copied ? 'Copied' : 'Copy as fetch'}
-                  <Kbd hotkey="Y" />
+                  <KeyHints>
+                    <Kbd hotkey="Y" />
+                  </KeyHints>
                 </button>
                 <button
                   type="submit"
@@ -367,10 +365,10 @@ export function OperationClient({
                     'Saving…'
                   ) : (
                     <>
-                      <span className="mr-2 inline-flex gap-1">
+                      <KeyHints className="mr-2 inline-flex gap-1">
                         <Kbd hotkey="Mod" />
                         <Kbd hotkey="Enter" />
-                      </span>
+                      </KeyHints>
                       {showAuth ? 'Continue' : 'Send'}
                     </>
                   )}
