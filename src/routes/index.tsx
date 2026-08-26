@@ -184,7 +184,7 @@ function Home() {
             autoComplete="off"
             spellCheck={false}
             required
-            className={`${inputClass} border-l-0 pr-10`}
+            className={`${inputClass} border-l-0 pl-10`}
             placeholder={sourceOption?.placeholder}
             onFocus={() => {
               activate('specs', 'edit')
@@ -196,7 +196,7 @@ function Home() {
               }
             }}
             />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
               <Kbd hotkey="I" />
             </span>
           </div>
