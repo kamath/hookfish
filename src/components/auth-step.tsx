@@ -4,7 +4,7 @@ import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { activateCurrentControl, bindFormTabSync, exitInsert, insertCurrentInput, moveInputTab, selectFirstInput } from '../lib/form-nav'
+import { activateCurrentControl, bindFormTabSync, exitInsert, insertCurrentInput, moveFormTab, selectFirstInput } from '../lib/form-nav'
 import { repeatHotkey, useRepeatDelta } from '../lib/repeat'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
@@ -36,7 +36,7 @@ export function AuthStep({
   useEffect(() => bindFormTabSync('auth-form'), [])
 
   const nudge = useRepeatDelta((delta) => {
-    moveInputTab('auth-form', delta)
+    moveFormTab('auth-form', delta)
   })
 
   useHotkeys([
@@ -68,6 +68,18 @@ export function AuthStep({
         nudge(-1)
       },
       options: repeatHotkey,
+    },
+    {
+      hotkey: { key: 'Tab' },
+      callback: () => {
+        nudge(1)
+      },
+    },
+    {
+      hotkey: { key: 'Tab', shift: true },
+      callback: () => {
+        nudge(-1)
+      },
     },
     {
       hotkey: 'Enter',

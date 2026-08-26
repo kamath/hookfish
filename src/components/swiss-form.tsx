@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { withTheme } from '@rjsf/core'
 import type { ThemeProps } from '@rjsf/core'
 import {
@@ -56,6 +56,25 @@ function isNestSchema(schema: RJSFSchema | undefined): boolean {
   return false
 }
 
+function branchHasErrors(errorSchema: unknown, name?: string): boolean {
+  if (!errorSchema || typeof errorSchema !== 'object') {
+    return false
+  }
+  const node = name
+    ? (errorSchema as Record<string, unknown>)[name]
+    : errorSchema
+  if (!node || typeof node !== 'object') {
+    return false
+  }
+  const record = node as Record<string, unknown>
+  if (Array.isArray(record.__errors) && record.__errors.length > 0) {
+    return true
+  }
+  return Object.entries(record).some(
+    ([key, value]) => key !== '__errors' && branchHasErrors(value),
+  )
+}
+
 function optionalParamsLabel(count: number) {
   if (count < 1) {
     return null
@@ -74,6 +93,8 @@ function NavGroup({
   extra,
   hasRequired = false,
   optionalCount = 0,
+  forceOpen = false,
+  forceMore = false,
   more,
   children,
 }: {
@@ -83,12 +104,23 @@ function NavGroup({
   extra?: ReactNode
   hasRequired?: boolean
   optionalCount?: number
+  forceOpen?: boolean
+  forceMore?: boolean
   more?: ReactNode
   children?: ReactNode
 }) {
   const pinned = Boolean(required)
-  const [revealed, setRevealed] = useState(pinned)
-  const [showMore, setShowMore] = useState(false)
+  const [revealed, setRevealed] = useState(pinned || forceOpen)
+  const [showMore, setShowMore] = useState(forceMore)
+
+  useEffect(() => {
+    if (forceOpen) {
+      setRevealed(true)
+    }
+    if (forceMore) {
+      setShowMore(true)
+    }
+  }, [forceOpen, forceMore])
   const hasMore = more != null
   const visible = pinned || revealed
   const extrasHidden = hasMore && !showMore
@@ -570,7 +602,7 @@ function FieldErrorTemplate(props: FieldErrorProps) {
   return (
     <ul id={errorId(fieldPathId)} className="m-0 list-none p-0" aria-live="polite">
       {errors.filter(Boolean).map((error, index) => (
-        <li key={index} className="text-xs text-signal">
+        <li key={index} className="pt-0.5 text-xs text-signal">
           {error}
         </li>
       ))}
@@ -600,6 +632,7 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
     description,
     disabled,
     formData,
+    errorSchema,
     fieldPathId,
     onAddProperty,
     optionalDataControl,
@@ -665,6 +698,12 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
         extra={showOptional ? optionalDataControl : undefined}
         hasRequired={requiredProperties.length > 0}
         optionalCount={extraProperties.length}
+        forceOpen={requiredProperties.some((property) =>
+          branchHasErrors(errorSchema, property.name),
+        )}
+        forceMore={extraProperties.some((property) =>
+          branchHasErrors(errorSchema, property.name),
+        )}
         more={more}
       >
         <div className={className}>
@@ -714,6 +753,7 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
     required,
     schema,
     title,
+    errorSchema,
   } = props
   const uiOptions = getUiOptions(uiSchema)
   const ArrayFieldTitleTemplate = getTemplate(
@@ -760,6 +800,8 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
         extra={showOptional ? optionalDataControl : undefined}
         hasRequired={Boolean(required)}
         optionalCount={items.length}
+        forceOpen={branchHasErrors(errorSchema)}
+        forceMore={Boolean(!required && branchHasErrors(errorSchema))}
         more={required ? undefined : <div className={className}>{body}</div>}
       >
         {required ? <div className={className}>{body}</div> : null}
@@ -967,4 +1009,8 @@ const theme: ThemeProps = {
   },
 }
 
-export const SwissForm = withTheme(theme)
+const ThemedForm = withTheme(theme)
+
+export function SwissForm(props: ComponentProps<typeof ThemedForm>) {
+  return <ThemedForm noHtml5Validate {...props} />
+}

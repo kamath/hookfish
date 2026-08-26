@@ -8,7 +8,8 @@ import { getApi } from '../lib/apis.functions'
 import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { blurActive } from '../lib/focus'
-import { activateCurrentControl, exitInsert, insertCurrentInput, moveInputTab, selectFirstInput } from '../lib/form-nav'
+import { setInsertMode } from '../lib/form-mode'
+import { activateCurrentControl, exitInsert, insertCurrentInput, moveFormTab, selectFirstInput } from '../lib/form-nav'
 import { asRecord } from '../lib/build-request'
 import { repeatHotkey, useRepeatDelta, useTrailingCommit } from '../lib/repeat'
 import { inputClass } from '../lib/ui'
@@ -170,6 +171,11 @@ function ApiWorkbench({
   const heldOpRef = useRef(search.op)
   const paneRef = useRef(pane)
   paneRef.current = pane
+  useEffect(() => {
+    if (pane === 'list') {
+      setInsertMode(false)
+    }
+  }, [pane])
 
   const visible = useMemo(
     () => api.operations.filter((operation) => matches(operation, search.q ?? '')),
@@ -246,7 +252,8 @@ function ApiWorkbench({
   }
 
   const nudge = useRepeatDelta((delta) => {
-    if (paneRef.current === 'form' && moveInputTab('call-form', delta)) {
+    if (paneRef.current === 'form') {
+      moveFormTab('call-form', delta)
       return
     }
     move(delta)
@@ -275,6 +282,20 @@ function ApiWorkbench({
         nudge(-1)
       },
       options: repeatHotkey,
+    },
+    {
+      hotkey: { key: 'Tab' },
+      callback: () => {
+        nudge(1)
+      },
+      options: { enabled: pane === 'form' },
+    },
+    {
+      hotkey: { key: 'Tab', shift: true },
+      callback: () => {
+        nudge(-1)
+      },
+      options: { enabled: pane === 'form' },
     },
     {
       hotkey: 'Enter',
@@ -335,8 +356,8 @@ function ApiWorkbench({
 
   const hints = [
     { hotkey: '/', label: 'filter' },
-    { hotkey: 'J', label: pane === 'form' ? 'next input' : 'next' },
-    { hotkey: 'K', label: pane === 'form' ? 'previous input' : 'previous' },
+    { hotkey: 'J', label: 'next' },
+    { hotkey: 'K', label: 'previous' },
     { hotkey: 'Enter', label: pane === 'form' ? 'expand' : 'fields' },
     { hotkey: 'I', label: 'insert' },
     { hotkey: 'Mod+Enter', label: 'send' },

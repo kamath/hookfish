@@ -1,4 +1,5 @@
 import { blurActive, isEditing } from './focus'
+import { isInsertMode, setInsertMode } from './form-mode'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -40,6 +41,12 @@ function formRoot(rootId: string): HTMLElement | null {
   return document.getElementById(rootId)
 }
 
+function formHasFocus(rootId: string) {
+  const root = formRoot(rootId)
+  const active = document.activeElement
+  return Boolean(root && active instanceof Node && root.contains(active))
+}
+
 function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
@@ -56,15 +63,27 @@ function indexOfItem(items: HTMLElement[], target: Element | null): number {
   if (!(target instanceof HTMLElement)) {
     return -1
   }
-  return items.findIndex(
-    (item) => item === target || item.contains(target) || target.contains(item),
-  )
+  const exact = items.indexOf(target)
+  if (exact !== -1) {
+    return exact
+  }
+  const enclosing = items.findIndex((item) => item.contains(target))
+  if (enclosing !== -1) {
+    return enclosing
+  }
+  if (target.dataset.ocNav !== undefined || target.dataset.ocCurrent === 'true') {
+    return items.findIndex((item) => target.contains(item))
+  }
+  return -1
 }
 
 function indexOfCurrent(root: HTMLElement, items: HTMLElement[], delta: number): number {
-  const focused = indexOfItem(items, document.activeElement)
-  if (focused !== -1) {
-    return focused
+  const active = document.activeElement
+  if (active instanceof HTMLElement && root.contains(active)) {
+    const focused = indexOfItem(items, active)
+    if (focused !== -1) {
+      return focused
+    }
   }
 
   const marked = root.querySelector('[data-oc-current="true"]')
@@ -103,9 +122,11 @@ export function currentFormItem(rootId: string): HTMLElement | undefined {
   if (!root) {
     return items[0]
   }
-  const focused = indexOfItem(items, document.activeElement)
-  if (focused !== -1) {
-    return items[focused]
+  if (document.activeElement instanceof HTMLElement && root.contains(document.activeElement)) {
+    const focused = indexOfItem(items, document.activeElement)
+    if (focused !== -1) {
+      return items[focused]
+    }
   }
   const marked = root.querySelector('[data-oc-current="true"]')
   const markedIndex = indexOfItem(items, marked)
@@ -128,8 +149,12 @@ export function bindFormTabSync(rootId: string) {
     }
     const items = listFormInputs(rootId)
     const index = indexOfItem(items, target)
-    if (index !== -1 && items[index]) {
-      markItem(root, items[index])
+    if (index === -1 || !items[index]) {
+      return
+    }
+    markItem(root, items[index])
+    if (isEditing()) {
+      setInsertMode(true)
     }
   }
 
@@ -139,8 +164,8 @@ export function bindFormTabSync(rootId: string) {
   }
 }
 
-export function moveInputTab(rootId: string, delta: number): boolean {
-  if (isEditing()) {
+export function moveFormTab(rootId: string, delta: number): boolean {
+  if (isInsertMode() && isEditing()) {
     return false
   }
 
@@ -157,9 +182,15 @@ export function moveInputTab(rootId: string, delta: number): boolean {
     return false
   }
 
+  setInsertMode(false)
+  blurActive()
   markItem(root, next)
   next.scrollIntoView({ block: 'nearest' })
   return true
+}
+
+export function moveInputTab(rootId: string, delta: number): boolean {
+  return moveFormTab(rootId, delta)
 }
 
 export function selectFirstInput(rootId: string): boolean {
@@ -169,6 +200,8 @@ export function selectFirstInput(rootId: string): boolean {
   if (!root || !first) {
     return false
   }
+  setInsertMode(false)
+  blurActive()
   markItem(root, first)
   first.scrollIntoView({ block: 'nearest' })
   return true
@@ -182,12 +215,12 @@ export function insertCurrentInput(rootId: string): boolean {
   }
 
   const target = currentFormItem(rootId) ?? items[0]
-
   if (!target) {
     return false
   }
 
   markItem(root, target)
+  setInsertMode(true)
   target.focus()
   target.scrollIntoView({ block: 'nearest' })
   return true
@@ -198,7 +231,7 @@ export function focusFirstInput(rootId: string): boolean {
 }
 
 export function exitInsert(rootId: string): boolean {
-  if (!isEditing()) {
+  if (!isInsertMode() && !isEditing() && !formHasFocus(rootId)) {
     return false
   }
 
@@ -207,6 +240,7 @@ export function exitInsert(rootId: string): boolean {
   const active = document.activeElement
   const index = items.findIndex((item) => item === active)
   blurActive()
+  setInsertMode(false)
   if (root && index !== -1 && items[index]) {
     markItem(root, items[index])
   }
