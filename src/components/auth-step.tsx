@@ -5,8 +5,8 @@ import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
 import { bindFormTabSync, confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
-import { commandHotkey } from '../lib/keys'
-import { repeatHotkey, useRepeatDelta } from '../lib/repeat'
+import { commandHotkey, useStepKeys } from '../lib/keys'
+import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
 import { SwissForm } from './swiss-form'
@@ -16,6 +16,8 @@ export function AuthStep({
   schema,
   uiSchema,
   stored,
+  pending,
+  error,
   onContinue,
   onLeave,
 }: {
@@ -23,11 +25,12 @@ export function AuthStep({
   schema: JsonSchema
   uiSchema: FormUiSchema
   stored?: boolean
+  pending?: boolean
+  error?: unknown
   onContinue: (value: Record<string, unknown>) => void | Promise<void>
   onLeave: () => void
 }) {
   const [formData, setFormData] = useState<Record<string, unknown>>({})
-  const [pending, setPending] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => selectDefaultInput('auth-form'), 0)
@@ -36,7 +39,7 @@ export function AuthStep({
 
   useEffect(() => bindFormTabSync('auth-form'), [])
 
-  const nudge = useRepeatDelta((delta) => {
+  useStepKeys((delta) => {
     moveFormTab('auth-form', delta)
   })
 
@@ -62,29 +65,15 @@ export function AuthStep({
       options: commandHotkey,
     },
     {
-      hotkey: 'J',
-      callback: () => {
-        nudge(1)
-      },
-      options: repeatHotkey,
-    },
-    {
-      hotkey: 'K',
-      callback: () => {
-        nudge(-1)
-      },
-      options: repeatHotkey,
-    },
-    {
       hotkey: { key: 'Tab' },
       callback: () => {
-        nudge(1)
+        moveFormTab('auth-form', 1)
       },
     },
     {
       hotkey: { key: 'Tab', shift: true },
       callback: () => {
-        nudge(-1)
+        moveFormTab('auth-form', -1)
       },
     },
     {
@@ -134,14 +123,16 @@ export function AuthStep({
           formData={formData}
           onChange={(event: IChangeEvent) => setFormData(asRecord(event.formData))}
           onSubmit={({ formData: next }) => {
-            setPending(true)
-            void Promise.resolve(onContinue(asRecord(next))).finally(() => {
-              setPending(false)
-            })
+            void onContinue(asRecord(next))
           }}
           showErrorList={false}
           omitExtraData
         >
+          {error ? (
+            <p className="mb-3 text-xs text-signal" role="alert">
+              {queryErrorMessage(error, 'Could not save those keys.')}
+            </p>
+          ) : null}
           <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
             {pending ? 'Saving…' : 'Continue'}
           </button>

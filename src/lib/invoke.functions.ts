@@ -5,8 +5,8 @@ import type { InvokeResult } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
 import { getDb } from './db.server'
 import { readApiAuth } from './auth.server'
-import { applyAuth, findOperation } from './openapi.server'
-import { ensureUser } from './session.functions'
+import { applyAuth, fetchSpec, findOperation } from './openapi.server'
+import { ensureUser } from './session.server'
 
 const MAX_RESPONSE_CHARS = 200_000
 
@@ -64,16 +64,16 @@ export const invokeOperation = createServerFn({
     const db = await getDb()
     const row = await db
       .prepare(
-        'SELECT spec_url, spec_json FROM apis WHERE id = ? AND username = ?',
+        'SELECT spec_url FROM apis WHERE id = ? AND username = ?',
       )
       .bind(data.apiId, username)
-      .first<{ spec_url: string; spec_json: string }>()
+      .first<{ spec_url: string }>()
 
     if (!row) {
       throw notFound()
     }
 
-    const spec = JSON.parse(row.spec_json)
+    const spec = await fetchSpec(row.spec_url)
     const operation = findOperation(spec, row.spec_url, data.operationId)
     const form = asRecord(data.formData)
     const path = asRecord(omitEmpty(form.path))

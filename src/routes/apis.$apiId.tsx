@@ -1,18 +1,19 @@
-import { Link, createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import { AuthStep } from '../components/auth-step'
 import { HintBar } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
-import { getApi } from '../lib/apis.functions'
+import { QueryStatus } from '../components/query-status'
 import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
+import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
 import { setInsertMode } from '../lib/form-mode'
 import { confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
-import { commandHotkey } from '../lib/keys'
+import { commandHotkey, consumePointerIntent, useStepKeys } from '../lib/keys'
 import { asRecord } from '../lib/build-request'
-import { repeatHotkey, useRepeatDelta, useTrailingCommit } from '../lib/repeat'
 import { inputClass } from '../lib/ui'
 
 type Search = {
@@ -25,7 +26,6 @@ export const Route = createFileRoute('/apis/$apiId')({
     op: typeof search.op === 'string' ? search.op : undefined,
     q: typeof search.q === 'string' ? search.q : undefined,
   }),
-  loader: async ({ params }) => getApi({ data: { id: params.apiId } }),
   component: ApiClientPage,
 })
 
@@ -100,12 +100,22 @@ function hasAuthFields(schema: JsonSchema | undefined) {
 }
 
 function ApiClientPage() {
-  const api = Route.useLoaderData()
+  const { apiId } = Route.useParams()
+  const apiQuery = useQuery(apiQueryOptions(apiId))
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const router = useRouter()
-  const needsAuth = hasAuthFields(api.authSchema)
   const [editing, setEditing] = useState(false)
-  const showAuth = Boolean(needsAuth && api.authSchema && (!api.authStored || editing))
+
+  const saveAuth = useMutation({
+    mutationFn: (value: Record<string, unknown>) =>
+      saveApiAuth({
+        data: { apiId, fields: fieldsFromForm(value) },
+      }),
+    onSuccess: async () => {
+      setEditing(false)
+      await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
+    },
+  })
 
   useHotkeys([
     {
@@ -116,6 +126,28 @@ function ApiClientPage() {
     },
   ])
 
+  if (apiQuery.isPending) {
+    return <QueryStatus label="Reading the spec…" />
+  }
+
+  if (apiQuery.isError) {
+    if (isNotFound(apiQuery.error)) {
+      throw notFound()
+    }
+    return (
+      <QueryStatus
+        error={apiQuery.error}
+        onRetry={() => {
+          void apiQuery.refetch()
+        }}
+      />
+    )
+  }
+
+  const api = apiQuery.data
+  const needsAuth = hasAuthFields(api.authSchema)
+  const showAuth = Boolean(needsAuth && api.authSchema && (!api.authStored || editing))
+
   if (showAuth && api.authSchema) {
     return (
       <AuthStep
@@ -123,12 +155,10 @@ function ApiClientPage() {
         schema={api.authSchema}
         uiSchema={api.authUiSchema ?? {}}
         stored={Boolean(api.authStored)}
-        onContinue={async (value) => {
-          await saveApiAuth({
-            data: { apiId: api.id, fields: fieldsFromForm(value) },
-          })
-          setEditing(false)
-          await router.invalidate()
+        pending={saveAuth.isPending}
+        error={saveAuth.error}
+        onContinue={(value) => {
+          saveAuth.mutate(value)
         }}
         onLeave={() => {
           if (api.authStored) {
@@ -170,6 +200,7 @@ function ApiWorkbench({
   const [pane, setPane] = useState<'list' | 'form'>(search.op ? 'form' : 'list')
   const [heldOp, setHeldOp] = useState(search.op)
   const heldOpRef = useRef(search.op)
+  const localOpRef = useRef(false)
   const paneRef = useRef(pane)
   paneRef.current = pane
   useEffect(() => {
@@ -186,24 +217,50 @@ function ApiWorkbench({
     () => groupOperations(visible, api.tagGroups ?? []),
     [api.tagGroups, visible],
   )
+  const orderedOperations = useMemo(
+    () => groups.flatMap((group) => group.operations),
+    [groups],
+  )
   const selected =
-    visible.find((operation) => operation.id === (heldOp ?? search.op)) ?? visible[0]
+    orderedOperations.find((operation) => operation.id === (heldOp ?? search.op)) ??
+    orderedOperations[0]
   const manyServers = api.servers.length > 1
 
-  const opCommit = useTrailingCommit((id: string) => {
-    void navigate({
-      search: (previous) => ({ ...previous, op: id }),
-      replace: true,
-    })
-  })
-
   useEffect(() => {
+    if (localOpRef.current) {
+      if (search.op === heldOpRef.current) {
+        localOpRef.current = false
+      }
+      return
+    }
     heldOpRef.current = search.op
     setHeldOp(search.op)
   }, [search.op])
 
+  function holdOp(id: string, fromKeys = false) {
+    localOpRef.current = fromKeys
+    heldOpRef.current = id
+    setHeldOp(id)
+  }
+
+  function revealOperation(id: string) {
+    const row = document.getElementById(`op-${id}`)
+    const list = row?.closest<HTMLElement>('[data-operation-list]')
+    if (!row || !list) {
+      return
+    }
+
+    const rowRect = row.getBoundingClientRect()
+    const listRect = list.getBoundingClientRect()
+    if (rowRect.top < listRect.top) {
+      list.scrollTop -= listRect.top - rowRect.top
+    } else if (rowRect.bottom > listRect.bottom) {
+      list.scrollTop += rowRect.bottom - listRect.bottom
+    }
+  }
+
   function move(delta: number) {
-    if (visible.length === 0) {
+    if (orderedOperations.length === 0) {
       return
     }
     if (paneRef.current !== 'list') {
@@ -211,16 +268,17 @@ function ApiWorkbench({
       setPane('list')
     }
     const currentId = heldOpRef.current ?? selected?.id
-    const current = visible.findIndex((item) => item.id === currentId)
+    const current = orderedOperations.findIndex((item) => item.id === currentId)
     const start = current === -1 ? 0 : current
-    const next = visible[(start + delta + visible.length) % visible.length]
+    const next =
+      orderedOperations[
+        Math.min(Math.max(start + delta, 0), orderedOperations.length - 1)
+      ]
     if (!next) {
       return
     }
-    heldOpRef.current = next.id
-    setHeldOp(next.id)
-    document.getElementById(`op-${next.id}`)?.scrollIntoView({ block: 'nearest' })
-    opCommit.set(next.id)
+    holdOp(next.id, true)
+    revealOperation(next.id)
   }
 
   function stepBack() {
@@ -229,6 +287,7 @@ function ApiWorkbench({
       void navigate({
         search: (previous) => ({ ...previous, q: undefined }),
         replace: true,
+        resetScroll: false,
       })
       return
     }
@@ -252,13 +311,15 @@ function ApiWorkbench({
     }
   }
 
-  const nudge = useRepeatDelta((delta) => {
+  function nudge(delta: number) {
     if (paneRef.current === 'form') {
       moveFormTab('call-form', delta)
       return
     }
     move(delta)
-  })
+  }
+
+  useStepKeys(nudge)
 
   useHotkeys([
     {
@@ -269,20 +330,6 @@ function ApiWorkbench({
           document.getElementById('operation-filter')?.focus()
         }, 0)
       },
-    },
-    {
-      hotkey: 'J',
-      callback: () => {
-        nudge(1)
-      },
-      options: repeatHotkey,
-    },
-    {
-      hotkey: 'K',
-      callback: () => {
-        nudge(-1)
-      },
-      options: repeatHotkey,
     },
     {
       hotkey: { key: 'Tab' },
@@ -310,9 +357,14 @@ function ApiWorkbench({
           return
         }
         event.preventDefault()
-        opCommit.flush()
         if (selected) {
+          holdOp(selected.id)
           setPane('form')
+          void navigate({
+            search: (previous) => ({ ...previous, op: selected.id }),
+            replace: true,
+            resetScroll: false,
+          })
           window.setTimeout(() => selectDefaultInput('call-form'), 0)
         }
       },
@@ -331,7 +383,13 @@ function ApiWorkbench({
         }
         event.preventDefault()
         if (selected) {
+          holdOp(selected.id)
           setPane('form')
+          void navigate({
+            search: (previous) => ({ ...previous, op: selected.id }),
+            replace: true,
+            resetScroll: false,
+          })
         }
       },
       options: commandHotkey,
@@ -448,6 +506,7 @@ function ApiWorkbench({
                       q: event.target.value || undefined,
                     }),
                     replace: true,
+                    resetScroll: false,
                   })
                 }
                 placeholder="Filter"
@@ -455,7 +514,11 @@ function ApiWorkbench({
             </div>
           ) : null}
 
-          <nav aria-label="Operations" className="min-h-0 flex-1 overflow-y-auto">
+          <nav
+            aria-label="Operations"
+            data-operation-list
+            className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
+          >
             {visible.length === 0 ? (
               <p className="px-3 py-3 text-sm text-mute">No matches.</p>
             ) : (
@@ -490,14 +553,20 @@ function ApiWorkbench({
                                 ...previous,
                                 op: operation.id,
                               })}
-                              onClick={() => setPane('form')}
+                              resetScroll={false}
+                              onClick={() => {
+                                holdOp(operation.id)
+                                setPane('form')
+                              }}
                               onPointerEnter={() => {
-                                if (pane !== 'list' || heldOpRef.current === operation.id) {
+                                if (
+                                  pane !== 'list' ||
+                                  heldOpRef.current === operation.id ||
+                                  !consumePointerIntent()
+                                ) {
                                   return
                                 }
-                                heldOpRef.current = operation.id
-                                setHeldOp(operation.id)
-                                opCommit.set(operation.id)
+                                holdOp(operation.id)
                               }}
                               className={`flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 outline-none focus-visible:text-signal ${
                                 active ? 'bg-signal/10 text-ink' : 'text-mute'

@@ -5,16 +5,31 @@ import type { ApiSummary, ClientApi } from './client-types'
 import { getDb } from './db.server'
 import { apiAuthStored, clearApiAuth } from './auth.server'
 import { fetchSpec, specToClient } from './openapi.server'
-import { ensureUser } from './session.functions'
+import { ensureUser } from './session.server'
 
 type ApiRow = {
   id: string
   title: string
   version: string | null
   spec_url: string
-  spec_json: string
   operation_count: number
   created_at: string
+}
+
+async function rememberSpecMeta(
+  db: D1Database,
+  id: string,
+  username: string,
+  client: ClientApi,
+) {
+  await db
+    .prepare(
+      `UPDATE apis
+       SET title = ?, version = ?, operation_count = ?
+       WHERE id = ? AND username = ?`,
+    )
+    .bind(client.title, client.version ?? null, client.operations.length, id, username)
+    .run()
 }
 
 export const listApis = createServerFn({ method: 'GET' }).handler(
@@ -29,7 +44,7 @@ export const listApis = createServerFn({ method: 'GET' }).handler(
          ORDER BY created_at DESC`,
       )
       .bind(username)
-      .all<Omit<ApiRow, 'spec_json'>>()
+      .all<ApiRow>()
 
     return (result.results ?? []).map((row) => ({
       id: row.id,
@@ -53,8 +68,8 @@ export const addApi = createServerFn({ method: 'POST' })
 
     await db
       .prepare(
-        `INSERT INTO apis (id, username, title, version, spec_url, spec_json, operation_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO apis (id, username, title, version, spec_url, operation_count)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -62,7 +77,6 @@ export const addApi = createServerFn({ method: 'POST' })
         client.title,
         client.version ?? null,
         data.url,
-        JSON.stringify(spec),
         client.operations.length,
       )
       .run()
@@ -80,7 +94,7 @@ export const getApi = createServerFn({
     const db = await getDb()
     const row = await db
       .prepare(
-        `SELECT id, title, version, spec_url, spec_json, operation_count, created_at
+        `SELECT id, title, version, spec_url, operation_count, created_at
          FROM apis
          WHERE id = ? AND username = ?`,
       )
@@ -91,8 +105,12 @@ export const getApi = createServerFn({
       throw notFound()
     }
 
+    const spec = await fetchSpec(row.spec_url)
+    const client = specToClient(spec, row.spec_url, row.id)
+    await rememberSpecMeta(db, row.id, username, client)
+
     return {
-      ...specToClient(JSON.parse(row.spec_json), row.spec_url, row.id),
+      ...client,
       authStored: await apiAuthStored(row.id),
     }
   })

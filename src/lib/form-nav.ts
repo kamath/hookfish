@@ -1,5 +1,6 @@
 import { blurActive, isEditing } from './focus'
 import { isInsertMode, setInsertMode } from './form-mode'
+import { consumePointerIntent } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -244,6 +245,9 @@ export function bindFormTabSync(rootId: string) {
   }
 
   const onPointerOver = (event: PointerEvent) => {
+    if (!consumePointerIntent()) {
+      return
+    }
     const target = event.target
     if (!(target instanceof HTMLElement)) {
       return

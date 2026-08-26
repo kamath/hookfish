@@ -1,4 +1,4 @@
-import { ensureUser } from './session.functions'
+import { ensureUser } from './session.server'
 import { userVault } from './vault.server'
 
 export async function putApiAuth(

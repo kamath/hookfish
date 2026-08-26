@@ -1,36 +1,58 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useHotkeys } from '@tanstack/react-hotkeys'
-import { addApi, listApis, removeApi } from '../lib/apis.functions'
+import { QueryMessage } from '../components/query-status'
+import { addApi, removeApi } from '../lib/apis.functions'
 import { blurActive } from '../lib/focus'
-import { repeatHotkey, useRepeatDelta } from '../lib/repeat'
+import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
+import { useStepKeys } from '../lib/keys'
 import { inputClass, primaryButtonClass } from '../lib/ui'
 import { HintBar } from '../components/hints'
 
 export const Route = createFileRoute('/')({
-  loader: async () => ({ apis: await listApis() }),
   component: Home,
 })
 
 function Home() {
-  const { apis } = Route.useLoaderData()
+  const apisQuery = useQuery(apisQueryOptions)
+  const queryClient = useQueryClient()
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
   const [selected, setSelected] = useState(0)
   const [help, setHelp] = useState(false)
+  const apis = apisQuery.data ?? []
+
+  const add = useMutation({
+    mutationFn: (url: string) => addApi({ data: { url } }),
+    onSuccess: async ({ id }) => {
+      await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+      await router.navigate({ to: '/apis/$apiId', params: { apiId: id } })
+    },
+    onError: () => {
+      urlRef.current?.focus()
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removeApi({ data: { id } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+    },
+  })
 
   useEffect(() => {
     urlRef.current?.focus()
   }, [])
 
-  const nudge = useRepeatDelta((delta) => {
+  function move(delta: number) {
     setSelected((index) => {
       const last = Math.max(apis.length - 1, 0)
       return Math.min(Math.max(index + delta, 0), last)
     })
-  })
+  }
+
+  useStepKeys(move, apis.length > 0)
 
   useHotkeys([
     {
@@ -39,20 +61,6 @@ function Home() {
         blurActive()
         setHelp(false)
       },
-    },
-    {
-      hotkey: 'J',
-      callback: () => {
-        nudge(1)
-      },
-      options: { ...repeatHotkey, enabled: apis.length > 0 },
-    },
-    {
-      hotkey: 'K',
-      callback: () => {
-        nudge(-1)
-      },
-      options: { ...repeatHotkey, enabled: apis.length > 0 },
     },
     {
       hotkey: 'I',
@@ -82,30 +90,18 @@ function Home() {
     },
   ])
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const url = String(new FormData(form).get('url') ?? '').trim()
-    setError(null)
-    setPending(true)
-    try {
-      const { id } = await addApi({ data: { url } })
-      await router.invalidate()
-      await router.navigate({ to: '/apis/$apiId', params: { apiId: id } })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not read that spec.')
-      urlRef.current?.focus()
-    } finally {
-      setPending(false)
-    }
+    add.mutate(url)
   }
 
-  async function onRemove(id: string, title: string) {
+  function onRemove(id: string, title: string) {
     if (!window.confirm(`Remove ${title}?`)) {
       return
     }
-    await removeApi({ data: { id } })
-    await router.invalidate()
+    remove.mutate(id)
   }
 
   const hints = [
@@ -140,18 +136,31 @@ function Home() {
           className={inputClass}
           placeholder="https://petstore3.swagger.io/api/v3/openapi.json"
         />
-        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={pending}>
-          {pending ? 'Reading…' : 'Open'}
+        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
+          {add.isPending ? 'Reading…' : 'Open'}
         </button>
       </form>
-      {error ? (
+      {add.isError ? (
         <p className="mt-3 text-sm text-signal" role="alert">
-          {error}
+          {queryErrorMessage(add.error, 'Could not read that spec.')}
         </p>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {apis.length === 0 ? (
+        {apisQuery.isPending ? (
+          <div className="mt-8">
+            <QueryMessage label="Loading specs…" />
+          </div>
+        ) : apisQuery.isError ? (
+          <div className="mt-8">
+            <QueryMessage
+              error={apisQuery.error}
+              onRetry={() => {
+                void apisQuery.refetch()
+              }}
+            />
+          </div>
+        ) : apis.length === 0 ? (
           <p className="mt-8 text-sm text-mute">Paste a spec URL to open a client.</p>
         ) : (
           <ul className="mt-8 divide-y divide-rule border-y border-rule">
@@ -178,6 +187,7 @@ function Home() {
                     type="button"
                     className="min-h-11 px-2 text-sm text-mute hover:text-signal"
                     onClick={() => onRemove(api.id, api.title)}
+                    disabled={remove.isPending}
                   >
                     Remove
                   </button>
@@ -186,6 +196,11 @@ function Home() {
             })}
           </ul>
         )}
+        {remove.isError ? (
+          <p className="mt-3 text-sm text-signal" role="alert">
+            {queryErrorMessage(remove.error, 'Could not remove that spec.')}
+          </p>
+        ) : null}
       </div>
 
       {help ? (

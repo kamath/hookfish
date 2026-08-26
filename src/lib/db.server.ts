@@ -11,7 +11,6 @@ const STATEMENTS = [
     title TEXT NOT NULL,
     version TEXT,
     spec_url TEXT NOT NULL,
-    spec_json TEXT NOT NULL,
     operation_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,

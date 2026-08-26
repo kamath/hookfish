@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { asRecord } from './build-request'
-import { ensureUser } from './session.functions'
+import { ensureUser } from './session.server'
 import { putApiAuth } from './auth.server'
 
 export const saveApiAuth = createServerFn({ method: 'POST' })

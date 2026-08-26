@@ -1,23 +1,25 @@
+import { useQuery, type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
   Link,
   Outlet,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
-import { getSession } from '../lib/session.functions'
+import { sessionQueryOptions } from '../lib/queries'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
   hotkey: { preventDefault: true, requireReset: true },
 }
 
-export const Route = createRootRoute({
-  loader: () => getSession(),
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient
+}>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -79,7 +81,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const { username } = Route.useLoaderData()
+  const session = useQuery(sessionQueryOptions)
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
@@ -98,8 +100,15 @@ function AppShell() {
             >
               client
             </Link>
-            <p className="truncate font-mono text-xs text-mute" translate="no">
-              {username}
+            <p
+              className={`truncate font-mono text-xs ${session.isError ? 'text-signal' : 'text-mute'}`}
+              translate="no"
+            >
+              {session.isPending
+                ? '…'
+                : session.isError
+                  ? 'session failed'
+                  : session.data.username}
             </p>
           </div>
         </header>

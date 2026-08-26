@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
-import type { ClientApi, ClientOperation, InvokeResult } from '../lib/client-types'
+import type { ClientApi, ClientOperation } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { invokeOperation } from '../lib/invoke.functions'
+import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { SwissForm } from './swiss-form'
 
@@ -28,9 +30,22 @@ export function OperationClient({
   serverUrl: string
 }) {
   const [formData, setFormData] = useState<unknown>({})
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<InvokeResult | null>(null)
+  const invoke = useMutation({
+    mutationFn: (next: unknown) =>
+      invokeOperation({
+        data: {
+          apiId: api.id,
+          operationId: operation.id,
+          serverUrl,
+          formData: asRecord(next),
+        },
+      }),
+  })
+  const pending = invoke.isPending
+  const error = invoke.isError
+    ? queryErrorMessage(invoke.error, 'The request failed.')
+    : null
+  const result = invoke.data ?? null
 
   useEffect(() => {
     const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
@@ -63,24 +78,8 @@ export function OperationClient({
     }
   }, [formData, operation.path, serverUrl])
 
-  async function onSubmit({ formData: next }: IChangeEvent) {
-    setPending(true)
-    setError(null)
-    try {
-      const response = await invokeOperation({
-        data: {
-          apiId: api.id,
-          operationId: operation.id,
-          serverUrl,
-          formData: asRecord(next),
-        },
-      })
-      setResult(response)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'The request failed.')
-    } finally {
-      setPending(false)
-    }
+  function onSubmit({ formData: next }: IChangeEvent) {
+    invoke.mutate(next)
   }
 
   return (
