@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f7f6f3;
+  --ink: #1c1b19;
+  --mute: #6f6b64;
+  --faint: #9a958c;
+  --rule: #ddd9d1;
+  --signal: #2557a7;
+  --on-signal: #f7f6f3;
+  color-scheme: light;
+}
+
+@theme {
+  --font-sans: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-faint: var(--faint);
+  --color-rule: var(--rule);
+  --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+}
+
+html {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+}
+
+.rjsf fieldset {
+  min-inline-size: 0;
+}
+
+.rjsf .form-group {
+  margin: 0;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--rule);
+  color: var(--mute);
+  background: transparent;
+}
+
+[data-oc-nav] {
+  outline: none;
+}
+
+[data-oc-current='true'] {
+  outline: 1px solid var(--signal);
+  outline-offset: 3px;
+}
