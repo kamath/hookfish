@@ -95,7 +95,7 @@ export function RequestSnippet({ request }: { request: ExecuteRequest }) {
       <span className="relative inline-flex self-start">
         <select
           id="snippet-format"
-          className="min-h-8 w-auto min-w-[7rem] appearance-none border-0 bg-ink/10 py-1 pr-6 pl-2 text-xs text-ink outline-none"
+          className="api-wash min-h-8 w-auto min-w-[7rem] appearance-none border-0 py-1 pr-6 pl-2 text-xs text-ink outline-none"
           value={format}
           onChange={(event) => {
             const next = event.target.value
@@ -117,7 +117,7 @@ export function RequestSnippet({ request }: { request: ExecuteRequest }) {
           ▼
         </span>
       </span>
-      <div className="relative bg-ink/10">
+      <div className="relative api-wash">
         <button
           type="button"
           className="absolute top-1 right-1 inline-flex h-7 w-7 items-center justify-center text-mute hover:text-ink focus-visible:text-ink outline-none"
