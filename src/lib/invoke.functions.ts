@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { InvokeResult } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
 import { getDb } from './db.server'
-import { readApiAuth } from './auth.functions'
+import { readApiAuth } from './auth.server'
 import { applyAuth, findOperation } from './openapi.server'
 import { ensureUser } from './session.functions'
 

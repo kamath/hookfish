@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { asRecord } from './build-request'
 import { ensureUser } from './session.functions'
-import { userVault } from './vault.server'
+import { putApiAuth } from './auth.server'
 
 export const saveApiAuth = createServerFn({ method: 'POST' })
   .validator(
@@ -19,24 +19,9 @@ export const saveApiAuth = createServerFn({ method: 'POST' })
         fields[name] = value
       }
     }
-    await userVault(username).put(data.apiId, fields)
+    await putApiAuth(username, data.apiId, fields)
     return { stored: true }
   })
-
-export async function readApiAuth(apiId: string): Promise<Record<string, string>> {
-  const username = await ensureUser()
-  return userVault(username).get(apiId)
-}
-
-export async function apiAuthStored(apiId: string): Promise<boolean> {
-  const username = await ensureUser()
-  return userVault(username).has(apiId)
-}
-
-export async function clearApiAuth(apiId: string) {
-  const username = await ensureUser()
-  await userVault(username).clear(apiId)
-}
 
 export function fieldsFromForm(value: unknown): Record<string, string> {
   const fields: Record<string, string> = {}

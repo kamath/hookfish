@@ -3,7 +3,7 @@ import { notFound } from '@tanstack/react-router'
 import { z } from 'zod'
 import type { ApiSummary, ClientApi } from './client-types'
 import { getDb } from './db.server'
-import { apiAuthStored, clearApiAuth } from './auth.functions'
+import { apiAuthStored, clearApiAuth } from './auth.server'
 import { fetchSpec, specToClient } from './openapi.server'
 import { ensureUser } from './session.functions'
 
