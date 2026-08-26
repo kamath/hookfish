@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
@@ -11,7 +11,7 @@ import { blurActive } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
 import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
-import { activate, enterEdit, getPane, useChrome, type Pane } from '../lib/mode'
+import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
@@ -193,8 +193,11 @@ function ApiWorkbench({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
-  const { pane: activePane } = useChrome()
+  const activePane = usePane()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
+  const [filterValue, setFilterValue] = useState(search.q ?? '')
+  const deferredFilterValue = useDeferredValue(filterValue)
+  const committedFilterRef = useRef(search.q ?? '')
   const [heldOp, setHeldOp] = useState(operationId)
   const heldOpRef = useRef(operationId)
   const localOpRef = useRef(false)
@@ -202,8 +205,36 @@ function ApiWorkbench({
     activate(routePane, 'command')
   }, [api.id, routePane])
 
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (routeFilter !== committedFilterRef.current) {
+      committedFilterRef.current = routeFilter
+      setFilterValue(routeFilter)
+    }
+  }, [search.q])
+
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (filterValue === routeFilter) {
+      committedFilterRef.current = routeFilter
+      return
+    }
+    const timer = window.setTimeout(() => {
+      committedFilterRef.current = filterValue
+      void navigate({
+        search: (previous) => ({
+          ...previous,
+          q: filterValue || undefined,
+        }),
+        replace: true,
+        resetScroll: false,
+      })
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [filterValue, navigate, search.q])
+
   const ranked = useMemo(() => {
-    const query = search.q?.trim() ?? ''
+    const query = deferredFilterValue.trim()
     if (!query) {
       return undefined
     }
@@ -215,7 +246,7 @@ function ApiWorkbench({
       .filter((item) => item.score != null)
       .sort((left, right) => (right.score ?? 0) - (left.score ?? 0))
       .map((item) => item.operation)
-  }, [api.operations, search.q])
+  }, [api.operations, deferredFilterValue])
   const groups = useMemo(
     () => (ranked ? [] : groupOperations(api.operations, api.tagGroups ?? [])),
     [api.operations, api.tagGroups, ranked],
@@ -224,12 +255,13 @@ function ApiWorkbench({
     () => ranked ?? groups.flatMap((group) => group.operations),
     [groups, ranked],
   )
-  const selected =
-    orderedOperations.find((operation) => operation.id === (heldOp ?? operationId)) ??
-    orderedOperations[0]
-  const selectedIndex = selected
-    ? orderedOperations.findIndex((operation) => operation.id === selected.id)
-    : -1
+  const operationIndexById = useMemo(
+    () => new Map(orderedOperations.map((operation, index) => [operation.id, index])),
+    [orderedOperations],
+  )
+  const requestedIndex = operationIndexById.get(heldOp ?? operationId ?? '')
+  const selectedIndex = requestedIndex ?? (orderedOperations.length > 0 ? 0 : -1)
+  const selected = orderedOperations[selectedIndex]
   const manyServers = api.servers.length > 1
 
   useEffect(() => {
@@ -278,7 +310,7 @@ function ApiWorkbench({
       activate('routes', 'command')
     }
     const currentId = heldOpRef.current ?? selected?.id
-    const current = orderedOperations.findIndex((item) => item.id === currentId)
+    const current = currentId ? (operationIndexById.get(currentId) ?? -1) : -1
     const start = current === -1 ? 0 : current
     const next =
       orderedOperations[Math.min(Math.max(start + delta, 0), orderedOperations.length - 1)]
@@ -296,7 +328,7 @@ function ApiWorkbench({
     }
     holdOp(first.id, true)
     revealOperation(first.id)
-  }, [search.q])
+  }, [deferredFilterValue])
 
   function focusFilter() {
     activate('routes', 'edit')
@@ -444,7 +476,7 @@ function ApiWorkbench({
 
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
-    const index = orderedOperations.findIndex((item) => item.id === operation.id)
+    const index = operationIndexById.get(operation.id) ?? -1
     const navigationHint =
       activePane !== 'routes'
         ? undefined
@@ -592,35 +624,22 @@ function ApiWorkbench({
                 autoComplete="off"
                 spellCheck={false}
                 className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                  search.q ? 'pr-16' : 'pr-9'
+                  filterValue ? 'pr-16' : 'pr-9'
                 }`}
-                value={search.q ?? ''}
+                value={filterValue}
                 onFocus={() => {
                   activate('routes', 'edit')
                 }}
-                onChange={(event) =>
-                  void navigate({
-                    search: (previous) => ({
-                      ...previous,
-                      q: event.target.value || undefined,
-                    }),
-                    replace: true,
-                    resetScroll: false,
-                  })
-                }
+                onChange={(event) => setFilterValue(event.target.value)}
                 placeholder="Filter routes"
               />
-              {search.q ? (
+              {filterValue ? (
                 <button
                   type="button"
                   aria-label="Clear route filter"
                   className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
                   onClick={() => {
-                    void navigate({
-                      search: (previous) => ({ ...previous, q: undefined }),
-                      replace: true,
-                      resetScroll: false,
-                    })
+                    setFilterValue('')
                     document.getElementById('operation-filter')?.focus()
                   }}
                 >

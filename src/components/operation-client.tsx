@@ -16,7 +16,7 @@ import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
-import { activate, useChrome } from '../lib/mode'
+import { activate, usePane } from '../lib/mode'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
@@ -130,7 +130,7 @@ export function OperationClient({
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
-  const { pane } = useChrome()
+  const pane = usePane()
   const navigate = useNavigate()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>

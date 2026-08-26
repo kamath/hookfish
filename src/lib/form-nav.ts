@@ -30,12 +30,50 @@ function isTabbable(element: HTMLElement) {
   return true
 }
 
+type FormInputCache = {
+  dirty: boolean
+  items: HTMLElement[]
+  observer?: MutationObserver
+}
+
+const formInputCaches = new WeakMap<HTMLElement, FormInputCache>()
+
+function cachedFormInputs(root: HTMLElement) {
+  let cache = formInputCaches.get(root)
+  if (!cache) {
+    cache = { dirty: true, items: [] }
+    if (typeof MutationObserver !== 'undefined') {
+      cache.observer = new MutationObserver(() => {
+        if (cache) {
+          cache.dirty = true
+        }
+      })
+      cache.observer.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class', 'disabled', 'hidden', 'style', 'tabindex', 'type'],
+      })
+    }
+    formInputCaches.set(root, cache)
+  }
+
+  if (cache.observer?.takeRecords().length) {
+    cache.dirty = true
+  }
+  if (cache.dirty) {
+    cache.items = [...root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)].filter(isTabbable)
+    cache.dirty = false
+  }
+  return cache.items
+}
+
 export function listFormInputs(rootId: string): HTMLElement[] {
   const root = document.getElementById(rootId)
   if (!root) {
     return []
   }
-  return [...root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)].filter(isTabbable)
+  return cachedFormInputs(root)
 }
 
 function formRoot(rootId: string): HTMLElement | null {
@@ -266,6 +304,8 @@ export function bindFormTabSync(rootId: string) {
   return () => {
     root.removeEventListener('focusin', onFocusIn)
     root.removeEventListener('pointerover', onPointerOver)
+    formInputCaches.get(root)?.observer?.disconnect()
+    formInputCaches.delete(root)
   }
 }
 

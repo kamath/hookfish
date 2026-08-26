@@ -19,6 +19,7 @@ export {
   subscribeFormMode,
   useChrome,
   useMode,
+  usePane,
   type Chrome,
   type Mode,
   type Pane,

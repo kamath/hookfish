@@ -85,6 +85,10 @@ export function useMode() {
   return useAtomValue(modeAtom)
 }
 
+export function usePane() {
+  return useAtomValue(paneAtom)
+}
+
 export function useChrome(): Chrome {
   return useAtomValue(chromeAtom)
 }

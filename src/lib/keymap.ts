@@ -141,6 +141,11 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   },
 }
 
+const registeredPaneBindings = (Object.entries(paneConfig) as Array<[Pane, PaneConfig]>).flatMap(
+  ([pane, config]) => config.bindings.map((binding) => ({ pane, binding })),
+)
+const noopKeybinding = () => {}
+
 type Registration = {
   pane: Pane
   actions?: Partial<Record<string, PaneAction>>
@@ -238,32 +243,34 @@ export function usePaneActions(
 export function useGlobalKeybindings() {
   const chrome = useAtomValue(chromeAtom)
   const registrations = useAtomValue(registrationsAtom)
-  const activeKeybindings = useAtomValue(activeKeybindingsAtom)
   const actions: Partial<Record<string, PaneAction>> = {}
+  const flags: Record<string, boolean> = {}
   for (const registration of registrations.values()) {
     if (registration.pane !== chrome.pane) {
       continue
     }
     Object.assign(actions, registration.actions)
+    Object.assign(flags, registration.flags)
   }
 
   useHotkeys(
-    activeKeybindings.flatMap((binding) => {
+    registeredPaneBindings.map(({ pane, binding }) => {
       const action = actions[binding.id]
-      if (!action) {
-        return []
-      }
       const modes = binding.modes ?? ['command']
-      return [
-        {
-          hotkey: binding.hotkey,
-          callback: action.callback,
-          options: {
-            enabled: action.enabled !== false && modes.includes(chrome.mode),
-            ignoreInputs: action.ignoreInputs ?? !modes.includes('edit'),
-          },
+      const flagOn = !binding.flag || Boolean(flags[binding.flag])
+      return {
+        hotkey: binding.hotkey,
+        callback: action?.callback ?? noopKeybinding,
+        options: {
+          enabled:
+            pane === chrome.pane &&
+            Boolean(action) &&
+            action?.enabled !== false &&
+            flagOn &&
+            modes.includes(chrome.mode),
+          ignoreInputs: action?.ignoreInputs ?? !modes.includes('edit'),
         },
-      ]
+      }
     }),
   )
 }
