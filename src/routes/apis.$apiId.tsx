@@ -5,20 +5,18 @@ import { AuthStep } from '../components/auth-step'
 import { HintBar, Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
-import { fieldsFromForm, saveApiAuth } from '../lib/auth'
+import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
 import {
-  confirmForm,
-  exitInsert,
-  insertCurrentInput,
   moveFormTab,
   selectDefaultInput,
+  useFormPaneNavigation,
 } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
-import { consumePointerIntent, useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
-import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
+import { consumePointerIntent, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { activate, enterEdit, getPane, useChrome, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
@@ -102,15 +100,39 @@ function ApiClientPage() {
   const { apiId } = Route.useParams()
   const apiQuery = useQuery(apiQueryOptions(apiId))
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const [editing, setEditing] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [preserveForm, setPreserveForm] = useState(false)
+  const returnPane = useRef<Pane>('list')
+
+  function openAuth() {
+    const pane = getPane()
+    if (pane !== 'auth') {
+      returnPane.current = pane
+      setPreserveForm(pane === 'form' || pane === 'response')
+    }
+    setAuthOpen(true)
+  }
+
+  function closeAuth() {
+    setAuthOpen(false)
+    setPreserveForm(false)
+    activate(returnPane.current, 'command')
+  }
 
   const saveAuth = useMutation({
     mutationFn: async (value: Record<string, unknown>) => {
       saveApiAuth(apiId, fieldsFromForm(value))
     },
     onSuccess: async () => {
-      setEditing(false)
+      await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
+    },
+  })
+
+  const clearAuth = useMutation({
+    mutationFn: async () => {
+      clearApiAuth(apiId)
+    },
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
     },
   })
@@ -134,52 +156,66 @@ function ApiClientPage() {
   }
 
   const api = apiQuery.data
-  const needsAuth = hasAuthFields(api.authSchema)
-  const showAuth = Boolean(needsAuth && api.authSchema && (!api.authStored || editing))
-
-  if (showAuth && api.authSchema) {
-    return (
-      <AuthStep
-        title={api.title}
-        schema={api.authSchema}
-        uiSchema={api.authUiSchema ?? {}}
-        stored={Boolean(api.authStored)}
-        pending={saveAuth.isPending}
-        error={saveAuth.error}
-        onContinue={(value) => {
-          saveAuth.mutate(value)
-        }}
-        onLeave={() => {
-          if (api.authStored) {
-            setEditing(false)
-            return
-          }
-          void navigate({ to: '/' })
-        }}
-      />
-    )
-  }
+  const canAuth = hasAuthFields(api.authSchema)
+  const needsAuth = Boolean(canAuth && !api.authStored)
 
   return (
-    <ApiWorkbench
-      api={api}
-      onEditAuth={
-        needsAuth
-          ? () => {
-              setEditing(true)
-            }
-          : undefined
-      }
-    />
+    <div className="relative h-full min-h-0">
+      <ApiWorkbench
+        api={api}
+        authOpen={authOpen}
+        preserveForm={preserveForm}
+        needsAuth={needsAuth}
+        onEditAuth={canAuth ? () => openAuth() : undefined}
+        onSaveAuth={async (value) => {
+          await saveAuth.mutateAsync(value)
+        }}
+        authPending={saveAuth.isPending || clearAuth.isPending}
+        authError={saveAuth.error ?? clearAuth.error}
+      />
+      {authOpen && api.authSchema ? (
+        <div className="absolute inset-0 z-20 bg-paper">
+          <AuthStep
+            title={api.title}
+            schema={api.authSchema}
+            uiSchema={api.authUiSchema ?? {}}
+            stored={Boolean(api.authStored)}
+            pending={saveAuth.isPending || clearAuth.isPending}
+            error={saveAuth.error ?? clearAuth.error}
+            onContinue={async (value) => {
+              await saveAuth.mutateAsync(value)
+              closeAuth()
+            }}
+            onClear={async () => {
+              await clearAuth.mutateAsync()
+              closeAuth()
+            }}
+            onLeave={closeAuth}
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }
 
 function ApiWorkbench({
   api,
+  authOpen,
+  preserveForm,
+  needsAuth,
   onEditAuth,
+  onSaveAuth,
+  authPending,
+  authError,
 }: {
   api: ClientApi
+  authOpen: boolean
+  preserveForm: boolean
+  needsAuth: boolean
   onEditAuth?: () => void
+  onSaveAuth: (value: Record<string, unknown>) => Promise<void>
+  authPending: boolean
+  authError: unknown
 }) {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -350,9 +386,10 @@ function ApiWorkbench({
     move(delta)
   }
 
-  useStepKeys(nudge, pane !== 'response')
+  useStepKeys(nudge, pane !== 'response' && pane !== 'auth' && !authOpen)
+  useFormPaneNavigation('form', 'call-form', { stepKeys: false })
 
-  useEditHotkeys([
+  usePaneHotkeys('list', ['edit'], [
     {
       hotkey: 'Enter',
       callback: (event) => {
@@ -364,13 +401,16 @@ function ApiWorkbench({
         blurActive()
         document.getElementById(`op-${selected.id}`)?.focus()
       },
+      options: { ignoreInputs: false },
     },
     {
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
-        exitInsert('call-form')
+        blurActive()
+        activate('list', 'command')
       },
+      options: { ignoreInputs: false },
     },
   ])
 
@@ -421,33 +461,16 @@ function ApiWorkbench({
         void home({ to: '/' })
       },
     },
+    {
+      hotkey: 'A',
+      callback: () => {
+        onEditAuth?.()
+      },
+      options: { enabled: Boolean(onEditAuth) },
+    },
   ])
 
   usePaneHotkeys('form', ['command'], [
-    {
-      hotkey: { key: 'Tab' },
-      callback: () => {
-        nudge(1)
-      },
-    },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: () => {
-        nudge(-1)
-      },
-    },
-    {
-      hotkey: 'Enter',
-      callback: () => {
-        confirmForm('call-form')
-      },
-    },
-    {
-      hotkey: 'I',
-      callback: () => {
-        insertCurrentInput('call-form')
-      },
-    },
     {
       hotkey: 'Escape',
       callback: () => {
@@ -475,6 +498,13 @@ function ApiWorkbench({
       callback: () => {
         void home({ to: '/' })
       },
+    },
+    {
+      hotkey: 'A',
+      callback: () => {
+        onEditAuth?.()
+      },
+      options: { enabled: Boolean(onEditAuth) },
     },
   ])
 
@@ -535,11 +565,13 @@ function ApiWorkbench({
         { hotkey: ']', label: 'next server' },
       ]
     : []
+  const authHint = onEditAuth ? [{ hotkey: 'A', label: 'auth' }] : []
+  const sendHint = [{ hotkey: 'Mod+Enter', label: 'send' }]
   const hints =
     mode === 'edit'
       ? [
           { hotkey: 'Escape', label: 'command' },
-          ...(pane === 'form' ? [{ hotkey: 'Mod+Enter', label: 'send' }] : []),
+          ...(pane === 'form' ? sendHint : []),
         ]
       : pane === 'form'
         ? [
@@ -547,7 +579,8 @@ function ApiWorkbench({
             { hotkey: 'K', label: 'previous' },
             { hotkey: 'I', label: 'insert' },
             { hotkey: 'Enter', label: 'expand' },
-            { hotkey: 'Mod+Enter', label: 'send' },
+            ...sendHint,
+            ...authHint,
             { hotkey: 'Escape', label: 'operations' },
             { hotkey: 'Backspace', label: 'back' },
             ...serverHints,
@@ -570,6 +603,7 @@ function ApiWorkbench({
             { hotkey: 'K', label: 'previous' },
             { hotkey: 'Enter', label: 'fields' },
             { hotkey: 'I', label: 'fields' },
+            ...authHint,
             {
               hotkey: 'Escape',
               label: search.q ? 'clear filter' : 'specs',
@@ -726,12 +760,18 @@ function ApiWorkbench({
           </nav>
         </aside>
 
-        {selected && (pane === 'form' || pane === 'response') ? (
+        {selected && (pane === 'form' || pane === 'response' || preserveForm) ? (
           <OperationClient
             key={selected.id}
             api={api}
             operation={selected}
             serverUrl={serverUrl}
+            needsAuth={needsAuth}
+            authSchema={api.authSchema}
+            authUiSchema={api.authUiSchema}
+            authPending={authPending}
+            authError={authError}
+            onSaveAuth={onSaveAuth}
           />
         ) : null}
       </div>

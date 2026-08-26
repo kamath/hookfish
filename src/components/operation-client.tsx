@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
-import type { ClientApi, ClientOperation, InvokeResult } from '../lib/client-types'
+import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
-import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
+import { bindFormTabSync, insertCurrentInput, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
 import { readApiAuth } from '../lib/auth'
@@ -13,6 +13,7 @@ import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
+import { AuthFields } from './auth-fields'
 import { Kbd } from './hints'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
@@ -21,14 +22,29 @@ export function OperationClient({
   api,
   operation,
   serverUrl,
+  needsAuth,
+  authSchema,
+  authUiSchema,
+  authPending,
+  authError,
+  onSaveAuth,
 }: {
   api: ClientApi
   operation: ClientOperation
   serverUrl: string
+  needsAuth: boolean
+  authSchema?: JsonSchema
+  authUiSchema?: FormUiSchema
+  authPending?: boolean
+  authError?: unknown
+  onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
   const [formData, setFormData] = useState<unknown>({})
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
   const [result, setResult] = useState<InvokeResult | null>(null)
+  const [askingAuth, setAskingAuth] = useState(false)
+  const formDataRef = useRef(formData)
+  formDataRef.current = formData
   const { mode, pane } = useChrome()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
@@ -50,19 +66,31 @@ export function OperationClient({
   const error = invoke.isError
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
+  const showAuth = Boolean(askingAuth && needsAuth && authSchema)
+
   useEffect(() => {
+    setAskingAuth(false)
     const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 
   useEffect(() => bindFormTabSync('call-form'), [operation.id])
 
+  useEffect(() => {
+    if (!showAuth) {
+      return
+    }
+    const timer = window.setTimeout(() => insertCurrentInput('inline-auth-form'), 0)
+    return () => window.clearTimeout(timer)
+  }, [showAuth])
+
   useHotkey(
     'Mod+Enter',
     () => {
-      if (!pending) {
-        submitForm('call-form')
+      if (pending || authPending) {
+        return
       }
+      submitForm(showAuth ? 'inline-auth-form' : 'call-form')
     },
     { enabled: pane === 'form', ignoreInputs: false },
   )
@@ -87,8 +115,19 @@ export function OperationClient({
   }, [formData, operation.path, serverUrl])
 
   function onSubmit({ formData: next }: IChangeEvent) {
+    setFormData(next)
     setLastSubmission(next)
+    if (needsAuth) {
+      setAskingAuth(true)
+      return
+    }
     invoke.mutate(next)
+  }
+
+  async function onAuthContinue(value: Record<string, unknown>) {
+    await onSaveAuth(value)
+    setAskingAuth(false)
+    invoke.mutate(formDataRef.current)
   }
 
   function showForm(insert: boolean) {
@@ -164,25 +203,43 @@ export function OperationClient({
                   {error}
                 </p>
               ) : null}
-              <button
-                type="submit"
-                className={`${formPrimaryButtonClass} api-solid`}
-                disabled={pending}
-              >
-                {pending ? (
-                  'Sending…'
-                ) : (
-                  <>
-                    <span className="mr-2 inline-flex gap-1">
-                      <Kbd hotkey="Mod" />
-                      <Kbd hotkey="Enter" />
-                    </span>
-                    Send
-                  </>
-                )}
-              </button>
+              {showAuth ? null : (
+                <button
+                  type="submit"
+                  className={`${formPrimaryButtonClass} api-solid`}
+                  disabled={pending}
+                >
+                  {pending ? (
+                    'Sending…'
+                  ) : (
+                    <>
+                      <span className="mr-2 inline-flex gap-1">
+                        <Kbd hotkey="Mod" />
+                        <Kbd hotkey="Enter" />
+                      </span>
+                      Send
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </SwissForm>
+          {showAuth && authSchema ? (
+            <div className="mt-6 border-t border-rule pt-3">
+              <p className="mb-3 text-sm text-ink">Sign in to send this request.</p>
+              <AuthFields
+                id="inline-auth-form"
+                idPrefix="inline-auth"
+                schema={authSchema}
+                uiSchema={authUiSchema ?? {}}
+                pending={authPending}
+                error={authError}
+                onContinue={(value) => {
+                  void onAuthContinue(value)
+                }}
+              />
+            </div>
+          ) : null}
         </div>
       </section>
     </div>

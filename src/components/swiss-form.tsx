@@ -536,7 +536,7 @@ function FieldTemplate(props: FieldTemplateProps) {
             <span className="shrink-0">
               {label}
               {required ? (
-                <span className="text-signal" aria-hidden="true">
+                <span className="api-ink" aria-hidden="true">
                   *
                 </span>
               ) : null}
@@ -564,7 +564,7 @@ function TitleFieldTemplate(props: TitleFieldProps) {
       <span>
         {title}
         {required ? (
-          <span className="text-signal" aria-hidden="true">
+          <span className="api-ink" aria-hidden="true">
             *
           </span>
         ) : null}
@@ -1016,6 +1016,7 @@ const theme: ThemeProps = {
     SelectWidget,
     CheckboxWidget,
     TextareaWidget,
+    PasswordWidget: (props: WidgetProps) => <BaseInputTemplate {...props} type="password" />,
   },
 }
 
