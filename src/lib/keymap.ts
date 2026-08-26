@@ -298,6 +298,13 @@ export function bindEnterMode() {
     ) {
       return
     }
+    const target = event.target
+    if (
+      target instanceof HTMLElement &&
+      target.closest('form[data-oc-enter-submit="true"]')
+    ) {
+      return
+    }
     event.preventDefault()
     event.stopImmediatePropagation()
     const active = document.activeElement
