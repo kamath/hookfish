@@ -117,6 +117,12 @@ export function bindModeFromFocus() {
     const target = event.target
     if (
       target instanceof HTMLElement &&
+      target.dataset.ocClipboardFallback === 'true'
+    ) {
+      return
+    }
+    if (
+      target instanceof HTMLElement &&
       target.closest('[data-oc-command-focus="true"]')
     ) {
       enterCommand()
