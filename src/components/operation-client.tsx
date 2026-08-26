@@ -8,8 +8,8 @@ import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import {
   bindFormTabSync,
-  insertMatchingInput,
-  selectDefaultInput,
+  selectDefaultFormItem,
+  selectMatchingFormItem,
 } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { useViewActions, useViewFlags } from '../lib/keys'
@@ -153,7 +153,7 @@ export function OperationClient({
   useEffect(() => {
     setAskingAuth(false)
     setCopied(false)
-    const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 
@@ -165,7 +165,7 @@ export function OperationClient({
     }
     const timer = window.setTimeout(
       () =>
-        insertMatchingInput('call-form', (item) => {
+        selectMatchingFormItem('call-form', (item) => {
           const prefix = `${operation.id}_auth`
           return item.id === prefix || item.id.startsWith(`${prefix}_`)
         }),
@@ -262,7 +262,7 @@ export function OperationClient({
   function showForm(insert: boolean) {
     activate('form', 'command')
     if (insert) {
-      window.setTimeout(() => selectDefaultInput('call-form'), 0)
+      window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     }
   }
 

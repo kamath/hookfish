@@ -28,7 +28,10 @@ function Home() {
     mutationFn: (url: string) => addApi(url),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
-      await router.navigate({ to: '/apis/$apiId', params: { apiId: id } })
+      await router.navigate({
+        to: '/apis/$apiId/{-$operationId}',
+        params: { apiId: id, operationId: undefined },
+      })
     },
     onError: () => {
       urlRef.current?.focus()
@@ -62,7 +65,10 @@ function Home() {
       callback: () => {
         const api = apis[selected]
         if (api) {
-          void router.navigate({ to: '/apis/$apiId', params: { apiId: api.id } })
+          void router.navigate({
+            to: '/apis/$apiId/{-$operationId}',
+            params: { apiId: api.id, operationId: undefined },
+          })
         }
       },
       enabled: apis.length > 0,
@@ -164,8 +170,8 @@ function Home() {
                   className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                 >
                   <Link
-                    to="/apis/$apiId"
-                    params={{ apiId: api.id }}
+                    to="/apis/$apiId/{-$operationId}"
+                    params={{ apiId: api.id, operationId: undefined }}
                     className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
                     onFocus={() => setSelected(index)}
                   >

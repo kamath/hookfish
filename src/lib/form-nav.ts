@@ -353,6 +353,26 @@ export function selectDefaultInput(rootId: string): boolean {
   return true
 }
 
+export function selectDefaultFormItem(rootId: string): boolean {
+  const root = formRoot(rootId)
+  const items = listFormInputs(rootId)
+  if (!root) {
+    return false
+  }
+
+  const target = firstRequiredInput(root) ?? submitControl(root, items)
+  if (!target) {
+    return false
+  }
+
+  blurActive()
+  enterCommand()
+  markItem(root, target)
+  syncMode(root)
+  scrollMark(target)
+  return true
+}
+
 export function selectFirstInput(rootId: string): boolean {
   return selectDefaultInput(rootId)
 }
@@ -397,6 +417,25 @@ export function insertMatchingInput(
   scrollMark(target)
   blurActive()
   scheduleInsertFocus(target)
+  return true
+}
+
+export function selectMatchingFormItem(
+  rootId: string,
+  match: (item: HTMLElement) => boolean,
+): boolean {
+  const root = formRoot(rootId)
+  const items = listFormInputs(rootId)
+  const target = items.find((item) => isEditableControl(item) && match(item))
+  if (!root || !target) {
+    return false
+  }
+
+  blurActive()
+  enterCommand()
+  markItem(root, target)
+  syncMode(root)
+  scrollMark(target)
   return true
 }
 

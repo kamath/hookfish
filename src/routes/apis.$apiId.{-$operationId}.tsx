@@ -8,10 +8,7 @@ import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
-import {
-  selectDefaultInput,
-  useFormPaneNavigation,
-} from '../lib/form-nav'
+import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
 import { consumePointerIntent, useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
 import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
@@ -19,14 +16,12 @@ import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
 type Search = {
-  op?: string
   q?: string
 }
 
-export const Route = createFileRoute('/apis/$apiId')({
+export const Route = createFileRoute('/apis/$apiId/{-$operationId}')({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
-    op: typeof search.op === 'string' ? search.op : undefined,
     q: typeof search.q === 'string' ? search.q : undefined,
   }),
   component: ApiClientPage,
@@ -174,17 +169,18 @@ function ApiWorkbench({
   authPending: boolean
   authError: unknown
 }) {
+  const { operationId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
   const { pane } = useChrome()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
-  const [heldOp, setHeldOp] = useState(search.op)
-  const heldOpRef = useRef(search.op)
+  const [heldOp, setHeldOp] = useState(operationId)
+  const heldOpRef = useRef(operationId)
   const localOpRef = useRef(false)
   useEffect(() => {
-    activate(search.op ? 'form' : 'list', 'command')
-  }, [api.id])
+    activate(operationId ? 'form' : 'list', 'command')
+  }, [api.id, operationId])
 
   const ranked = useMemo(() => {
     const query = search.q?.trim() ?? ''
@@ -210,7 +206,7 @@ function ApiWorkbench({
     [groups, ranked],
   )
   const selected =
-    orderedOperations.find((operation) => operation.id === (heldOp ?? search.op)) ??
+    orderedOperations.find((operation) => operation.id === (heldOp ?? operationId)) ??
     orderedOperations[0]
   const selectedIndex = selected
     ? orderedOperations.findIndex((operation) => operation.id === selected.id)
@@ -219,14 +215,14 @@ function ApiWorkbench({
 
   useEffect(() => {
     if (localOpRef.current) {
-      if (search.op === heldOpRef.current) {
+      if (operationId === heldOpRef.current) {
         localOpRef.current = false
       }
       return
     }
-    heldOpRef.current = search.op
-    setHeldOp(search.op)
-  }, [search.op])
+    heldOpRef.current = operationId
+    setHeldOp(operationId)
+  }, [operationId])
 
   function holdOp(id: string, fromKeys = false) {
     localOpRef.current = fromKeys
@@ -293,11 +289,10 @@ function ApiWorkbench({
     holdOp(selected.id)
     activate('form', 'command')
     void navigate({
-      search: (previous) => ({ ...previous, op: selected.id }),
-      replace: true,
+      to: '/apis/$apiId/{-$operationId}',
+      params: { apiId: api.id, operationId: selected.id },
       resetScroll: false,
     })
-    window.setTimeout(() => selectDefaultInput('call-form'), 0)
   }
 
   function navigateOperation(delta: number) {
@@ -308,7 +303,8 @@ function ApiWorkbench({
     holdOp(next.id)
     activate('form', 'command')
     void navigate({
-      search: (previous) => ({ ...previous, op: next.id }),
+      to: '/apis/$apiId/{-$operationId}',
+      params: { apiId: api.id, operationId: next.id },
       replace: true,
       resetScroll: false,
     })
@@ -324,7 +320,8 @@ function ApiWorkbench({
       activate('list', 'command')
       blurActive()
       void navigate({
-        search: (previous) => ({ ...previous, op: undefined }),
+        to: '/apis/$apiId/{-$operationId}',
+        params: { apiId: api.id, operationId: undefined },
         replace: true,
         resetScroll: false,
       })
@@ -367,7 +364,7 @@ function ApiWorkbench({
     manyServers,
   })
   useStepKeys('list', move)
-  useFormPaneNavigation('form', 'call-form', { stepKeys: false })
+  useFormPaneNavigation('form', 'call-form')
 
   useViewActions('list', {
     filter: () => {
@@ -435,12 +432,8 @@ function ApiWorkbench({
       <li key={operation.id}>
         <Link
           id={`op-${operation.id}`}
-          to="/apis/$apiId"
-          params={{ apiId: api.id }}
-          search={(previous) => ({
-            ...previous,
-            op: operation.id,
-          })}
+          to="/apis/$apiId/{-$operationId}"
+          params={{ apiId: api.id, operationId: operation.id }}
           resetScroll={false}
           onClick={() => {
             holdOp(operation.id)
