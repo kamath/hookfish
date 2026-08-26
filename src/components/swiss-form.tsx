@@ -661,8 +661,11 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   const canAdd = canExpand(schema, uiSchema, formData)
   const notice = typeof options.notice === 'string' ? options.notice : undefined
   const noticeNode = notice ? (
-    <p className="mb-2 mt-3 text-sm text-ink">{notice}</p>
+    <p className="mb-2 text-sm text-ink">{notice}</p>
   ) : null
+  const washClass = options.wash
+    ? 'mt-3 bg-ink/5 -mx-3 px-3 py-3 md:-mx-4 md:px-4'
+    : ''
   const descriptionNode = description ? (
     <DescriptionField
       id={descriptionId(fieldPathId)}
@@ -685,7 +688,7 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   if (options.inline === true) {
     return (
       <fieldset
-        className={`${className ?? ''} min-w-0 border-0 p-0`}
+        className={`${className ?? ''} min-w-0 border-0 p-0 ${washClass}`}
         id={fieldPathId.$id}
       >
         {noticeNode}
@@ -706,7 +709,7 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
       ) : undefined
 
     return (
-      <div className="min-w-0">
+      <div className={`min-w-0 ${washClass}`}>
         {noticeNode}
         <NavGroup
           id={fieldPathId.$id}

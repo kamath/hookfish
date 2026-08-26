@@ -52,6 +52,7 @@ function withAuthUiSchema(uiSchema: FormUiSchema, authUiSchema?: FormUiSchema): 
         ...asRecord(extra['ui:options']),
         inline: true,
         notice: AUTH_NOTICE,
+        wash: true,
       },
     },
   }
