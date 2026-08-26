@@ -78,6 +78,10 @@ body {
   max-width: none;
 }
 
+.oc-wash .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  max-width: none;
+}
+
 .oc-nest {
   --oc-gutter: 0.75rem;
   margin-block: 0.25rem;

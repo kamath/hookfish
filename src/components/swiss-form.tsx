@@ -686,15 +686,20 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   ) : null
 
   if (options.inline === true) {
+    const fields = (
+      <>
+        {descriptionNode}
+        {properties.map((property) => property.content)}
+        {addNode}
+      </>
+    )
     return (
       <fieldset
         className={`${className ?? ''} min-w-0 border-0 p-0 ${washClass}`}
         id={fieldPathId.$id}
       >
         {noticeNode}
-        {descriptionNode}
-        {properties.map((property) => property.content)}
-        {addNode}
+        {options.nest ? <div className="oc-nest">{fields}</div> : fields}
       </fieldset>
     )
   }

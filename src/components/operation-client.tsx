@@ -53,6 +53,7 @@ function withAuthUiSchema(uiSchema: FormUiSchema, authUiSchema?: FormUiSchema): 
         inline: true,
         notice: AUTH_NOTICE,
         wash: true,
+        nest: true,
       },
     },
   }
