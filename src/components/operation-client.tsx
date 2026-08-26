@@ -8,7 +8,7 @@ import { bindFormTabSync, insertCurrentInput, selectDefaultInput } from '../lib/
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
 import { readApiAuth } from '../lib/auth'
-import { toCurl } from '../lib/export-snippet'
+import { toFetch } from '../lib/export-snippet'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
@@ -86,7 +86,7 @@ export function OperationClient({
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
-  const canCopyCurl = !needsAuth && !showAuth
+  const canCopyFetch = !needsAuth && !showAuth
 
   useEffect(() => {
     setAskingAuth(false)
@@ -113,10 +113,10 @@ export function OperationClient({
     return () => window.clearTimeout(timer)
   }, [copied])
 
-  async function copyCurl() {
+  async function copyFetch() {
     try {
       const ok = await copyText(
-        toCurl(
+        toFetch(
           buildOperationRequest({
             serverUrl,
             operation,
@@ -152,9 +152,9 @@ export function OperationClient({
   useHotkey(
     'Y',
     () => {
-      void copyCurl()
+      void copyFetch()
     },
-    { enabled: pane === 'form' && mode === 'command' && canCopyCurl },
+    { enabled: pane === 'form' && mode === 'command' && canCopyFetch },
   )
 
   function onSubmit({ formData: next }: IChangeEvent) {
@@ -247,18 +247,18 @@ export function OperationClient({
               ) : null}
               {showAuth ? null : (
                 <div className="flex flex-wrap items-center gap-2">
-                  {canCopyCurl ? (
+                  {canCopyFetch ? (
                     <button
                       type="button"
                       className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
                       aria-live="polite"
-                      aria-label={copied ? 'Copied cURL' : 'Copy as cURL'}
+                      aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
                       onClick={() => {
-                        void copyCurl()
+                        void copyFetch()
                       }}
                     >
                       <Kbd hotkey="Y" />
-                      {copied ? 'Copied' : 'Copy as cURL'}
+                      {copied ? 'Copied' : 'Copy as fetch'}
                     </button>
                   ) : null}
                   <button

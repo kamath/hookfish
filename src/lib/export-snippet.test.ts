@@ -1,25 +1,25 @@
 import assert from 'node:assert/strict'
-import { toCurl } from './export-snippet.ts'
+import { toFetch } from './export-snippet.ts'
 
 assert.equal(
-  toCurl({
+  toFetch({
     method: 'GET',
     url: 'https://petstore3.swagger.io/api/v3/pet/findByStatus?status=available',
     headers: {},
   }),
-  "curl 'https://petstore3.swagger.io/api/v3/pet/findByStatus?status=available'",
+  'await fetch("https://petstore3.swagger.io/api/v3/pet/findByStatus?status=available")',
 )
 
 assert.equal(
-  toCurl({
+  toFetch({
     method: 'GET',
     url: "https://example.com/it's",
     headers: { 'X-Name': "O'Reilly" },
   }),
-  "curl 'https://example.com/it'\\''s' \\\n  -H 'X-Name: O'\\''Reilly'",
+  'await fetch("https://example.com/it\'s", {\n  headers: {\n    "X-Name": "O\'Reilly"\n  },\n})',
 )
 
-const curlPost = toCurl({
+const fetchPost = toFetch({
   method: 'POST',
   url: 'https://petstore3.swagger.io/api/v3/pet',
   headers: {
@@ -32,10 +32,10 @@ const curlPost = toCurl({
     status: 'available',
   }),
 })
-assert.match(curlPost, /curl 'https:\/\/petstore3\.swagger\.io\/api\/v3\/pet' \\/)
-assert.match(curlPost, /-X POST \\/)
-assert.match(curlPost, /-H 'Content-Type: application\/json' \\/)
-assert.match(curlPost, /--data-raw '\{/)
-assert.match(curlPost, /"name": "doggie"/)
+assert.match(fetchPost, /await fetch\("https:\/\/petstore3\.swagger\.io\/api\/v3\/pet", \{/)
+assert.match(fetchPost, /method: "POST"/)
+assert.match(fetchPost, /"Content-Type": "application\/json"/)
+assert.match(fetchPost, /body: JSON\.stringify\(\{/)
+assert.match(fetchPost, /"name": "doggie"/)
 
 console.log('export-snippet ok')

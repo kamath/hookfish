@@ -522,7 +522,7 @@ function ApiWorkbench({
     ? [{ hotkey: 'Mod+Backspace', label: 'clear auth' }]
     : []
   const sendHint = [{ hotkey: 'Mod+Enter', label: 'send' }]
-  const copyHint = [{ hotkey: 'Y', label: 'copy curl' }]
+  const copyHint = [{ hotkey: 'Y', label: 'copy fetch' }]
   const hints =
     mode === 'edit'
       ? [

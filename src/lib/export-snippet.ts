@@ -26,28 +26,45 @@ function jsonBody(request: ExecuteRequest): unknown {
   }
 }
 
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`
+function prettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2)
 }
 
-export function toCurl(request: ExecuteRequest): string {
-  const lines = [`curl ${shellSingleQuote(request.url)}`]
+function indentBlock(text: string, spaces: number): string {
+  const pad = ' '.repeat(spaces)
+  return text
+    .split('\n')
+    .map((line, index) => (index === 0 ? line : `${pad}${line}`))
+    .join('\n')
+}
+
+function jsOptions(request: ExecuteRequest): string | undefined {
+  const fields: string[] = []
   if (request.method !== 'GET') {
-    lines.push(`  -X ${request.method}`)
+    fields.push(`method: ${JSON.stringify(request.method)}`)
   }
-  for (const [name, value] of headerList(request)) {
-    lines.push(`  -H ${shellSingleQuote(`${name}: ${value}`)}`)
+  const headers = headerList(request)
+  if (headers.length > 0) {
+    fields.push(`headers: ${indentBlock(prettyJson(Object.fromEntries(headers)), 2)}`)
   }
   if (request.body) {
     const json = jsonBody(request)
-    const payload =
-      json === undefined ? request.body : JSON.stringify(json, null, 2)
-    lines.push(`  --data-raw ${shellSingleQuote(payload)}`)
+    if (json !== undefined) {
+      fields.push(`body: JSON.stringify(${indentBlock(prettyJson(json), 2)})`)
+    } else {
+      fields.push(`body: ${JSON.stringify(request.body)}`)
+    }
   }
-  if (lines.length === 1) {
-    return lines[0] ?? 'curl'
+  if (fields.length === 0) {
+    return undefined
   }
-  return lines
-    .map((line, index) => (index === lines.length - 1 ? line : `${line} \\`))
-    .join('\n')
+  return `{\n  ${fields.join(',\n  ')},\n}`
+}
+
+export function toFetch(request: ExecuteRequest): string {
+  const options = jsOptions(request)
+  if (!options) {
+    return `await fetch(${JSON.stringify(request.url)})`
+  }
+  return `await fetch(${JSON.stringify(request.url)}, ${options})`
 }
