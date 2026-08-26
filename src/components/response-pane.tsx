@@ -309,6 +309,8 @@ export function ResponsePane({
                   : index === selected + 1
                     ? 'J'
                     : undefined
+            const childrenHint =
+              index === 1 && index === selected && node.collection ? 'A' : undefined
             return (
               <button
                 key={node.id}
@@ -336,7 +338,8 @@ export function ResponsePane({
                   }
                 }}
               >
-                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
+                <span className="inline-flex w-12 shrink-0 justify-end gap-1 pr-2">
+                  {childrenHint ? <Kbd hotkey={childrenHint} /> : null}
                   {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                 </span>
                 <span
