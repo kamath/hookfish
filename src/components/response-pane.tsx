@@ -197,8 +197,9 @@ export function ResponsePane({
     })
   }
 
-  const canToggleChildren =
-    selected === 1 && Boolean(rows[selected]?.collection)
+  const activeRow = rows[selected]
+  const firstActiveChildId = activeRow?.children?.[0]?.id
+  const canToggleChildren = Boolean(activeRow?.collection)
   useViewFlags('response', {
     canToggleChildren,
     hasHeaders: result.headers.length > 0,
@@ -308,8 +309,7 @@ export function ResponsePane({
                   : index === selected + 1
                     ? 'J'
                     : undefined
-            const childrenHint =
-              index === 1 && index === selected && node.collection ? 'A' : undefined
+            const childrenHint = node.id === firstActiveChildId ? 'A' : undefined
             return (
               <button
                 key={node.id}
