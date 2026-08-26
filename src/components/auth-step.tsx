@@ -4,7 +4,8 @@ import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { activateCurrentControl, bindFormTabSync, exitInsert, insertCurrentInput, moveFormTab, selectFirstInput } from '../lib/form-nav'
+import { bindFormTabSync, confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import { commandHotkey } from '../lib/keys'
 import { repeatHotkey, useRepeatDelta } from '../lib/repeat'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
@@ -29,7 +30,7 @@ export function AuthStep({
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => selectFirstInput('auth-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultInput('auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -51,9 +52,14 @@ export function AuthStep({
     },
     {
       hotkey: 'I',
-      callback: () => {
+      callback: (event) => {
+        if (isTypingInCurrentField('auth-form')) {
+          return
+        }
+        event.preventDefault()
         insertCurrentInput('auth-form')
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'J',
@@ -83,20 +89,25 @@ export function AuthStep({
     },
     {
       hotkey: 'Enter',
-      callback: () => {
-        if (!activateCurrentControl('auth-form')) {
-          insertCurrentInput('auth-form')
+      callback: (event) => {
+        if (document.activeElement instanceof HTMLTextAreaElement) {
+          return
         }
+        event.preventDefault()
+        confirmForm('auth-form')
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'Escape',
-      callback: () => {
+      callback: (event) => {
+        event.preventDefault()
         if (exitInsert('auth-form')) {
           return
         }
         onLeave()
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'Backspace',

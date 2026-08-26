@@ -4,7 +4,7 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, InvokeResult } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
-import { bindFormTabSync, selectFirstInput } from '../lib/form-nav'
+import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { invokeOperation } from '../lib/invoke.functions'
 import { formPrimaryButtonClass } from '../lib/ui'
@@ -33,7 +33,7 @@ export function OperationClient({
   const [result, setResult] = useState<InvokeResult | null>(null)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => selectFirstInput('call-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 

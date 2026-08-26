@@ -41,10 +41,70 @@ function formRoot(rootId: string): HTMLElement | null {
   return document.getElementById(rootId)
 }
 
-function formHasFocus(rootId: string) {
-  const root = formRoot(rootId)
-  const active = document.activeElement
-  return Boolean(root && active instanceof Node && root.contains(active))
+function syncMode(root: HTMLElement) {
+  root.dataset.ocMode = isInsertMode() ? 'insert' : 'command'
+}
+
+const EDITABLE_SELECTOR = [
+  'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"])',
+  'textarea',
+  'select',
+].join(',')
+
+let insertFocusTimer = 0
+
+function isEditableControl(element: HTMLElement) {
+  if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+    return true
+  }
+  if (element instanceof HTMLInputElement) {
+    return !['button', 'submit', 'reset', 'hidden'].includes(element.type.toLowerCase())
+  }
+  return element.isContentEditable
+}
+
+function markedScope(root: HTMLElement): HTMLElement {
+  return root.querySelector<HTMLElement>('[data-oc-current="true"]') ?? root
+}
+
+function editableIn(scope: HTMLElement): HTMLElement | undefined {
+  if (isEditableControl(scope)) {
+    return scope
+  }
+  return [...scope.querySelectorAll<HTMLElement>(EDITABLE_SELECTOR)].find(isTabbable)
+}
+
+function scrollMark(element: HTMLElement) {
+  const field = element.closest<HTMLElement>('[data-oc-nav="field"]') ?? element
+  field.scrollIntoView({ block: 'nearest' })
+}
+
+function focusInsertTarget(element: HTMLElement) {
+  const target = editableIn(element) ?? element
+  target.focus({ preventScroll: true })
+  if (
+    (target instanceof HTMLInputElement &&
+      /^(text|search|url|tel|password|email|number)$/.test(target.type)) ||
+    target instanceof HTMLTextAreaElement
+  ) {
+    const end = target.value.length
+    try {
+      target.setSelectionRange(end, end)
+    } catch {
+      // Some input types reject a selection range.
+    }
+  }
+}
+
+function scheduleInsertFocus(element: HTMLElement) {
+  window.clearTimeout(insertFocusTimer)
+  insertFocusTimer = window.setTimeout(() => {
+    insertFocusTimer = 0
+    if (!isInsertMode()) {
+      return
+    }
+    focusInsertTarget(element)
+  }, 0)
 }
 
 function clearCurrent(root: HTMLElement) {
@@ -156,6 +216,7 @@ export function bindFormTabSync(rootId: string) {
     if (isEditing()) {
       setInsertMode(true)
     }
+    syncMode(root)
   }
 
   root.addEventListener('focusin', onFocusIn)
@@ -185,7 +246,8 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   setInsertMode(false)
   blurActive()
   markItem(root, next)
-  next.scrollIntoView({ block: 'nearest' })
+  syncMode(root)
+  scrollMark(next)
   return true
 }
 
@@ -193,18 +255,58 @@ export function moveInputTab(rootId: string, delta: number): boolean {
   return moveFormTab(rootId, delta)
 }
 
-export function selectFirstInput(rootId: string): boolean {
+function firstRequiredInput(root: HTMLElement): HTMLElement | undefined {
+  for (const field of root.querySelectorAll<HTMLElement>('[data-oc-nav="field"][data-oc-required="true"]')) {
+    const input = editableIn(field)
+    if (input && isTabbable(input)) {
+      return input
+    }
+  }
+  return listFormInputs(root.id).find(
+    (item) => isEditableControl(item) && 'required' in item && Boolean((item as HTMLInputElement).required),
+  )
+}
+
+function submitControl(root: HTMLElement, items: HTMLElement[]): HTMLElement | undefined {
+  const send = root.querySelector<HTMLElement>('button[type="submit"]:not([disabled])')
+  if (send && isTabbable(send)) {
+    return send
+  }
+  return items.find((item) => item instanceof HTMLButtonElement && item.type === 'submit')
+}
+
+export function selectDefaultInput(rootId: string): boolean {
   const root = formRoot(rootId)
   const items = listFormInputs(rootId)
-  const first = items[0]
-  if (!root || !first) {
+  if (!root) {
     return false
   }
+
+  const required = firstRequiredInput(root)
+  if (required) {
+    markItem(root, required)
+    setInsertMode(true)
+    syncMode(root)
+    scrollMark(required)
+    scheduleInsertFocus(required)
+    return true
+  }
+
+  const send = submitControl(root, items)
+  if (!send) {
+    return false
+  }
+
   setInsertMode(false)
-  blurActive()
-  markItem(root, first)
-  first.scrollIntoView({ block: 'nearest' })
+  markItem(root, send)
+  syncMode(root)
+  scrollMark(send)
+  send.focus({ preventScroll: true })
   return true
+}
+
+export function selectFirstInput(rootId: string): boolean {
+  return selectDefaultInput(rootId)
 }
 
 export function insertCurrentInput(rootId: string): boolean {
@@ -214,16 +316,31 @@ export function insertCurrentInput(rootId: string): boolean {
     return false
   }
 
-  const target = currentFormItem(rootId) ?? items[0]
+  const target = editableIn(markedScope(root)) ?? currentFormItem(rootId) ?? items[0]
   if (!target) {
     return false
   }
 
   markItem(root, target)
   setInsertMode(true)
-  target.focus()
-  target.scrollIntoView({ block: 'nearest' })
+  syncMode(root)
+  scrollMark(target)
+  blurActive()
+  scheduleInsertFocus(target)
   return true
+}
+
+export function isTypingInCurrentField(rootId: string) {
+  if (!isEditing()) {
+    return false
+  }
+  const root = formRoot(rootId)
+  const active = document.activeElement
+  if (!root || !(active instanceof HTMLElement)) {
+    return false
+  }
+  const marked = markedScope(root)
+  return marked === active || marked.contains(active)
 }
 
 export function focusFirstInput(rootId: string): boolean {
@@ -231,7 +348,12 @@ export function focusFirstInput(rootId: string): boolean {
 }
 
 export function exitInsert(rootId: string): boolean {
-  if (!isInsertMode() && !isEditing() && !formHasFocus(rootId)) {
+  if (!isEditing()) {
+    const root = formRoot(rootId)
+    if (isInsertMode() && root) {
+      setInsertMode(false)
+      syncMode(root)
+    }
     return false
   }
 
@@ -241,10 +363,23 @@ export function exitInsert(rootId: string): boolean {
   const index = items.findIndex((item) => item === active)
   blurActive()
   setInsertMode(false)
-  if (root && index !== -1 && items[index]) {
-    markItem(root, items[index])
+  if (root) {
+    if (index !== -1 && items[index]) {
+      markItem(root, items[index])
+    }
+    syncMode(root)
   }
   return true
+}
+
+export function confirmForm(rootId: string): boolean {
+  if (isEditing()) {
+    return false
+  }
+  if (activateCurrentControl(rootId)) {
+    return true
+  }
+  return insertCurrentInput(rootId)
 }
 
 export function activateCurrentControl(rootId: string): boolean {

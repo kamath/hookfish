@@ -159,30 +159,34 @@ function NavGroup({
               type="button"
               data-oc-toggle
               aria-expanded={visible}
-              className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink hover:bg-ink/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal"
+              className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink hover:bg-ink/15 focus-visible:bg-ink/15"
               onClick={toggle}
             >
               <span aria-hidden="true" className="font-mono text-signal">
                 {visible && (showMore || !hasMore) ? '−' : '+'}
               </span>
-              <span className="min-w-0 truncate">{title}</span>
-              {required ? (
-                <span className="text-signal" aria-hidden="true">
-                  *
-                </span>
-              ) : null}
+              <span className="flex min-w-0 items-baseline">
+                <span className="min-w-0 truncate">{title}</span>
+                {required ? (
+                  <span className="shrink-0 text-signal" aria-hidden="true">
+                    *
+                  </span>
+                ) : null}
+              </span>
               {extrasHidden ? (
                 <span className="shrink-0 text-ink/40">{optionalParamsLabel(optionalCount)}</span>
               ) : null}
             </button>
           ) : (
             <span className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink">
-              <span className="min-w-0 truncate">{title}</span>
-              {required ? (
-                <span className="text-signal" aria-hidden="true">
-                  *
-                </span>
-              ) : null}
+              <span className="flex min-w-0 items-baseline">
+                <span className="min-w-0 truncate">{title}</span>
+                {required ? (
+                  <span className="shrink-0 text-signal" aria-hidden="true">
+                    *
+                  </span>
+                ) : null}
+              </span>
             </span>
           )}
           {extra}
@@ -329,7 +333,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
-      className={`${formInputClass} min-h-20 resize-y ${rawErrors?.length ? 'border-signal' : ''}`}
+      className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-signal' : ''}`}
       value={value || ''}
       placeholder={placeholder}
       required={required}
@@ -533,17 +537,20 @@ function FieldTemplate(props: FieldTemplateProps) {
   return (
     <WrapIfAdditionalTemplate {...props}>
       <div
-        className="mb-2 flex min-w-0 flex-col gap-1"
+        className={`mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
         data-oc-nav={nest ? undefined : 'field'}
+        data-oc-required={required && !nest ? 'true' : undefined}
       >
         {displayLabel && !isCheckbox ? (
           <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
-            <span className="shrink-0">{label}</span>
-            {required ? (
-              <span className="shrink-0 text-signal" aria-hidden="true">
-                *
-              </span>
-            ) : null}
+            <span className="shrink-0">
+              {label}
+              {required ? (
+                <span className="text-signal" aria-hidden="true">
+                  *
+                </span>
+              ) : null}
+            </span>
             {typeLabel ? <span className={`shrink-0 ${typeClass}`}>{typeLabel}</span> : null}
             {description}
           </label>
@@ -567,7 +574,7 @@ function TitleFieldTemplate(props: TitleFieldProps) {
       <span>
         {title}
         {required ? (
-          <span className="ml-1 text-signal" aria-hidden="true">
+          <span className="text-signal" aria-hidden="true">
             *
           </span>
         ) : null}
@@ -907,7 +914,7 @@ function WrapIfAdditionalTemplate(props: WrapIfAdditionalTemplateProps) {
 
   return (
     <div className={`grid min-w-0 grid-cols-1 gap-2 md:grid-cols-12 ${classNames ?? ''}`} style={style}>
-      <div className="md:col-span-4" tabIndex={-1} data-oc-nav="field">
+      <div className="p-2 md:col-span-4" tabIndex={-1} data-oc-nav="field">
         <label htmlFor={`${id}-key`} className={labelClass}>
           Key
         </label>

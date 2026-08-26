@@ -61,8 +61,9 @@ body {
 }
 
 .oc-nest {
+  --oc-gutter: 0.75rem;
   margin-block: 0.25rem;
-  padding-inline-start: 0.75rem;
+  padding-inline-start: var(--oc-gutter);
   border-inline-start: 1px solid var(--rule);
 }
 
@@ -86,11 +87,50 @@ kbd {
 }
 
 [data-oc-current='true'] {
-  outline: 1px solid var(--signal);
-  outline-offset: 3px;
+  background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
+}
+
+[data-oc-current='true'] :is(input, textarea, select) {
+  background-color: var(--paper);
+}
+
+[data-oc-mode='insert'] [data-oc-current='true'] {
+  background-color: transparent;
+}
+
+.oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  margin-inline-start: calc(-1 * var(--oc-gutter) - 1px);
+  padding-inline-start: calc(0.5rem + var(--oc-gutter) + 1px);
+  border-inline-start: 1px solid var(--signal);
+}
+
+.oc-nest .oc-fold[data-oc-current='true'] {
+  position: relative;
+}
+
+.oc-nest .oc-fold[data-oc-current='true']::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(-1 * (var(--oc-gutter) + 0.5rem + 1px));
+  width: 1px;
+  background: var(--signal);
+  pointer-events: none;
 }
 
 .oc-fold[data-oc-current='true'],
 .oc-fold:focus-visible {
-  border-color: var(--signal);
+  background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
+}
+
+[data-oc-mode='insert'] .oc-fold[data-oc-current='true'] {
+  background-color: var(--paper);
+}
+
+button[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--ink) 10%, var(--signal));
+}
+
+[data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
+  background-color: var(--signal);
 }

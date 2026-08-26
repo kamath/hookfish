@@ -9,7 +9,8 @@ import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { blurActive } from '../lib/focus'
 import { setInsertMode } from '../lib/form-mode'
-import { activateCurrentControl, exitInsert, insertCurrentInput, moveFormTab, selectFirstInput } from '../lib/form-nav'
+import { confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import { commandHotkey } from '../lib/keys'
 import { asRecord } from '../lib/build-request'
 import { repeatHotkey, useRepeatDelta, useTrailingCommit } from '../lib/repeat'
 import { inputClass } from '../lib/ui'
@@ -299,42 +300,52 @@ function ApiWorkbench({
     },
     {
       hotkey: 'Enter',
-      callback: () => {
-        opCommit.flush()
-        if (pane === 'form') {
-          if (!activateCurrentControl('call-form')) {
-            insertCurrentInput('call-form')
+      callback: (event) => {
+        if (paneRef.current === 'form') {
+          if (document.activeElement instanceof HTMLTextAreaElement) {
+            return
           }
+          event.preventDefault()
+          confirmForm('call-form')
           return
         }
+        event.preventDefault()
+        opCommit.flush()
         if (selected) {
           setPane('form')
-          window.setTimeout(() => selectFirstInput('call-form'), 0)
+          window.setTimeout(() => selectDefaultInput('call-form'), 0)
         }
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'I',
-      callback: () => {
-        opCommit.flush()
-        if (pane === 'form') {
+      callback: (event) => {
+        if (paneRef.current === 'form') {
+          if (isTypingInCurrentField('call-form')) {
+            return
+          }
+          event.preventDefault()
           insertCurrentInput('call-form')
           return
         }
+        event.preventDefault()
         if (selected) {
           setPane('form')
-          window.setTimeout(() => insertCurrentInput('call-form'), 0)
         }
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'Escape',
-      callback: () => {
+      callback: (event) => {
+        event.preventDefault()
         if (exitInsert('call-form')) {
           return
         }
         stepBack()
       },
+      options: commandHotkey,
     },
     {
       hotkey: 'Backspace',
