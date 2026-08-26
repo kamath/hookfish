@@ -34,7 +34,12 @@ html {
 html,
 body,
 #app {
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  height: 100dvh;
 }
 
 body {
@@ -55,6 +60,17 @@ body {
   margin: 0;
 }
 
+.oc-nest {
+  margin-block: 0.25rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 1px solid var(--rule);
+}
+
+.oc-nest .oc-nest .oc-nest .oc-nest {
+  padding-inline-start: 0;
+  border-inline-start: none;
+}
+
 kbd {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -72,4 +88,9 @@ kbd {
 [data-oc-current='true'] {
   outline: 1px solid var(--signal);
   outline-offset: 3px;
+}
+
+.oc-fold[data-oc-current='true'],
+.oc-fold:focus-visible {
+  border-color: var(--signal);
 }

@@ -37,7 +37,7 @@ import type {
   WidgetProps,
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils'
-import { ghostButtonClass, inputClass, labelClass, typeClass } from '../lib/ui'
+import { formGhostButtonClass, formInputClass, labelClass, typeClass } from '../lib/ui'
 
 function isNestSchema(schema: RJSFSchema | undefined): boolean {
   if (!schema) {
@@ -56,49 +56,112 @@ function isNestSchema(schema: RJSFSchema | undefined): boolean {
   return false
 }
 
+function optionalParamsLabel(count: number) {
+  if (count < 1) {
+    return null
+  }
+  return count === 1 ? '1 optional param' : `${count} optional params`
+}
+
+function hasDirectRequired(schema: RJSFSchema | undefined): boolean {
+  return Array.isArray(schema?.required) && schema.required.length > 0
+}
+
 function NavGroup({
   id,
   title,
   required,
   extra,
+  hasRequired = false,
+  optionalCount = 0,
+  more,
   children,
 }: {
   id: string
   title: string
   required?: boolean
   extra?: ReactNode
-  children: ReactNode
+  hasRequired?: boolean
+  optionalCount?: number
+  more?: ReactNode
+  children?: ReactNode
 }) {
-  const [open, setOpen] = useState(true)
+  const pinned = Boolean(required)
+  const [revealed, setRevealed] = useState(pinned)
+  const [showMore, setShowMore] = useState(false)
+  const hasMore = more != null
+  const visible = pinned || revealed
+  const extrasHidden = hasMore && !showMore
+  const cannotCollapse = pinned || (hasRequired && revealed)
+  const actionable = hasMore || !cannotCollapse
+
+  function toggle() {
+    if (cannotCollapse) {
+      if (hasMore) {
+        setShowMore((value) => !value)
+      }
+      return
+    }
+    if (revealed) {
+      setRevealed(false)
+      setShowMore(false)
+      return
+    }
+    setRevealed(true)
+    if (!hasRequired && hasMore) {
+      setShowMore(true)
+    }
+  }
 
   return (
     <fieldset
       id={id}
       data-oc-nav="group"
-      data-oc-collapsed={open ? undefined : 'true'}
+      data-oc-collapsed={visible ? undefined : 'true'}
       className="min-w-0 border-0 p-0"
     >
-      <legend className="mb-3 w-full px-0">
-        <span className="flex w-full items-center justify-between gap-3">
-          <button
-            type="button"
-            data-oc-toggle
-            aria-expanded={open}
-            className="flex min-h-11 items-baseline gap-2 text-left text-xs text-mute"
-            onClick={() => setOpen((value) => !value)}
-          >
-            <span aria-hidden="true">{open ? '−' : '+'}</span>
-            <span>{title}</span>
-            {required ? (
-              <span className="text-signal" aria-hidden="true">
-                *
+      <legend className="mb-1 w-full px-0">
+        <span className="flex w-full items-center gap-2">
+          {actionable ? (
+            <button
+              type="button"
+              data-oc-toggle
+              aria-expanded={visible}
+              className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink hover:bg-ink/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal"
+              onClick={toggle}
+            >
+              <span aria-hidden="true" className="font-mono text-signal">
+                {visible && (showMore || !hasMore) ? '−' : '+'}
               </span>
-            ) : null}
-          </button>
+              <span className="min-w-0 truncate">{title}</span>
+              {required ? (
+                <span className="text-signal" aria-hidden="true">
+                  *
+                </span>
+              ) : null}
+              {extrasHidden ? (
+                <span className="shrink-0 text-ink/40">{optionalParamsLabel(optionalCount)}</span>
+              ) : null}
+            </button>
+          ) : (
+            <span className="oc-fold inline-flex min-h-8 max-w-full items-center justify-start gap-2 bg-ink/10 px-2 py-1 text-xs text-ink">
+              <span className="min-w-0 truncate">{title}</span>
+              {required ? (
+                <span className="text-signal" aria-hidden="true">
+                  *
+                </span>
+              ) : null}
+            </span>
+          )}
           {extra}
         </span>
       </legend>
-      {open ? children : null}
+      {visible ? (
+        <div className="oc-nest">
+          {children}
+          {showMore ? more : null}
+        </div>
+      ) : null}
     </fieldset>
   )
 }
@@ -194,7 +257,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
-        className={`${inputClass} ${invalid ? 'border-signal' : ''}`}
+        className={`${formInputClass} ${invalid ? 'border-signal' : ''}`}
         readOnly={readonly}
         disabled={disabled}
         autoFocus={autofocus}
@@ -234,14 +297,14 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
-      className={`${inputClass} min-h-32 resize-y ${rawErrors?.length ? 'border-signal' : ''}`}
+      className={`${formInputClass} min-h-20 resize-y ${rawErrors?.length ? 'border-signal' : ''}`}
       value={value || ''}
       placeholder={placeholder}
       required={required}
       disabled={disabled}
       readOnly={readonly}
       autoFocus={autofocus}
-      rows={typeof options.rows === 'number' ? options.rows : 5}
+      rows={typeof options.rows === 'number' ? options.rows : 3}
       autoComplete="off"
       spellCheck={false}
       onChange={(event) =>
@@ -288,7 +351,7 @@ function SelectWidget(props: WidgetProps) {
       id={id}
       name={htmlName || id}
       multiple={multiple}
-      className={`${inputClass} appearance-none ${rawErrors?.length ? 'border-signal' : ''}`}
+      className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-signal' : ''}`}
       value={selectValue}
       required={required}
       disabled={disabled || readonly}
@@ -374,7 +437,7 @@ function CheckboxWidget(props: WidgetProps) {
       : (options.description ?? schema.description)
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-1">
       {description ? (
         <DescriptionFieldTemplate
           id={descriptionId(id)}
@@ -384,7 +447,7 @@ function CheckboxWidget(props: WidgetProps) {
           registry={registry}
         />
       ) : null}
-      <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-mute">
+      <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs text-mute">
         <input
           type="checkbox"
           id={id}
@@ -438,21 +501,22 @@ function FieldTemplate(props: FieldTemplateProps) {
   return (
     <WrapIfAdditionalTemplate {...props}>
       <div
-        className="mb-4 flex min-w-0 flex-col gap-1.5"
+        className="mb-2 flex min-w-0 flex-col gap-1"
         data-oc-nav={nest ? undefined : 'field'}
       >
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex flex-wrap items-baseline gap-2`}>
-            <span>{label}</span>
+          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+            <span className="shrink-0">{label}</span>
             {required ? (
-              <span className="text-signal" aria-hidden="true">
+              <span className="shrink-0 text-signal" aria-hidden="true">
                 *
               </span>
             ) : null}
-            {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}
+            {typeLabel ? <span className={`shrink-0 ${typeClass}`}>{typeLabel}</span> : null}
+            {description}
           </label>
         ) : null}
-        {displayLabel ? description : null}
+        {displayLabel && isCheckbox ? description : null}
         {children}
         {errors}
         {help}
@@ -466,7 +530,7 @@ function TitleFieldTemplate(props: TitleFieldProps) {
   return (
     <legend
       id={id}
-      className="mb-3 flex w-full items-center justify-between px-0 text-xs text-mute"
+      className="mb-1 flex w-full items-center justify-between px-0 text-xs text-mute"
     >
       <span>
         {title}
@@ -488,12 +552,12 @@ function DescriptionFieldTemplate(props: DescriptionFieldProps) {
   }
 
   return (
-    <div
+    <span
       id={id}
-      className="m-0 max-w-[60ch] text-sm leading-relaxed text-pretty text-mute"
+      className="m-0 min-w-0 flex-1 truncate text-xs text-faint"
     >
       {description}
-    </div>
+    </span>
   )
 }
 
@@ -506,7 +570,7 @@ function FieldErrorTemplate(props: FieldErrorProps) {
   return (
     <ul id={errorId(fieldPathId)} className="m-0 list-none p-0" aria-live="polite">
       {errors.filter(Boolean).map((error, index) => (
-        <li key={index} className="text-sm text-signal">
+        <li key={index} className="text-xs text-signal">
           {error}
         </li>
       ))}
@@ -523,7 +587,7 @@ function FieldHelpTemplate(props: FieldHelpProps) {
   return (
     <div
       id={`${fieldPathId.$id}__help`}
-      className="text-sm text-faint"
+      className="text-xs text-faint"
     >
       {help}
     </div>
@@ -559,46 +623,63 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
 
   const { AddButton } = registry.templates.ButtonTemplates
   const showOptional = !readonly && !disabled
-  const body = (
-    <>
-      {description ? (
-        <DescriptionField
-          id={descriptionId(fieldPathId)}
-          description={description}
-          schema={schema}
-          uiSchema={uiSchema}
-          registry={registry}
-        />
-      ) : null}
-      {!showOptional && !title ? optionalDataControl : null}
-      {properties.map((property) => property.content)}
-      {canExpand(schema, uiSchema, formData) ? (
-        <AddButton
-          id={buttonId(fieldPathId, 'add')}
-          onClick={onAddProperty}
-          disabled={disabled || readonly}
-          uiSchema={uiSchema}
-          registry={registry}
-        />
-      ) : null}
-    </>
+  const requiredNames = new Set(
+    (Array.isArray(schema.required) ? schema.required : []).map(String),
   )
+  const requiredProperties = properties.filter((property) => requiredNames.has(property.name))
+  const extraProperties = properties.filter((property) => !requiredNames.has(property.name))
+  const canAdd = canExpand(schema, uiSchema, formData)
+  const descriptionNode = description ? (
+    <DescriptionField
+      id={descriptionId(fieldPathId)}
+      description={description}
+      schema={schema}
+      uiSchema={uiSchema}
+      registry={registry}
+    />
+  ) : null
+  const addNode = canAdd ? (
+    <AddButton
+      id={buttonId(fieldPathId, 'add')}
+      onClick={onAddProperty}
+      disabled={disabled || readonly}
+      uiSchema={uiSchema}
+      registry={registry}
+    />
+  ) : null
 
   if (title && fieldPathId.path.length > 0) {
+    const more =
+      extraProperties.length > 0 || canAdd ? (
+        <div className={className}>
+          {extraProperties.map((property) => property.content)}
+          {addNode}
+        </div>
+      ) : undefined
+
     return (
       <NavGroup
         id={fieldPathId.$id}
         title={title}
         required={required}
         extra={showOptional ? optionalDataControl : undefined}
+        hasRequired={requiredProperties.length > 0}
+        optionalCount={extraProperties.length}
+        more={more}
       >
-        <div className={className}>{body}</div>
+        <div className={className}>
+          {descriptionNode}
+          {requiredProperties.map((property) => property.content)}
+        </div>
       </NavGroup>
     )
   }
 
   return (
-    <fieldset className={`${className ?? ''} min-w-0 border-0 p-0`} id={fieldPathId.$id}>
+    <fieldset
+      className={`${className ?? ''} min-w-0 border-0 p-0 ${fieldPathId.path.length > 0 ? 'oc-nest' : ''}`}
+      id={fieldPathId.$id}
+    >
       {title ? (
         <TitleField
           id={titleId(fieldPathId)}
@@ -610,7 +691,10 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
           optionalDataControl={showOptional ? optionalDataControl : undefined}
         />
       ) : null}
-      {body}
+      {descriptionNode}
+      {!showOptional && !title ? optionalDataControl : null}
+      {properties.map((property) => property.content)}
+      {addNode}
     </fieldset>
   )
 }
@@ -674,14 +758,20 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
         title={heading}
         required={required}
         extra={showOptional ? optionalDataControl : undefined}
+        hasRequired={Boolean(required)}
+        optionalCount={items.length}
+        more={required ? undefined : <div className={className}>{body}</div>}
       >
-        <div className={className}>{body}</div>
+        {required ? <div className={className}>{body}</div> : null}
       </NavGroup>
     )
   }
 
   return (
-    <fieldset className={`${className ?? ''} min-w-0 border-0 p-0`} id={fieldPathId.$id}>
+    <fieldset
+      className={`${className ?? ''} min-w-0 border-0 p-0 ${fieldPathId.path.length > 0 ? 'oc-nest' : ''}`}
+      id={fieldPathId.$id}
+    >
       <ArrayFieldTitleTemplate
         fieldPathId={fieldPathId}
         title={heading}
@@ -718,7 +808,7 @@ function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
 
   const body = (
     <div
-      className={`${className ?? ''} flex min-w-0 flex-col gap-3 border-t border-rule py-4 md:flex-row md:items-start`}
+      className={`${className ?? ''} flex min-w-0 flex-col gap-2 border-t border-rule py-2 md:flex-row md:items-start`}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {hasToolbar ? (
@@ -730,9 +820,16 @@ function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
   )
 
   if (isNestSchema(schema)) {
+    const locked = hasDirectRequired(schema)
     return (
-      <NavGroup id={`item-${itemKey}`} title={`#${index + 1}`}>
-        {body}
+      <NavGroup
+        id={`item-${itemKey}`}
+        title={`#${index + 1}`}
+        hasRequired={locked}
+        optionalCount={locked ? 0 : 1}
+        more={locked ? undefined : body}
+      >
+        {locked ? body : null}
       </NavGroup>
     )
   }
@@ -767,13 +864,13 @@ function WrapIfAdditionalTemplate(props: WrapIfAdditionalTemplateProps) {
   }
 
   return (
-    <div className={`grid min-w-0 grid-cols-1 gap-4 md:grid-cols-12 ${classNames ?? ''}`} style={style}>
+    <div className={`grid min-w-0 grid-cols-1 gap-2 md:grid-cols-12 ${classNames ?? ''}`} style={style}>
       <div className="md:col-span-4" tabIndex={-1} data-oc-nav="field">
         <label htmlFor={`${id}-key`} className={labelClass}>
           Key
         </label>
         <input
-          className={`${inputClass} mt-2`}
+          className={`${formInputClass} mt-1`}
           type="text"
           id={`${id}-key`}
           onBlur={onKeyRenameBlur}
@@ -783,7 +880,7 @@ function WrapIfAdditionalTemplate(props: WrapIfAdditionalTemplateProps) {
         />
       </div>
       <div className="min-w-0 md:col-span-7">{children}</div>
-      <div className="md:col-span-1 md:pt-8">
+      <div className="md:col-span-1 md:pt-6">
         <RemoveButton
           id={buttonId(id, 'remove')}
           disabled={disabled || readonly}
@@ -808,7 +905,7 @@ function TextButton(props: IconButtonProps & { children: string }) {
   } = props
 
   return (
-    <button type="button" className={ghostButtonClass} data-oc-nav="action" {...rest}>
+    <button type="button" className={formGhostButtonClass} data-oc-nav="action" {...rest}>
       {children}
     </button>
   )
