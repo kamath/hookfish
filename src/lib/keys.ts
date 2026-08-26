@@ -3,6 +3,7 @@ import { usePaneStep } from './keymap'
 
 export { consumePointerIntent } from './keymap'
 export {
+  activeKeybindingsAtom,
   paneConfig,
   useGlobalKeybindings,
   usePaneActions,

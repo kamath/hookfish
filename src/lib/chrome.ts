@@ -15,6 +15,12 @@ export const chromeAtom = atom<Chrome>({ mode: 'command', pane: 'specs' })
 export const modeAtom = atom((get) => get(chromeAtom).mode)
 export const paneAtom = atom((get) => get(chromeAtom).pane)
 
+function syncDocumentMode(mode: Mode) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.ocMode = mode
+  }
+}
+
 export function getMode() {
   return store.get(chromeAtom).mode
 }
@@ -32,6 +38,7 @@ export function setMode(mode: Mode) {
     return
   }
   store.set(chromeAtom, (current) => ({ ...current, mode }))
+  syncDocumentMode(mode)
 }
 
 export function setPane(pane: Pane) {
@@ -47,6 +54,7 @@ export function activate(pane: Pane, mode: Mode = 'command') {
     return
   }
   store.set(chromeAtom, { pane, mode })
+  syncDocumentMode(mode)
 }
 
 export function enterEdit() {
