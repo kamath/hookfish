@@ -9,10 +9,9 @@
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "build": "vite build",
-    "build:cloudflare": "vite build --mode cloudflare",
-    "build:vercel": "vite build --mode vercel",
+    "build:nitro": "vite build --mode nitro",
     "preview": "vite preview",
-    "deploy": "pnpm run build:cloudflare && wrangler deploy",
+    "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {

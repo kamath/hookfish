@@ -9,7 +9,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import { nitro } from 'nitro/vite'
 
 const config = defineConfig(({ mode }) => {
-  const isVercelBuild = mode === 'vercel' || process.env.VERCEL === '1'
+  const isNitroBuild = mode === 'nitro'
 
   return {
     resolve: { tsconfigPaths: true },
@@ -29,12 +29,12 @@ const config = defineConfig(({ mode }) => {
     },
     plugins: [
       devtools(),
-      ...(isVercelBuild
+      ...(isNitroBuild
         ? []
         : [cloudflare({ viteEnvironment: { name: 'ssr' } })]),
       tailwindcss(),
       tanstackStart(),
-      ...(isVercelBuild ? [nitro({ preset: 'vercel' })] : []),
+      ...(isNitroBuild ? [nitro({ preset: 'vercel' })] : []),
       viteReact(),
     ],
   }

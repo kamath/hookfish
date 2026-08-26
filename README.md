@@ -22,8 +22,8 @@ pnpm deploy
 Vercel:
 
 - Import the repository and select **Other** as the framework preset.
-- Use `pnpm build` (Vercel's `VERCEL=1` environment variable selects the Nitro adapter automatically).
+- Set the build command to `pnpm build:nitro`.
 - Do not override the output directory.
 
-To test the Vercel build locally, run `pnpm build:vercel`. Cloudflare builds
-remain available through `pnpm build:cloudflare`.
+The default `pnpm build` uses the Cloudflare adapter. To test the Vercel build
+locally, run `pnpm build:nitro`.
