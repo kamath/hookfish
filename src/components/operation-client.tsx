@@ -11,6 +11,7 @@ import { useChrome } from '../lib/mode'
 import { invokeOperation } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
+import { Kbd } from './hints'
 import { SwissForm } from './swiss-form'
 
 function formatBody(body: string): string {
@@ -121,12 +122,22 @@ export function OperationClient({
             <div className="flex flex-col gap-2 pt-3">
               <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
               {error ? (
-                <p className="text-xs text-signal" role="alert">
+                <p className="text-xs text-error" role="alert">
                   {error}
                 </p>
               ) : null}
               <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
-                {pending ? 'Sending…' : 'Send'}
+                {pending ? (
+                  'Sending…'
+                ) : (
+                  <>
+                    <span className="mr-2 inline-flex gap-1">
+                      <Kbd hotkey="Mod" />
+                      <Kbd hotkey="Enter" />
+                    </span>
+                    Send
+                  </>
+                )}
               </button>
             </div>
           </SwissForm>

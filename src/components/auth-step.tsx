@@ -136,7 +136,7 @@ export function AuthStep({
           omitExtraData
         >
           {error ? (
-            <p className="mb-3 text-xs text-signal" role="alert">
+            <p className="mb-3 text-xs text-error" role="alert">
               {queryErrorMessage(error, 'Could not save those keys.')}
             </p>
           ) : null}

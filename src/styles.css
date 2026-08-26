@@ -7,6 +7,7 @@
   --faint: #9a958c;
   --rule: #ddd9d1;
   --signal: #2557a7;
+  --error: #8b1e3f;
   --on-signal: #f7f6f3;
   --method-get: #2f6f4e;
   --method-post: #2557a7;
@@ -27,6 +28,7 @@
   --color-faint: var(--faint);
   --color-rule: var(--rule);
   --color-signal: var(--signal);
+  --color-error: var(--error);
   --color-on-signal: var(--on-signal);
 }
 
@@ -117,6 +119,8 @@ kbd {
 }
 
 .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  width: calc(100% + var(--oc-gutter) + 1px);
+  max-width: calc(28rem + var(--oc-gutter) + 1px);
   margin-inline-start: calc(-1 * var(--oc-gutter) - 1px);
   padding-inline-start: calc(0.5rem + var(--oc-gutter) + 1px);
   border-inline-start: 1px solid var(--signal);
@@ -202,9 +206,36 @@ button[type='submit'][data-oc-current='true'] {
 }
 
 [data-oc-operation] button[type='submit'][data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--ink) 10%, var(--method));
+  background-color: color-mix(in srgb, var(--ink) 20%, var(--method));
+  outline: 2px solid var(--method);
+  outline-offset: 2px;
 }
 
 [data-oc-mode='insert'] [data-oc-operation] button[type='submit'][data-oc-current='true'] {
   background-color: var(--method);
+}
+
+[data-oc-operation] [data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--method) 10%, var(--paper));
+}
+
+[data-oc-operation] .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  border-inline-start-color: var(--method);
+}
+
+[data-oc-operation] .oc-nest .oc-fold[data-oc-current='true']::before {
+  background-color: var(--method);
+}
+
+[data-oc-operation] .oc-fold[data-oc-current='true'],
+[data-oc-operation] .oc-fold:focus-visible {
+  background-color: color-mix(in srgb, var(--method) 10%, var(--paper));
+}
+
+[data-oc-mode='insert'] [data-oc-operation] [data-oc-current='true'] {
+  background-color: transparent;
+}
+
+[data-oc-mode='insert'] [data-oc-operation] .oc-fold[data-oc-current='true'] {
+  background-color: var(--paper);
 }
