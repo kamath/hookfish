@@ -437,6 +437,7 @@ export function ExecutableClient({
                 {adapter.exportSnippet && api.labels.export ? (
                   <button
                     type="button"
+                    data-oc-nav="action"
                     className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
                     aria-live="polite"
                     aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
@@ -452,6 +453,7 @@ export function ExecutableClient({
                 ) : null}
                 <button
                   type="submit"
+                  data-oc-nav="action"
                   className={`${formPrimaryButtonClass} exec-solid`}
                   disabled={pending || authPending}
                 >

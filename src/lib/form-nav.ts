@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
 import { enterCommand, enterEdit, isInsertMode, type Pane } from './chrome'
-import { consumePointerIntent, usePaneActions, useStepKeys } from './keys'
+import { consumePointerIntent, usePaneActions } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -327,11 +327,14 @@ export function moveFormTab(rootId: string, delta: number): boolean {
     return false
   }
 
-  enterCommand()
   blurActive()
   markItem(root, next)
-  syncMode(root)
   scrollMark(next)
+  next.focus({ preventScroll: true })
+  // Focusing an editable control normally enters edit mode. J/K navigation is
+  // explicitly command-mode traversal, so retain focus while restoring command mode.
+  enterCommand()
+  syncMode(root)
   return true
 }
 
@@ -421,15 +424,21 @@ export function useFormPaneNavigation(
   formId: string,
   options?: { stepKeys?: boolean },
 ) {
-  useStepKeys(
-    pane,
-    (delta) => {
-      moveFormTab(formId, delta)
-    },
-    options?.stepKeys !== false,
-  )
-
   usePaneActions(pane, {
+    next: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previous: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
     expand: () => {
       confirmForm(formId)
     },
