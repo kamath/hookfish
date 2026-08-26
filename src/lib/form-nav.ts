@@ -327,13 +327,11 @@ export function moveFormTab(rootId: string, delta: number): boolean {
     return false
   }
 
+  enterCommand()
   blurActive()
   markItem(root, next)
-  scrollMark(next)
-  next.focus({ preventScroll: true })
-  // Let the global focus binding enter edit mode for editable controls, exactly
-  // as native Tab navigation does. Buttons retain command mode.
   syncMode(root)
+  scrollMark(next)
   return true
 }
 
@@ -432,6 +430,20 @@ export function useFormPaneNavigation(
       ignoreInputs: false,
     },
     previous: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    nextTab: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previousTab: {
       callback: () => {
         moveFormTab(formId, -1)
       },

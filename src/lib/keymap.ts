@@ -73,6 +73,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     bindings: [
       { id: 'next', hotkey: 'J', label: 'next control' },
       { id: 'previous', hotkey: 'K', label: 'previous control' },
+      { id: 'nextTab', hotkey: 'Tab', label: 'next control' },
+      { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous control' },
       {
         id: 'previousRoute',
         hotkey: 'H',
