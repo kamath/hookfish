@@ -225,8 +225,8 @@ export function OperationClient({
             </div>
           </SwissForm>
           {showAuth && authSchema ? (
-            <div className="mt-6 border-t border-rule pt-3">
-              <p className="mb-3 text-sm text-ink">Sign in to send this request.</p>
+            <div className="mt-6 bg-ink/5 px-3 py-3">
+              <p className="mb-3 text-sm text-ink">This request requires authorization.</p>
               <AuthFields
                 id="inline-auth-form"
                 idPrefix="inline-auth"

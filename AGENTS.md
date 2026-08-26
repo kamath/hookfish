@@ -95,3 +95,7 @@ tanstackIntent:
     run: "npx @tanstack/intent@latest load @tanstack/virtual-file-routes#virtual-file-routes"
     for: "Programmatic route tree building as an alternative to filesystem conventions: rootRoute, index, route, layout, physical, defineVirtualSubtreeConfig. Use with TanStack Router plugin's virtualRouteConfig option."
 <!-- intent-skills:end -->
+
+# UI
+
+Avoid borders unless they are specifically requested. Separate or emphasize a region with a distinct background instead.
