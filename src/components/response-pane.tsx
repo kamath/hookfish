@@ -338,8 +338,7 @@ export function ResponsePane({
                   }
                 }}
               >
-                <span className="inline-flex w-12 shrink-0 justify-end gap-1 pr-2">
-                  {childrenHint ? <Kbd hotkey={childrenHint} /> : null}
+                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
                   {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                 </span>
                 <span
@@ -349,6 +348,11 @@ export function ResponsePane({
                   <span className="inline-block w-4 text-faint">
                     {node.collection ? (isExpanded ? '▾' : '▸') : ''}
                   </span>
+                  {childrenHint ? (
+                    <span className="mr-2 inline-flex">
+                      <Kbd hotkey={childrenHint} />
+                    </span>
+                  ) : null}
                 </span>
                 {node.label !== undefined ? (
                   <span className="text-mute">{node.label}: </span>
