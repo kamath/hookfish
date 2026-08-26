@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { isEditing } from './focus'
 
 export type Mode = 'command' | 'edit'
-export type Pane = 'home' | 'list' | 'form' | 'response' | 'auth'
+export type Pane = 'home' | 'list' | 'form' | 'response'
 
 type Chrome = {
   mode: Mode
@@ -92,9 +92,6 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
   }
   if (target.closest('#response-pane')) {
     return 'response'
-  }
-  if (target.closest('#auth-form')) {
-    return 'auth'
   }
   return undefined
 }
