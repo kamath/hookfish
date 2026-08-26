@@ -12,7 +12,7 @@ import { toCurl } from '../lib/export-snippet'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
-import { formGhostButtonClass, formPrimaryButtonClass } from '../lib/ui'
+import { formPrimaryButtonClass } from '../lib/ui'
 import { AuthFields } from './auth-fields'
 import { Kbd } from './hints'
 import { ResponsePane } from './response-pane'
@@ -248,7 +248,7 @@ export function OperationClient({
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    className={`${formGhostButtonClass} gap-2`}
+                    className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
                     aria-live="polite"
                     aria-label={copied ? 'Copied cURL' : 'Copy as cURL'}
                     onClick={() => {
