@@ -24,7 +24,6 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     { id: 'next', hotkey: 'J', label: 'next spec', flag: 'hasSpecs' },
     { id: 'previous', hotkey: 'K', label: 'previous spec', flag: 'hasSpecs' },
     { id: 'insert', hotkey: 'I', label: 'insert' },
-    { id: 'keys', hotkey: { key: '/', shift: true }, label: 'keys' },
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
   list: [
@@ -47,10 +46,8 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
   form: [
-    { id: 'next', hotkey: 'J', label: 'next' },
-    { id: 'previous', hotkey: 'K', label: 'previous' },
-    { id: 'insert', hotkey: 'I', label: 'insert' },
-    { id: 'expand', hotkey: 'Enter', label: 'expand' },
+    { id: 'previousRoute', hotkey: 'H', label: 'previous route', flag: 'canPreviousRoute' },
+    { id: 'nextRoute', hotkey: 'L', label: 'next route', flag: 'canNextRoute' },
     { id: 'copyFetch', hotkey: 'Y', label: 'copy fetch' },
     { id: 'send', hotkey: 'Mod+Enter', label: 'send', modes: ['command', 'edit'] },
     {

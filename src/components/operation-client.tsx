@@ -8,10 +8,7 @@ import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
 import {
   bindFormTabSync,
-  confirmForm,
-  insertCurrentInput,
   insertMatchingInput,
-  moveFormTab,
   selectDefaultInput,
 } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
@@ -107,6 +104,8 @@ export function OperationClient({
   authUiSchema,
   authPending,
   authError,
+  onPreviousOperation,
+  onNextOperation,
   onSaveAuth,
 }: {
   api: ClientApi
@@ -117,6 +116,8 @@ export function OperationClient({
   authUiSchema?: FormUiSchema
   authPending?: boolean
   authError?: unknown
+  onPreviousOperation?: () => void
+  onNextOperation?: () => void
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
   const [formData, setFormData] = useState<unknown>({})
@@ -299,38 +300,24 @@ export function OperationClient({
           {operation.deprecated ? (
             <span className="text-xs text-signal">deprecated</span>
           ) : null}
-          <KeyHints className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
-              onClick={() => moveFormTab('call-form', -1)}
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!onPreviousOperation}
+              onClick={onPreviousOperation}
             >
               Previous
-              <Kbd hotkey="K" />
+              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
             </button>
             <button
               type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
-              onClick={() => moveFormTab('call-form', 1)}
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!onNextOperation}
+              onClick={onNextOperation}
             >
               Next
-              <Kbd hotkey="J" />
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
-              onClick={() => insertCurrentInput('call-form')}
-            >
-              Edit
-              <Kbd hotkey="I" />
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
-              onClick={() => confirmForm('call-form')}
-            >
-              Expand
-              <Kbd hotkey="Enter" />
+              {onNextOperation ? <Kbd hotkey="L" /> : null}
             </button>
             {result ? (
               <button
@@ -342,7 +329,7 @@ export function OperationClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
-          </KeyHints>
+          </div>
         </div>
 
         <div className="px-3 py-3 md:px-4">

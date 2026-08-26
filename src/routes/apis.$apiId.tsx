@@ -9,7 +9,6 @@ import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/cl
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
 import {
-  moveFormTab,
   selectDefaultInput,
   useFormPaneNavigation,
 } from '../lib/form-nav'
@@ -213,6 +212,9 @@ function ApiWorkbench({
   const selected =
     orderedOperations.find((operation) => operation.id === (heldOp ?? search.op)) ??
     orderedOperations[0]
+  const selectedIndex = selected
+    ? orderedOperations.findIndex((operation) => operation.id === selected.id)
+    : -1
   const manyServers = api.servers.length > 1
 
   useEffect(() => {
@@ -298,6 +300,21 @@ function ApiWorkbench({
     window.setTimeout(() => selectDefaultInput('call-form'), 0)
   }
 
+  function navigateOperation(delta: number) {
+    const next = orderedOperations[selectedIndex + delta]
+    if (!next) {
+      return
+    }
+    holdOp(next.id)
+    activate('form', 'command')
+    void navigate({
+      search: (previous) => ({ ...previous, op: next.id }),
+      replace: true,
+      resetScroll: false,
+    })
+    revealOperation(next.id)
+  }
+
   function stepBack() {
     if (getPane() === 'response') {
       activate('form', 'command')
@@ -336,17 +353,6 @@ function ApiWorkbench({
     }
   }
 
-  function nudge(delta: number) {
-    if (getPane() === 'form') {
-      moveFormTab('call-form', delta)
-      return
-    }
-    if (getPane() === 'response') {
-      return
-    }
-    move(delta)
-  }
-
   const canClear = Boolean(onClearAuth)
   useViewFlags('list', {
     canClear,
@@ -356,10 +362,11 @@ function ApiWorkbench({
   })
   useViewFlags('form', {
     canClear,
+    canNextRoute: selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1,
+    canPreviousRoute: selectedIndex > 0,
     manyServers,
   })
-  useStepKeys('list', nudge)
-  useStepKeys('form', nudge)
+  useStepKeys('list', move)
   useFormPaneNavigation('form', 'call-form', { stepKeys: false })
 
   useViewActions('list', {
@@ -402,6 +409,8 @@ function ApiWorkbench({
   })
 
   useViewActions('form', {
+    previousRoute: () => navigateOperation(-1),
+    nextRoute: () => navigateOperation(1),
     clearAuth: {
       callback: () => {
         if (!authPending) {
@@ -420,9 +429,6 @@ function ApiWorkbench({
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
     const index = orderedOperations.findIndex((item) => item.id === operation.id)
-    const selectedIndex = selected
-      ? orderedOperations.findIndex((item) => item.id === selected.id)
-      : -1
     const navigationHint =
       pane !== 'list'
         ? undefined
@@ -680,6 +686,14 @@ function ApiWorkbench({
             authUiSchema={api.authUiSchema}
             authPending={authPending}
             authError={authError}
+            onPreviousOperation={
+              selectedIndex > 0 ? () => navigateOperation(-1) : undefined
+            }
+            onNextOperation={
+              selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
+                ? () => navigateOperation(1)
+                : undefined
+            }
             onSaveAuth={onSaveAuth}
           />
         ) : null}

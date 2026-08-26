@@ -22,7 +22,6 @@ function Home() {
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState(0)
-  const [help, setHelp] = useState(false)
   const apis = apisQuery.data ?? []
 
   const add = useMutation({
@@ -72,11 +71,9 @@ function Home() {
       activate('home', 'edit')
       urlRef.current?.focus()
     },
-    keys: () => setHelp((value) => !value),
     command: () => {
       enterCommand()
       blurActive()
-      setHelp(false)
     },
   })
 
@@ -126,15 +123,6 @@ function Home() {
           disabled={add.isPending}
         >
           {add.isPending ? 'Reading…' : 'Open'}
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 border border-rule px-3 py-2 text-sm text-ink hover:bg-ink/10"
-          aria-expanded={help}
-          onClick={() => setHelp((value) => !value)}
-        >
-          Keys
-          <Kbd hotkey={{ key: '/', shift: true }} />
         </button>
       </form>
       {add.isError ? (
@@ -211,12 +199,6 @@ function Home() {
           </p>
         ) : null}
       </div>
-
-      {help ? (
-        <p className="pb-2 text-xs text-mute">
-          URL is first. Enter opens it. After Escape, j and k move through saved specs.
-        </p>
-      ) : null}
     </main>
   )
 }
