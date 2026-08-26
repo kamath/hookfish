@@ -18,7 +18,27 @@ export function McpServerPanel({
   }
   const data = asRecord(source.adapterData)
   const capabilities = Object.keys(asRecord(data.capabilities))
+  const capabilitySet = new Set(capabilities)
   const serverInfo = asRecord(data.serverInfo)
+  const counts = source.executables.reduce(
+    (current, executable) => {
+      if (executable.binding.type !== 'mcp') {
+        return current
+      }
+      if (executable.binding.kind === 'tool') {
+        current.tools += 1
+      } else if (executable.binding.kind === 'prompt') {
+        current.prompts += 1
+      } else if (
+        executable.binding.kind === 'resource' ||
+        executable.binding.kind === 'resource-template'
+      ) {
+        current.resources += 1
+      }
+      return current
+    },
+    { tools: 0, prompts: 0, resources: 0 },
+  )
   return (
     <section className="bg-ink/5 px-3 py-2 text-xs md:px-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -31,11 +51,32 @@ export function McpServerPanel({
         {typeof serverInfo.version === 'string' ? (
           <span className="text-faint">server {serverInfo.version}</span>
         ) : null}
-        {capabilities.map((capability) => (
-          <span key={capability} className="bg-paper px-1.5 py-0.5 font-mono text-mute">
-            {capability}
-          </span>
-        ))}
+        {(['prompts', 'resources', 'tools'] as const).map((capability) => {
+          const enabled = capabilitySet.has(capability)
+          return (
+            <span
+              key={capability}
+              aria-disabled={!enabled}
+              className={`px-1.5 py-0.5 font-mono ${
+                enabled ? 'bg-paper text-mute' : 'bg-ink/5 text-faint'
+              }`}
+            >
+              {capability} {enabled ? counts[capability] : 'disabled'}
+            </span>
+          )
+        })}
+        {capabilities
+          .filter(
+            (capability) =>
+              capability !== 'tools' &&
+              capability !== 'prompts' &&
+              capability !== 'resources',
+          )
+          .map((capability) => (
+            <span key={capability} className="bg-paper px-1.5 py-0.5 font-mono text-mute">
+              {capability}
+            </span>
+          ))}
         <button
           type="button"
           className="ml-auto text-mute hover:text-ink"
