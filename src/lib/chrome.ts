@@ -114,10 +114,19 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
 
 export function bindModeFromFocus() {
   const onFocusIn = (event: FocusEvent) => {
-    if (!isEditing()) {
+    const target = event.target
+    if (
+      target instanceof HTMLElement &&
+      target.closest('[data-oc-command-focus="true"]')
+    ) {
+      enterCommand()
       return
     }
-    const view = paneForTarget(event.target)
+    if (!isEditing()) {
+      enterCommand()
+      return
+    }
+    const view = paneForTarget(target)
     if (view) {
       activate(view, 'edit')
       return

@@ -1,11 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { Kbd } from '../components/hints'
-import { OperationClient } from '../components/operation-client'
+import { McpServerPanel } from '../components/mcp-server-panel'
+import { ExecutableClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
-import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
+import type {
+  Executable,
+  ExecutableGroup,
+  ExecutableSource,
+  JsonSchema,
+} from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
@@ -14,6 +27,7 @@ import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from 
 import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
+import { subscribeMcpChanges } from '../lib/mcp/client'
 
 type Search = {
   q?: string
@@ -39,12 +53,12 @@ function readPane(value: string, operationId?: string): WorkbenchPane {
   throw notFound()
 }
 
-function operationQueryText(operation: ClientOperation) {
+function operationQueryText(operation: Executable) {
   return [
-    operation.method,
-    operation.path,
+    operation.badge,
+    operation.name,
     operation.id,
-    ...operation.tags,
+    ...operation.groups,
     operation.summary ?? '',
     operation.description ?? '',
   ].join(' ')
@@ -55,12 +69,12 @@ function oneLine(value?: string) {
   return text || undefined
 }
 
-function groupOperations(operations: ClientOperation[], tagGroups: TagGroup[]) {
-  const buckets = new Map<string, ClientOperation[]>()
-  const untagged: ClientOperation[] = []
+function groupOperations(operations: Executable[], tagGroups: ExecutableGroup[]) {
+  const buckets = new Map<string, Executable[]>()
+  const untagged: Executable[] = []
 
   for (const operation of operations) {
-    const name = operation.tags[0]
+    const name = operation.groups[0]
     if (!name) {
       untagged.push(operation)
       continue
@@ -73,7 +87,7 @@ function groupOperations(operations: ClientOperation[], tagGroups: TagGroup[]) {
   const groups: Array<{
     name?: string
     description?: string
-    operations: ClientOperation[]
+    operations: Executable[]
   }> = []
 
   for (const tag of tagGroups) {
@@ -132,7 +146,7 @@ function ApiClientPage() {
   })
 
   if (apiQuery.isPending) {
-    return <QueryStatus label="Reading the spec…" />
+    return <QueryStatus label="Reading the source…" />
   }
 
   if (apiQuery.isError) {
@@ -150,15 +164,17 @@ function ApiClientPage() {
   }
 
   const api = apiQuery.data
-  const canAuth = hasAuthFields(api.authSchema)
-  const needsAuth = Boolean(canAuth && !api.authStored)
+  const canAuth = hasAuthFields(api.credentialSchema)
+  const needsAuth = Boolean(
+    canAuth && api.credentialsRequired !== false && !api.credentialsStored,
+  )
 
   return (
     <ApiWorkbench
       api={api}
       needsAuth={needsAuth}
       onClearAuth={
-        canAuth && api.authStored
+        canAuth && api.credentialsStored
           ? async () => {
               await clearAuth.mutateAsync()
             }
@@ -181,7 +197,7 @@ function ApiWorkbench({
   authPending,
   authError,
 }: {
-  api: ClientApi
+  api: ExecutableSource
   needsAuth: boolean
   onClearAuth?: () => Promise<void>
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
@@ -193,8 +209,9 @@ function ApiWorkbench({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
+  const queryClient = useQueryClient()
   const activePane = usePane()
-  const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
+  const [serverUrl, setServerUrl] = useState(api.targets[0] ?? '')
   const [filterValue, setFilterValue] = useState(search.q ?? '')
   const deferredFilterValue = useDeferredValue(filterValue)
   const committedFilterRef = useRef(search.q ?? '')
@@ -204,6 +221,17 @@ function ApiWorkbench({
   useEffect(() => {
     activate(routePane, 'command')
   }, [api.id, routePane])
+
+  useEffect(() => {
+    if (api.kind !== 'mcp') {
+      return
+    }
+    return subscribeMcpChanges(api.id, () => {
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(api.id).queryKey,
+      })
+    })
+  }, [api.id, api.kind, queryClient])
 
   useEffect(() => {
     const routeFilter = search.q ?? ''
@@ -238,7 +266,7 @@ function ApiWorkbench({
     if (!query) {
       return undefined
     }
-    return api.operations
+    return api.executables
       .map((operation) => ({
         operation,
         score: fuzzyScore(operationQueryText(operation), query),
@@ -246,10 +274,10 @@ function ApiWorkbench({
       .filter((item) => item.score != null)
       .sort((left, right) => (right.score ?? 0) - (left.score ?? 0))
       .map((item) => item.operation)
-  }, [api.operations, deferredFilterValue])
+  }, [api.executables, deferredFilterValue])
   const groups = useMemo(
-    () => (ranked ? [] : groupOperations(api.operations, api.tagGroups ?? [])),
-    [api.operations, api.tagGroups, ranked],
+    () => (ranked ? [] : groupOperations(api.executables, api.groups ?? [])),
+    [api.executables, api.groups, ranked],
   )
   const orderedOperations = useMemo(
     () => ranked ?? groups.flatMap((group) => group.operations),
@@ -262,7 +290,7 @@ function ApiWorkbench({
   const requestedIndex = operationIndexById.get(heldOp ?? operationId ?? '')
   const selectedIndex = requestedIndex ?? (orderedOperations.length > 0 ? 0 : -1)
   const selected = orderedOperations[selectedIndex]
-  const manyServers = api.servers.length > 1
+  const manyServers = api.targets.length > 1
 
   useEffect(() => {
     if (!operationId) {
@@ -407,9 +435,9 @@ function ApiWorkbench({
     if (!manyServers) {
       return
     }
-    const current = api.servers.indexOf(serverUrl)
+    const current = api.targets.indexOf(serverUrl)
     const index = current === -1 ? 0 : current
-    const next = api.servers[(index + delta + api.servers.length) % api.servers.length]
+    const next = api.targets[(index + delta + api.targets.length) % api.targets.length]
     if (next) {
       setServerUrl(next)
     }
@@ -474,7 +502,7 @@ function ApiWorkbench({
     nextServer: () => cycleServer(1),
   })
 
-  function renderOperation(operation: ClientOperation) {
+  function renderOperation(operation: Executable) {
     const active = operation.id === selected?.id
     const index = operationIndexById.get(operation.id) ?? -1
     const navigationHint =
@@ -511,17 +539,18 @@ function ApiWorkbench({
               holdOp(operation.id)
             }
           }}
-          data-oc-method={operation.method}
+          data-oc-executable
           data-oc-active={active || undefined}
-          className={`api-${operation.method} flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none`}
+          className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
+          style={{ '--exec-color': operation.accent } as CSSProperties}
         >
           <span className="inline-flex w-8 shrink-0 justify-end">
             {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
           </span>
-          <span data-oc-method-label className="w-12 shrink-0 font-mono text-xs tabular-nums">
-            {operation.method.toUpperCase()}
+          <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
+            {operation.badge}
           </span>
-          <span className="min-w-0 truncate font-mono text-xs">{operation.path}</span>
+          <span className="min-w-0 truncate font-mono text-xs">{operation.name}</span>
           {description ? (
             <span className="min-w-0 flex-1 truncate text-xs text-faint">{description}</span>
           ) : null}
@@ -540,13 +569,13 @@ function ApiWorkbench({
               <button
                 type="button"
                 className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label="Previous server"
+                aria-label={`Previous ${api.labels.target}`}
                 onClick={() => cycleServer(-1)}
               >
                 <Kbd hotkey="[" />
               </button>
               <label htmlFor="server-url" className="sr-only">
-                Server
+                {api.labels.target}
               </label>
               <input
                 id="server-url"
@@ -565,7 +594,7 @@ function ApiWorkbench({
               <button
                 type="button"
                 className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label="Next server"
+                aria-label={`Next ${api.labels.target}`}
                 onClick={() => cycleServer(1)}
               >
                 <Kbd hotkey="]" />
@@ -578,7 +607,11 @@ function ApiWorkbench({
               className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
               onClick={stepBack}
             >
-              {activePane === 'response' ? 'Input' : activePane === 'input' ? 'Routes' : 'Specs'}
+              {activePane === 'response'
+                ? 'Input'
+                : activePane === 'input'
+                  ? api.labels.executablePlural
+                  : api.labels.sourcePlural}
               <Kbd hotkey="Escape" />
             </button>
             {onClearAuth ? (
@@ -590,12 +623,13 @@ function ApiWorkbench({
                   void onClearAuth()
                 }}
               >
-                Clear Auth
+                Clear credentials
                 <Kbd hotkey="Mod+Backspace" />
               </button>
             ) : null}
           </div>
         </div>
+        <McpServerPanel source={api} />
       </div>
 
       <div
@@ -615,7 +649,7 @@ function ApiWorkbench({
           <div className="shrink-0 px-3 py-2">
             <div className="relative w-full max-w-[26rem]">
               <label htmlFor="operation-filter" className="sr-only">
-                Filter routes
+                Filter {api.labels.executablePlural}
               </label>
               <input
                 id="operation-filter"
@@ -631,12 +665,12 @@ function ApiWorkbench({
                   activate('routes', 'edit')
                 }}
                 onChange={(event) => setFilterValue(event.target.value)}
-                placeholder="Filter routes"
+                placeholder={`Filter ${api.labels.executablePlural}`}
               />
               {filterValue ? (
                 <button
                   type="button"
-                  aria-label="Clear route filter"
+                aria-label={`Clear ${api.labels.executable} filter`}
                   className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
                   onClick={() => {
                     setFilterValue('')
@@ -661,7 +695,7 @@ function ApiWorkbench({
             </div>
           </div>
           <nav
-            aria-label="Routes"
+            aria-label={api.labels.executablePlural}
             data-operation-list
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >
@@ -692,14 +726,14 @@ function ApiWorkbench({
         </aside>
 
         {selected && (activePane === 'input' || activePane === 'response') ? (
-          <OperationClient
+          <ExecutableClient
             key={selected.id}
             api={api}
             operation={selected}
-            serverUrl={serverUrl}
+            target={serverUrl}
             needsAuth={needsAuth}
-            authSchema={api.authSchema}
-            authUiSchema={api.authUiSchema}
+            authSchema={api.credentialSchema}
+            authUiSchema={api.credentialUiSchema}
             authPending={authPending}
             authError={authError}
             onPreviousOperation={selectedIndex > 0 ? () => navigateOperation(-1) : undefined}

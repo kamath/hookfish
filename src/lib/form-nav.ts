@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
 import { enterCommand, enterEdit, isInsertMode, type Pane } from './chrome'
-import { consumePointerIntent, usePaneActions, useStepKeys } from './keys'
+import { consumePointerIntent, usePaneActions } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -421,15 +421,35 @@ export function useFormPaneNavigation(
   formId: string,
   options?: { stepKeys?: boolean },
 ) {
-  useStepKeys(
-    pane,
-    (delta) => {
-      moveFormTab(formId, delta)
-    },
-    options?.stepKeys !== false,
-  )
-
   usePaneActions(pane, {
+    next: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previous: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    nextTab: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previousTab: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
     expand: () => {
       confirmForm(formId)
     },

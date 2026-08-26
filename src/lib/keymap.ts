@@ -30,8 +30,14 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     path: '/',
     bindings: [
       { id: 'open', hotkey: 'Enter', label: 'open' },
-      { id: 'next', hotkey: 'J', label: 'next spec', flag: 'hasSpecs' },
-      { id: 'previous', hotkey: 'K', label: 'previous spec', flag: 'hasSpecs' },
+      { id: 'next', hotkey: 'J', label: 'next source', flag: 'hasSpecs' },
+      { id: 'previous', hotkey: 'K', label: 'previous source', flag: 'hasSpecs' },
+      {
+        id: 'sourceType',
+        hotkey: 'Mod+/',
+        label: 'source type',
+        modes: ['command', 'edit'],
+      },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
@@ -51,17 +57,17 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canClear',
         modes: ['command', 'edit'],
       },
-      { id: 'parent', hotkey: 'Escape', label: 'specs' },
+      { id: 'parent', hotkey: 'Escape', label: 'sources' },
       {
         id: 'prevServer',
         hotkey: '[',
-        label: 'previous server',
+        label: 'previous target',
         flag: 'manyServers',
       },
       {
         id: 'nextServer',
         hotkey: ']',
-        label: 'next server',
+        label: 'next target',
         flag: 'manyServers',
       },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
@@ -71,21 +77,25 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'routes',
     path: '/apis/$apiId/input/$operationId',
     bindings: [
+      { id: 'next', hotkey: 'J', label: 'next control' },
+      { id: 'previous', hotkey: 'K', label: 'previous control' },
+      { id: 'nextTab', hotkey: 'Tab', label: 'next control' },
+      { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous control' },
       {
         id: 'previousRoute',
         hotkey: 'H',
-        label: 'previous route',
+        label: 'previous executable',
         flag: 'canPreviousRoute',
       },
       {
         id: 'nextRoute',
         hotkey: 'L',
-        label: 'next route',
+        label: 'next executable',
         flag: 'canNextRoute',
       },
       { id: 'expand', hotkey: 'Enter', label: 'edit' },
       { id: 'insert', hotkey: 'I', label: 'edit' },
-      { id: 'copyFetch', hotkey: 'Y', label: 'copy fetch' },
+      { id: 'export', hotkey: 'Y', label: 'copy code', flag: 'hasExport' },
       {
         id: 'send',
         hotkey: 'Mod+Enter',
@@ -99,17 +109,17 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canClear',
         modes: ['command', 'edit'],
       },
-      { id: 'parent', hotkey: 'Escape', label: 'routes' },
+      { id: 'parent', hotkey: 'Escape', label: 'executables' },
       {
         id: 'prevServer',
         hotkey: '[',
-        label: 'previous server',
+        label: 'previous target',
         flag: 'manyServers',
       },
       {
         id: 'nextServer',
         hotkey: ']',
-        label: 'next server',
+        label: 'next target',
         flag: 'manyServers',
       },
       { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
@@ -129,7 +139,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         label: 'resend',
         modes: ['command', 'edit'],
       },
-      { id: 'headers', hotkey: 'H', label: 'headers', flag: 'hasHeaders' },
+      { id: 'details', hotkey: 'H', label: 'details', flag: 'hasDetails' },
       {
         id: 'children',
         hotkey: 'A',
@@ -291,6 +301,13 @@ export function bindEnterMode() {
       event.altKey ||
       getMode() !== 'edit' ||
       !isEditing()
+    ) {
+      return
+    }
+    const target = event.target
+    if (
+      target instanceof HTMLElement &&
+      target.closest('form[data-oc-enter-submit="true"]')
     ) {
       return
     }

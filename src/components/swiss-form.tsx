@@ -545,7 +545,7 @@ function FieldTemplate(props: FieldTemplateProps) {
             <span className="shrink-0">
               {label}
               {required ? (
-                <span className="api-ink" aria-hidden="true">
+                <span className="exec-ink" aria-hidden="true">
                   *
                 </span>
               ) : null}
@@ -573,7 +573,7 @@ function TitleFieldTemplate(props: TitleFieldProps) {
       <span>
         {title}
         {required ? (
-          <span className="api-ink" aria-hidden="true">
+          <span className="exec-ink" aria-hidden="true">
             *
           </span>
         ) : null}

@@ -1,10 +1,12 @@
-import type { AuthScheme, ClientOperation } from './client-types'
+import type { AuthScheme, ClientOperation, HttpBinding } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
 import { applyAuth } from './openapi'
 
 const BODY_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options'])
 
 export type ExecuteRequest = {
+  transport: 'http'
   method: string
   url: string
   headers: Record<string, string>
@@ -22,6 +24,20 @@ function headersToRecord(headers: Headers): Record<string, string> {
   return record
 }
 
+export function httpBindingFor(operation: ClientOperation): HttpBinding {
+  const binding = operation.binding
+  if (
+    binding.type !== 'http' ||
+    typeof binding.method !== 'string' ||
+    !HTTP_METHODS.has(binding.method) ||
+    typeof binding.path !== 'string' ||
+    (binding.contentType !== undefined && typeof binding.contentType !== 'string')
+  ) {
+    throw new Error('The executable does not have a valid HTTP binding.')
+  }
+  return binding as HttpBinding
+}
+
 export function buildOperationRequest(input: {
   serverUrl: string
   operation: ClientOperation
@@ -33,13 +49,14 @@ export function buildOperationRequest(input: {
     throw new Error('Choose an http or https server URL.')
   }
 
+  const binding = httpBindingFor(input.operation)
   const form = asRecord(input.formData)
   const path = asRecord(omitEmpty(form.path))
   const query = asRecord(omitEmpty(form.query))
   const header = asRecord(omitEmpty(form.header))
   const cookie = asRecord(omitEmpty(form.cookie))
   const url = new URL(
-    buildRequestUrl(input.serverUrl, input.operation.path, path, query),
+    buildRequestUrl(input.serverUrl, binding.path, path, query),
   )
   const headers = new Headers()
 
@@ -57,8 +74,8 @@ export function buildOperationRequest(input: {
   applyAuth(headers, url, input.authSchemes, input.auth)
 
   let body: string | undefined
-  if (BODY_METHODS.has(input.operation.method) && form.body !== undefined) {
-    const contentType = input.operation.contentType ?? 'application/json'
+  if (BODY_METHODS.has(binding.method) && form.body !== undefined) {
+    const contentType = binding.contentType ?? 'application/json'
     if (!headers.has('Content-Type')) {
       headers.set('Content-Type', contentType)
     }
@@ -77,7 +94,8 @@ export function buildOperationRequest(input: {
   }
 
   return {
-    method: input.operation.method.toUpperCase(),
+    transport: 'http',
+    method: binding.method.toUpperCase(),
     url: url.toString(),
     headers: headersToRecord(headers),
     body,

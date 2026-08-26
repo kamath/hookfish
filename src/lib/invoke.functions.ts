@@ -41,6 +41,7 @@ export const executeRequest = createServerFn({
 })
   .validator(
     z.object({
+      transport: z.literal('http'),
       method: z.string().trim().min(1),
       url: z.string().trim().min(1),
       headers: z.record(z.string(), z.string()).optional(),
@@ -68,15 +69,20 @@ export const executeRequest = createServerFn({
     const responseBody = await readLimited(response)
 
     return {
-      status: response.status,
-      statusText: response.statusText,
-      headers: [...response.headers.entries()].map(([name, value]) => ({
-        name,
-        value,
-      })),
+      status: {
+        code: response.status,
+        text: response.statusText,
+      },
+      details: {
+        label: 'Headers',
+        items: [...response.headers.entries()].map(([name, value]) => ({
+          name,
+          value,
+        })),
+      },
       body: responseBody,
       elapsedMs,
-      url: data.url,
-      method: data.method.toUpperCase(),
+      target: data.url,
+      action: data.method.toUpperCase(),
     }
   })

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { InvokeResult } from '../lib/client-types'
+import type { ExecutionResult } from '../lib/client-types'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
+import { ProtocolTrace } from './protocol-trace'
 
 type ResponseNode = {
   id: string
@@ -101,15 +102,31 @@ export function ResponsePane({
   error,
   onBack,
   onResend,
+  executeLabel,
+  executingLabel,
+  onContinue,
 }: {
-  result: InvokeResult
+  result: ExecutionResult
   pending: boolean
   error: string | null
   onBack: () => void
   onResend: () => void
+  executeLabel: string
+  executingLabel: string
+  onContinue?: (inputResponses: Record<string, unknown>) => void
 }) {
   const body = useMemo(() => parseBody(result.body), [result.body])
-  const [headersVisible, setHeadersVisible] = useState(false)
+  const [detailsVisible, setDetailsVisible] = useState(false)
+  const [inputError, setInputError] = useState<string>()
+  const [inputResponses, setInputResponses] = useState(() =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.keys(result.inputRequired?.requests ?? {}).map((name) => [name, {}]),
+      ),
+      null,
+      2,
+    ),
+  )
   const [expanded, setExpanded] = useState<Set<string>>(() =>
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
@@ -128,7 +145,17 @@ export function ResponsePane({
   )
 
   useEffect(() => {
-    setHeadersVisible(false)
+    setDetailsVisible(false)
+    setInputError(undefined)
+    setInputResponses(
+      JSON.stringify(
+        Object.fromEntries(
+          Object.keys(result.inputRequired?.requests ?? {}).map((name) => [name, {}]),
+        ),
+        null,
+        2,
+      ),
+    )
     setExpanded(body.root?.collection ? new Set([body.root.id]) : new Set())
     setSelected(body.root?.children?.length ? 1 : 0)
   }, [body, result])
@@ -197,7 +224,7 @@ export function ResponsePane({
   const canToggleChildren = Boolean(activeRow?.collection)
   usePaneFlags('response', {
     canToggleChildren,
-    hasHeaders: result.headers.length > 0,
+    hasDetails: Boolean(result.details?.items.length),
   })
   useStepKeys('response', move)
   usePaneActions('response', {
@@ -213,16 +240,19 @@ export function ResponsePane({
         onResend()
       }
     },
-    headers: () => setHeadersVisible((visible) => !visible),
+    details: () => setDetailsVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
   })
 
   return (
     <section id="response-pane" className="flex h-full min-h-0 min-w-0 flex-col" aria-live="polite">
       <div className="flex flex-wrap items-center gap-3 border-b border-rule px-3 py-2 md:px-4">
-        <p className="font-mono text-xs tabular-nums text-ink">
-          {result.status} {result.statusText}
-        </p>
+        {result.status ? (
+          <p className="font-mono text-xs tabular-nums text-ink">
+            {result.status.code !== undefined ? `${result.status.code} ` : ''}
+            {result.status.text}
+          </p>
+        ) : null}
         <p className="font-mono text-xs text-faint">
           {new Intl.NumberFormat(undefined, {
             maximumFractionDigits: 0,
@@ -235,18 +265,18 @@ export function ResponsePane({
             className="inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
             onClick={onBack}
           >
-            Edit request
+            Edit input
             <KeyHints>
               <Kbd hotkey="Escape" />
             </KeyHints>
           </button>
           <button
             type="button"
-            className="api-solid inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium disabled:bg-faint"
+            className="exec-solid inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium disabled:bg-faint"
             disabled={pending}
             onClick={onResend}
           >
-            {pending ? 'Sending…' : 'Resend'}
+            {pending ? executingLabel : executeLabel}
             <KeyHints>
               <Kbd hotkey="Mod+Enter" />
             </KeyHints>
@@ -261,23 +291,69 @@ export function ResponsePane({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
-        {result.headers.length > 0 ? (
+        {result.inputRequired && onContinue ? (
+          <section className="mb-3 bg-ink/5 px-3 py-3">
+            <p className="text-sm text-ink">The server needs additional client input.</p>
+            <pre className="mt-2 overflow-auto whitespace-pre-wrap font-mono text-xs text-mute">
+              {JSON.stringify(result.inputRequired.requests, null, 2)}
+            </pre>
+            <label className="mt-3 block">
+              <span className="text-xs text-mute">Input responses (JSON)</span>
+              <textarea
+                className="mt-1 min-h-32 w-full resize-y bg-paper px-2 py-2 font-mono text-xs text-ink outline-none focus:bg-white"
+                value={inputResponses}
+                onChange={(event) => setInputResponses(event.target.value)}
+              />
+            </label>
+            {inputError ? (
+              <p className="mt-2 text-xs text-error" role="alert">
+                {inputError}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="exec-solid mt-2 px-3 py-1.5 text-sm font-medium"
+              disabled={pending}
+              onClick={() => {
+                try {
+                  const parsed = JSON.parse(inputResponses) as unknown
+                  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    throw new Error('Responses must be a JSON object.')
+                  }
+                  setInputError(undefined)
+                  onContinue(parsed as Record<string, unknown>)
+                } catch (nextError) {
+                  setInputError(
+                    nextError instanceof Error ? nextError.message : 'Enter valid JSON.',
+                  )
+                }
+              }}
+            >
+              {pending ? executingLabel : 'Continue'}
+            </button>
+          </section>
+        ) : null}
+
+        <ProtocolTrace entries={result.trace ?? []} />
+
+        {result.details && result.details.items.length > 0 ? (
           <div className="mb-3">
             <button
               type="button"
               className="inline-flex items-center gap-2 font-mono text-xs text-mute hover:text-ink"
-              aria-expanded={headersVisible}
-              onClick={() => setHeadersVisible((visible) => !visible)}
+              aria-expanded={detailsVisible}
+              onClick={() => setDetailsVisible((visible) => !visible)}
             >
-              {headersVisible ? '▾' : '▸'} Headers ({result.headers.length})
+              {detailsVisible ? '▾' : '▸'} {result.details.label} (
+              {result.details.items.length})
               <Kbd hotkey="H" />
             </button>
-            {headersVisible ? (
+            {detailsVisible ? (
               <dl className="mt-2 space-y-1 border-l border-rule pl-3">
-                {result.headers.map((header) => (
-                  <div key={`${header.name}:${header.value}`}>
-                    <dt className="font-mono text-[11px] text-faint">{header.name}</dt>
-                    <dd className="break-words font-mono text-xs">{header.value}</dd>
+                {result.details.items.map((item) => (
+                  <div key={`${item.name}:${item.value}`}>
+                    <dt className="font-mono text-[11px] text-faint">{item.name}</dt>
+                    <dd className="break-words font-mono text-xs">{item.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -306,7 +382,7 @@ export function ResponsePane({
                 aria-expanded={node.collection ? isExpanded : undefined}
                 data-oc-current={index === selected ? 'true' : undefined}
                 className={`flex min-h-6 w-full items-center whitespace-pre pr-3 text-left outline-none ${
-                  index === selected ? 'api-active' : ''
+                  index === selected ? 'exec-active' : ''
                 }`}
                 style={{ paddingInlineStart: '0.25rem' }}
                 onClick={() => {
