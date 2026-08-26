@@ -83,26 +83,30 @@ function AppShell() {
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-ink"
-      >
-        Skip to content
-      </a>
-      <header className="border-b border-rule bg-paper">
-        <div className="flex h-12 items-center justify-between gap-4 px-3 md:px-4">
-          <Link
-            to="/"
-            className="font-mono text-sm text-ink hover:text-signal focus-visible:border-signal"
-          >
-            client
-          </Link>
-          <p className="truncate font-mono text-xs text-mute" translate="no">
-            {username}
-          </p>
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-ink"
+        >
+          Skip to content
+        </a>
+        <header className="shrink-0 border-b border-rule bg-paper">
+          <div className="flex h-12 items-center justify-between gap-4 px-3 md:px-4">
+            <Link
+              to="/"
+              className="font-mono text-sm text-ink hover:text-signal focus-visible:border-signal"
+            >
+              client
+            </Link>
+            <p className="truncate font-mono text-xs text-mute" translate="no">
+              {username}
+            </p>
+          </div>
+        </header>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <Outlet />
         </div>
-      </header>
-      <Outlet />
+      </div>
     </HotkeysProvider>
   )
 }

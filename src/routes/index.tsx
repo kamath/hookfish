@@ -123,7 +123,7 @@ function Home() {
   ]
 
   return (
-    <main id="main" className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-3xl flex-col px-3 pt-8 md:px-4">
+    <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4">
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <label htmlFor="url" className="sr-only">
           OpenAPI URL
@@ -150,7 +150,7 @@ function Home() {
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {apis.length === 0 ? (
           <p className="mt-8 text-sm text-mute">Paste a spec URL to open a client.</p>
         ) : (

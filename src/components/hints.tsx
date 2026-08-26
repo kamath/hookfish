@@ -39,7 +39,7 @@ export function HintBar({
   items: Array<{ hotkey: RegisterableHotkey | string; label: string }>
 }) {
   return (
-    <footer className="flex flex-wrap gap-x-4 gap-y-2 border-t border-rule px-3 py-2 md:px-4">
+    <footer className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 border-t border-rule px-3 py-2 md:px-4">
       {items.map((item, index) => (
         <Hint key={`${item.label}-${index}`} hotkey={item.hotkey} label={item.label} />
       ))}
