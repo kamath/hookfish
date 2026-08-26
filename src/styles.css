@@ -157,81 +157,93 @@ button[type='submit'][data-oc-current='true'] {
   background-color: var(--signal);
 }
 
-[data-oc-method] {
-  --method: var(--signal);
+[data-oc-method],
+.api-context {
+  --api-color: var(--signal);
 }
 
+.api-get,
 [data-oc-method='get'] {
-  --method: var(--method-get);
+  --api-color: var(--method-get);
 }
 
+.api-post,
 [data-oc-method='post'] {
-  --method: var(--method-post);
+  --api-color: var(--method-post);
 }
 
+.api-put,
 [data-oc-method='put'] {
-  --method: var(--method-put);
+  --api-color: var(--method-put);
 }
 
+.api-patch,
 [data-oc-method='patch'] {
-  --method: var(--method-patch);
+  --api-color: var(--method-patch);
 }
 
+.api-delete,
 [data-oc-method='delete'] {
-  --method: var(--method-delete);
+  --api-color: var(--method-delete);
 }
 
+.api-head,
 [data-oc-method='head'] {
-  --method: var(--method-head);
+  --api-color: var(--method-head);
 }
 
+.api-options,
 [data-oc-method='options'] {
-  --method: var(--method-options);
+  --api-color: var(--method-options);
+}
+
+.api-active,
+.api-context [data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--api-color) 12%, var(--paper));
+}
+
+.api-ink {
+  color: var(--api-color);
+}
+
+.api-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  border-inline-start-color: var(--api-color);
+}
+
+.api-context .oc-nest .oc-fold[data-oc-current='true']::before {
+  background: var(--api-color);
+}
+
+.api-context button[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--ink) 10%, var(--api-color));
+}
+
+.api-context [data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
+  background-color: var(--api-color);
+}
+
+.api-solid {
+  color: var(--on-signal);
+  background-color: var(--api-color);
+}
+
+.api-solid:hover {
+  background-color: color-mix(in srgb, var(--api-color) 82%, var(--ink));
+}
+
+.api-context button.api-solid[type='submit'][data-oc-current='true'] {
+  background-color: color-mix(in srgb, var(--api-color) 72%, var(--ink));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.api-solid:disabled {
+  background-color: var(--faint);
 }
 
 [data-oc-method][data-oc-active] {
-  background-color: color-mix(in srgb, var(--method) 12%, var(--paper));
+  background-color: color-mix(in srgb, var(--api-color) 12%, var(--paper));
 }
 
 [data-oc-method] [data-oc-method-label] {
-  color: var(--method);
-}
-
-[data-oc-operation] button[type='submit'] {
-  background-color: var(--method);
-}
-
-[data-oc-operation] button[type='submit'][data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--ink) 20%, var(--method));
-  outline: 2px solid var(--method);
-  outline-offset: 2px;
-}
-
-[data-oc-mode='insert'] [data-oc-operation] button[type='submit'][data-oc-current='true'] {
-  background-color: var(--method);
-}
-
-[data-oc-operation] [data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--method) 10%, var(--paper));
-}
-
-[data-oc-operation] .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
-  border-inline-start-color: var(--method);
-}
-
-[data-oc-operation] .oc-nest .oc-fold[data-oc-current='true']::before {
-  background-color: var(--method);
-}
-
-[data-oc-operation] .oc-fold[data-oc-current='true'],
-[data-oc-operation] .oc-fold:focus-visible {
-  background-color: color-mix(in srgb, var(--method) 10%, var(--paper));
-}
-
-[data-oc-mode='insert'] [data-oc-operation] [data-oc-current='true'] {
-  background-color: transparent;
-}
-
-[data-oc-mode='insert'] [data-oc-operation] .oc-fold[data-oc-current='true'] {
-  background-color: var(--paper);
+  color: var(--api-color);
 }
