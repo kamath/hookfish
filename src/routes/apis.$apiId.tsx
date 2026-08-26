@@ -307,6 +307,10 @@ function ApiWorkbench({
   }
 
   function stepBack() {
+    if (getPane() === 'response') {
+      activate('form', 'command')
+      return
+    }
     if (getPane() === 'form') {
       activate('list', 'command')
       blurActive()
@@ -340,10 +344,13 @@ function ApiWorkbench({
       moveFormTab('call-form', delta)
       return
     }
+    if (getPane() === 'response') {
+      return
+    }
     move(delta)
   }
 
-  useStepKeys(nudge)
+  useStepKeys(nudge, pane !== 'response')
 
   useEditHotkeys([
     {
@@ -501,7 +508,7 @@ function ApiWorkbench({
           }}
           data-oc-method={operation.method}
           data-oc-active={active || undefined}
-          className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal"
+          className={`api-${operation.method} flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal`}
         >
           <span
             data-oc-method-label
@@ -546,6 +553,17 @@ function ApiWorkbench({
             ...serverHints,
             { hotkey: 'N', label: 'home' },
           ]
+        : pane === 'response'
+          ? [
+              { hotkey: 'J', label: 'next line' },
+              { hotkey: 'K', label: 'previous line' },
+              { hotkey: 'Tab', label: 'next line' },
+              { hotkey: 'Enter', label: 'expand' },
+              { hotkey: 'Mod+Enter', label: 'resend' },
+              { hotkey: 'H', label: 'headers' },
+              { hotkey: 'A', label: 'toggle children' },
+              { hotkey: 'Escape', label: 'request' },
+            ]
         : [
             { hotkey: '/', label: 'filter' },
             { hotkey: 'J', label: 'next' },
@@ -601,14 +619,14 @@ function ApiWorkbench({
 
       <div
         className={`grid min-h-0 flex-1 grid-cols-1 ${
-          selected && pane === 'form'
+          selected && (pane === 'form' || pane === 'response')
             ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
             : ''
         }`}
       >
         <aside
           className={`flex min-h-0 flex-col border-rule ${
-            pane === 'form' ? 'hidden lg:flex lg:border-r' : 'flex'
+            pane === 'form' || pane === 'response' ? 'hidden lg:flex lg:border-r' : 'flex'
           }`}
         >
           <div className="shrink-0 px-3 py-2">
@@ -708,7 +726,7 @@ function ApiWorkbench({
           </nav>
         </aside>
 
-        {selected && pane === 'form' ? (
+        {selected && (pane === 'form' || pane === 'response') ? (
           <OperationClient
             key={selected.id}
             api={api}

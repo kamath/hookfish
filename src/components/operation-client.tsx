@@ -3,24 +3,17 @@ import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
-import type { ClientApi, ClientOperation } from '../lib/client-types'
+import type { ClientApi, ClientOperation, InvokeResult } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
-import { useChrome } from '../lib/mode'
+import { activate, useChrome } from '../lib/mode'
 import { invokeOperation } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { Kbd } from './hints'
+import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
-
-function formatBody(body: string): string {
-  try {
-    return JSON.stringify(JSON.parse(body), null, 2)
-  } catch {
-    return body
-  }
-}
 
 export function OperationClient({
   api,
@@ -32,6 +25,9 @@ export function OperationClient({
   serverUrl: string
 }) {
   const [formData, setFormData] = useState<unknown>({})
+  const [lastSubmission, setLastSubmission] = useState<unknown>({})
+  const [result, setResult] = useState<InvokeResult | null>(null)
+  const { mode, pane } = useChrome()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
       invokeOperation({
@@ -42,13 +38,15 @@ export function OperationClient({
           formData: asRecord(next),
         },
       }),
+    onSuccess: (nextResult) => {
+      setResult(nextResult)
+      activate('response', 'command')
+    },
   })
   const pending = invoke.isPending
   const error = invoke.isError
     ? queryErrorMessage(invoke.error, 'The request failed.')
     : null
-  const result = invoke.data ?? null
-
   useEffect(() => {
     const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
@@ -56,7 +54,6 @@ export function OperationClient({
 
   useEffect(() => bindFormTabSync('call-form'), [operation.id])
 
-  const { pane } = useChrome()
   useHotkey(
     'Mod+Enter',
     () => {
@@ -65,6 +62,11 @@ export function OperationClient({
       }
     },
     { enabled: pane === 'form', ignoreInputs: false },
+  )
+  useHotkey(
+    'O',
+    () => activate('response', 'command'),
+    { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
   )
 
   const previewUrl = useMemo(() => {
@@ -82,20 +84,43 @@ export function OperationClient({
   }, [formData, operation.path, serverUrl])
 
   function onSubmit({ formData: next }: IChangeEvent) {
+    setLastSubmission(next)
     invoke.mutate(next)
+  }
+
+  function showForm(insert: boolean) {
+    activate('form', 'command')
+    if (insert) {
+      window.setTimeout(() => selectDefaultInput('call-form'), 0)
+    }
+  }
+
+  if (pane === 'response' && result) {
+    return (
+      <div className={`api-context api-${operation.method} h-full min-h-0`}>
+        <ResponsePane
+          result={result}
+          pending={pending}
+          error={error}
+          onBack={() => showForm(false)}
+          onResend={() => invoke.mutate(lastSubmission)}
+        />
+      </div>
+    )
   }
 
   return (
     <div
       data-oc-operation
       data-oc-method={operation.method}
-      className={`grid h-full min-h-0 grid-cols-1 overflow-hidden ${
-        result ? 'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]' : ''
-      }`}
+      className={`api-context api-${operation.method} h-full min-h-0 overflow-hidden`}
     >
-      <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto lg:border-r lg:border-rule">
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
-          <span data-oc-method-label className="font-mono text-xs tabular-nums">
+          <span
+            data-oc-method-label
+            className="api-ink font-mono text-xs tabular-nums"
+          >
             {operation.method.toUpperCase()}
           </span>
           <span className="min-w-0 truncate font-mono text-xs text-ink">
@@ -103,6 +128,16 @@ export function OperationClient({
           </span>
           {operation.deprecated ? (
             <span className="text-xs text-signal">deprecated</span>
+          ) : null}
+          {result ? (
+            <button
+              type="button"
+              className="ml-auto inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
+              onClick={() => activate('response', 'command')}
+            >
+              View output
+              <Kbd hotkey="O" />
+            </button>
           ) : null}
         </div>
 
@@ -126,7 +161,11 @@ export function OperationClient({
                   {error}
                 </p>
               ) : null}
-              <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
+              <button
+                type="submit"
+                className={`${formPrimaryButtonClass} api-solid`}
+                disabled={pending}
+              >
                 {pending ? (
                   'Sending…'
                 ) : (
@@ -143,42 +182,6 @@ export function OperationClient({
           </SwissForm>
         </div>
       </section>
-
-      {result ? (
-        <section className="flex min-h-0 flex-col overflow-y-auto" aria-live="polite">
-          <div className="flex items-baseline justify-between gap-3 border-b border-rule px-3 py-2 md:px-4">
-            <p className="font-mono text-xs tabular-nums text-ink">
-              {result.status} {result.statusText}
-            </p>
-            <p className="font-mono text-xs text-faint">
-              {new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
-                result.elapsedMs,
-              )}
-              &nbsp;ms
-            </p>
-          </div>
-          <div className="min-w-0 px-3 py-4 md:px-4">
-            {result.headers.length > 0 ? (
-              <details className="mb-3">
-                <summary className="cursor-pointer text-xs text-mute">Headers</summary>
-                <dl className="mt-2 space-y-1">
-                  {result.headers.map((header) => (
-                    <div key={`${header.name}:${header.value}`}>
-                      <dt className="font-mono text-[11px] text-faint">{header.name}</dt>
-                      <dd className="break-words font-mono text-xs">{header.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </details>
-            ) : null}
-            <pre className="overflow-x-auto text-sm leading-relaxed">
-              <code className="font-mono">
-                {result.body ? formatBody(result.body) : 'Empty body'}
-              </code>
-            </pre>
-          </div>
-        </section>
-      ) : null}
     </div>
   )
 }
