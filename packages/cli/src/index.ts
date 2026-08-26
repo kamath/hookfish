@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
+import { serve } from 'srvx'
+import { staticMiddleware } from 'srvx/static'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json') as { version: string }
@@ -19,41 +20,32 @@ function parsePort(value: string): number {
 }
 
 async function startServer(options: { host: string; port: number }) {
-  const serverEntry = fileURLToPath(
-    new URL('../web/server/index.mjs', import.meta.url),
+  const serverEntryUrl = pathToFileURL(
+    fileURLToPath(new URL('../web/server/server.js', import.meta.url)),
   )
-  const child = spawn(process.execPath, [serverEntry], {
-    env: {
-      ...process.env,
-      HOST: options.host,
-      PORT: String(options.port),
-    },
-    stdio: 'inherit',
-  })
-
-  const forwardSignal = (signal: NodeJS.Signals) => {
-    if (!child.killed) {
-      child.kill(signal)
+  const clientDirectory = fileURLToPath(
+    new URL('../web/client/', import.meta.url),
+  )
+  const serverEntry = (await import(serverEntryUrl.href)) as {
+    default: {
+      fetch(request: Request): Response | Promise<Response>
     }
   }
-
-  process.once('SIGINT', forwardSignal)
-  process.once('SIGTERM', forwardSignal)
-
-  await new Promise<void>((resolve, reject) => {
-    child.once('error', reject)
-    child.once('exit', (code, signal) => {
-      process.removeListener('SIGINT', forwardSignal)
-      process.removeListener('SIGTERM', forwardSignal)
-
-      if (signal) {
-        process.exitCode = 128 + (signal === 'SIGINT' ? 2 : 15)
-      } else {
-        process.exitCode = code ?? 1
-      }
-      resolve()
-    })
+  const server = serve({
+    fetch: (request) => serverEntry.default.fetch(request),
+    hostname: options.host,
+    middleware: [staticMiddleware({ dir: clientDirectory })],
+    port: options.port,
   })
+
+  await server.ready()
+
+  const shutdown = async () => {
+    await server.close(true)
+  }
+
+  process.once('SIGINT', shutdown)
+  process.once('SIGTERM', shutdown)
 }
 
 const program = new Command()

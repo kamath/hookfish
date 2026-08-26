@@ -3,9 +3,9 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".output/**", "dist/**", "web/**"]
+      "outputs": ["dist/**", "web/**"]
     },
-    "@hookfish/cli#build": {
+    "hookfish#build": {
       "dependsOn": ["@hookfish/web#build"],
       "outputs": ["dist/**", "web/**"]
     },

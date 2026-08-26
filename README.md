@@ -61,6 +61,13 @@ The resulting CLI package runs the production app with Node—no Wrangler or
 Cloudflare runtime is required:
 
 ```bash
+npm install --global hookfish
+hookfish --port 3000
+```
+
+Run the workspace build directly during development:
+
+```bash
 pnpm --filter hookfish start -- --port 3000
 ```
 

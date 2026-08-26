@@ -102,6 +102,9 @@ importers:
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      srvx:
+        specifier: ^0.12.7
+        version: 0.12.7
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -1649,6 +1652,11 @@ packages:
 
   srvx@0.11.22:
     resolution: {integrity: sha512-LqZxxBDMKuMAZzFzJnDCkFOrs9MZQZr0LvHiO/SuSZVdQaXD7xQ5UWTUxheJrQPve1qk9MG2B/yttUvJxw8egQ==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
+  srvx@0.12.7:
+    resolution: {integrity: sha512-PIaq1pDGg3EU2OGSN3pzRfYVu9MJDzLdojlGN6E3lvhAdxqn/lNMJFMA1xGA38jYkBb0V9xw02QEVVMDb0PExA==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -3208,6 +3216,8 @@ snapshots:
   source-map@0.7.6: {}
 
   srvx@0.11.22: {}
+
+  srvx@0.12.7: {}
 
   string-width@4.2.3:
     dependencies:

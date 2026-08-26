@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "commander": "^15.0.0"
+    "commander": "^15.0.0",
+    "srvx": "^0.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

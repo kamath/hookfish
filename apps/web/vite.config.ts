@@ -15,6 +15,7 @@ const config = defineConfig({
     ],
   },
   ssr: {
+    noExternal: true,
     optimizeDeps: {
       include: [
         '@tanstack/react-query',
