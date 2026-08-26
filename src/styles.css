@@ -207,10 +207,6 @@ button[type='submit'][data-oc-current='true'] {
   color: var(--api-color);
 }
 
-.api-wash {
-  background-color: color-mix(in srgb, var(--api-color) 9%, var(--paper));
-}
-
 .api-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
   border-inline-start-color: var(--api-color);
 }

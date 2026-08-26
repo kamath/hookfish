@@ -88,64 +88,66 @@ export function RequestSnippet({ request }: { request: ExecuteRequest }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="sr-only" htmlFor="snippet-format">
-        Snippet library
-      </label>
-      <span className="relative inline-flex self-start">
-        <select
-          id="snippet-format"
-          className="api-wash min-h-8 w-auto min-w-[7rem] appearance-none border-0 py-1 pr-6 pl-2 text-xs text-ink outline-none"
-          value={format}
-          onChange={(event) => {
-            const next = event.target.value
-            if (isSnippetFormat(next)) {
-              chooseFormat(next)
-            }
-          }}
-        >
-          {SNIPPET_FORMATS.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-[10px] text-mute"
-        >
-          ▼
-        </span>
-      </span>
-      <div className="relative api-wash">
-        <button
-          type="button"
-          className="absolute top-1 right-1 inline-flex h-7 w-7 items-center justify-center text-mute hover:text-ink focus-visible:text-ink outline-none"
-          aria-live="polite"
-          aria-label={copied ? 'Copied' : 'Copy snippet'}
-          onClick={() => {
-            void copyText(snippet).then((ok) => {
-              if (ok) {
-                setCopied(true)
-              }
-            })
-          }}
-        >
-          {copied ? <CheckIcon /> : <CopyIcon />}
-        </button>
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all py-2 pr-9 pl-2.5 font-mono text-xs text-mute">
+    <div>
+      <div className="flex items-start gap-1">
+        <pre className="max-h-64 min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-all py-1 font-mono text-xs text-mute">
           {visible}
         </pre>
-        {overflow > 0 ? (
+        <div className="flex shrink-0 items-center">
+          <label className="sr-only" htmlFor="snippet-format">
+            Snippet library
+          </label>
+          <span className="relative inline-flex">
+            <select
+              id="snippet-format"
+              className="min-h-7 w-auto min-w-[4.75rem] appearance-none border-0 bg-transparent py-0.5 pr-5 pl-1 text-xs text-mute outline-none hover:text-ink"
+              value={format}
+              onChange={(event) => {
+                const next = event.target.value
+                if (isSnippetFormat(next)) {
+                  chooseFormat(next)
+                }
+              }}
+            >
+              {SNIPPET_FORMATS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0.5 flex items-center text-[9px] text-mute"
+            >
+              ▼
+            </span>
+          </span>
           <button
             type="button"
-            className="w-full px-2.5 pb-2 text-left text-[11px] text-mute hover:text-ink outline-none"
-            onClick={() => setExpanded((value) => !value)}
+            className="inline-flex h-7 w-7 items-center justify-center text-mute hover:text-ink focus-visible:text-ink outline-none"
+            aria-live="polite"
+            aria-label={copied ? 'Copied' : 'Copy snippet'}
+            onClick={() => {
+              void copyText(snippet).then((ok) => {
+                if (ok) {
+                  setCopied(true)
+                }
+              })
+            }}
           >
-            {collapsed ? `${overflow} more lines` : 'Show less'}
+            {copied ? <CheckIcon /> : <CopyIcon />}
           </button>
-        ) : null}
+        </div>
       </div>
+      {overflow > 0 ? (
+        <button
+          type="button"
+          className="mt-1 text-[11px] text-mute hover:text-ink outline-none"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {collapsed ? `${overflow} more lines` : 'Show less'}
+        </button>
+      ) : null}
     </div>
   )
 }
