@@ -279,11 +279,12 @@ export function ResponsePane({
           <div className="mb-3">
             <button
               type="button"
-              className="font-mono text-xs text-mute hover:text-ink"
+              className="inline-flex items-center gap-2 font-mono text-xs text-mute hover:text-ink"
               aria-expanded={headersVisible}
               onClick={() => setHeadersVisible((visible) => !visible)}
             >
               {headersVisible ? '▾' : '▸'} Headers ({result.headers.length})
+              <Kbd hotkey="H" />
             </button>
             {headersVisible ? (
               <dl className="mt-2 space-y-1 border-l border-rule pl-3">
