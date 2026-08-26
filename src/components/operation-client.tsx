@@ -149,7 +149,7 @@ export function ExecutableClient({
     },
   })
   const pending = invoke.isPending
-  const error = invoke.isError ? queryErrorMessage(invoke.error, 'The request failed.') : null
+  const error = invoke.isError ? queryErrorMessage(invoke.error, 'The execution failed.') : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
 
   useEffect(() => {
@@ -309,7 +309,7 @@ export function ExecutableClient({
     return (
       <section className="flex h-full min-h-0 items-center justify-center px-4 text-center">
         <div>
-          <p className="text-sm text-mute">No response is available in this session.</p>
+          <p className="text-sm text-mute">No result is available in this session.</p>
           <button
             type="button"
             className="mt-3 inline-flex items-center gap-2 text-sm text-ink hover:text-signal"

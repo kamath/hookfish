@@ -6,7 +6,7 @@ import type {
 } from './client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from './build-request'
 import { toFetch } from './export-snippet'
-import { buildOperationRequest, type ExecuteRequest } from './invoke'
+import { buildOperationRequest, httpBindingFor, type ExecuteRequest } from './invoke'
 import { executeRequest } from './invoke.functions'
 
 export type InvocationContext = {
@@ -62,19 +62,22 @@ registerExecutableAdapter('openapi', {
     }),
   execute: (invocation) => executeRequest({ data: asHttpInvocation(invocation) }),
   preview: ({ executable, target, formData }) => {
-    if (executable.binding.type !== 'http') {
+    let binding
+    try {
+      binding = httpBindingFor(executable)
+    } catch {
       return executable.name
     }
     const data = asRecord(formData)
     try {
       return buildRequestUrl(
         target,
-        executable.binding.path,
+        binding.path,
         asRecord(omitEmpty(data.path)),
         asRecord(omitEmpty(data.query)),
       )
     } catch {
-      return `${target}${executable.binding.path}`
+      return `${target}${binding.path}`
     }
   },
   exportSnippet: (invocation) => toFetch(asHttpInvocation(invocation)),

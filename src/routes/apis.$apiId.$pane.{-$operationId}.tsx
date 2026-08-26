@@ -144,7 +144,7 @@ function ApiClientPage() {
   })
 
   if (apiQuery.isPending) {
-    return <QueryStatus label="Reading the spec…" />
+    return <QueryStatus label="Reading the source…" />
   }
 
   if (apiQuery.isError) {
@@ -553,7 +553,7 @@ function ApiWorkbench({
               <button
                 type="button"
                 className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label="Previous server"
+                aria-label={`Previous ${api.labels.target}`}
                 onClick={() => cycleServer(-1)}
               >
                 <Kbd hotkey="[" />
@@ -578,7 +578,7 @@ function ApiWorkbench({
               <button
                 type="button"
                 className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label="Next server"
+                aria-label={`Next ${api.labels.target}`}
                 onClick={() => cycleServer(1)}
               >
                 <Kbd hotkey="]" />
@@ -607,7 +607,7 @@ function ApiWorkbench({
                   void onClearAuth()
                 }}
               >
-                Clear Auth
+                Clear credentials
                 <Kbd hotkey="Mod+Backspace" />
               </button>
             ) : null}

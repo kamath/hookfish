@@ -4,11 +4,11 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
-import { ARCADE_SPEC_URL } from '../lib/defaults'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
+import { sourceAdapterOptions } from '../lib/source-adapters'
 import { inputClass, primaryButtonClass } from '../lib/ui'
 
 export const Route = createFileRoute('/')({
@@ -22,10 +22,13 @@ function Home() {
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState(0)
+  const sourceOptions = sourceAdapterOptions()
+  const [sourceKind, setSourceKind] = useState(sourceOptions[0]?.kind ?? 'openapi')
+  const sourceOption = sourceOptions.find((option) => option.kind === sourceKind)
   const apis = apisQuery.data ?? []
 
   const add = useMutation({
-    mutationFn: (url: string) => addApi(url),
+    mutationFn: ({ url, kind }: { url: string; kind: string }) => addApi(url, kind),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
@@ -91,7 +94,7 @@ function Home() {
     event.preventDefault()
     const form = event.currentTarget
     const url = String(new FormData(form).get('url') ?? '').trim()
-    add.mutate(url)
+    add.mutate({ url, kind: sourceKind })
   }
 
   function onRemove(id: string, title: string) {
@@ -107,8 +110,24 @@ function Home() {
       className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4"
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <label htmlFor="source-kind" className="sr-only">
+          Source type
+        </label>
+        <select
+          id="source-kind"
+          name="source-kind"
+          className={`${inputClass} shrink-0 sm:w-auto`}
+          value={sourceKind}
+          onChange={(event) => setSourceKind(event.target.value)}
+        >
+          {sourceOptions.map((option) => (
+            <option key={option.kind} value={option.kind}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <label htmlFor="url" className="sr-only">
-          Source URL
+          {sourceOption?.inputLabel ?? 'Source URL'}
         </label>
         <div className="relative min-w-0 flex-1">
           <input
@@ -121,7 +140,7 @@ function Home() {
             spellCheck={false}
             required
             className={`${inputClass} pr-10`}
-            placeholder={ARCADE_SPEC_URL}
+            placeholder={sourceOption?.placeholder}
             onFocus={() => {
               activate('specs', 'edit')
             }}

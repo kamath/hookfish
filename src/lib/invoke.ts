@@ -1,8 +1,9 @@
-import type { AuthScheme, ClientOperation } from './client-types'
+import type { AuthScheme, ClientOperation, HttpBinding } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
 import { applyAuth } from './openapi'
 
 const BODY_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options'])
 
 export type ExecuteRequest = {
   transport: 'http'
@@ -23,6 +24,20 @@ function headersToRecord(headers: Headers): Record<string, string> {
   return record
 }
 
+export function httpBindingFor(operation: ClientOperation): HttpBinding {
+  const binding = operation.binding
+  if (
+    binding.type !== 'http' ||
+    typeof binding.method !== 'string' ||
+    !HTTP_METHODS.has(binding.method) ||
+    typeof binding.path !== 'string' ||
+    (binding.contentType !== undefined && typeof binding.contentType !== 'string')
+  ) {
+    throw new Error('The executable does not have a valid HTTP binding.')
+  }
+  return binding as HttpBinding
+}
+
 export function buildOperationRequest(input: {
   serverUrl: string
   operation: ClientOperation
@@ -30,14 +45,11 @@ export function buildOperationRequest(input: {
   auth: Record<string, string>
   authSchemes: AuthScheme[]
 }): ExecuteRequest {
-  if (input.operation.binding.type !== 'http') {
-    throw new Error(`Unsupported executable binding: ${input.operation.binding.type}.`)
-  }
   if (!isHttpUrl(input.serverUrl)) {
     throw new Error('Choose an http or https server URL.')
   }
 
-  const binding = input.operation.binding
+  const binding = httpBindingFor(input.operation)
   const form = asRecord(input.formData)
   const path = asRecord(omitEmpty(form.path))
   const query = asRecord(omitEmpty(form.query))

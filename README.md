@@ -14,8 +14,9 @@ Open `http://localhost:3000`. Try:
 ## Adding a source type
 
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
-`src/lib/client-types.ts`. A source parser supplies executable names, badges, accent colors,
-JSON Schema inputs, targets, credentials, and UI labels.
+`src/lib/client-types.ts`. Register source discovery/loading in `src/lib/source-adapters.ts`;
+the source selector is populated from that registry. A source parser supplies executable
+names, badges, accent colors, JSON Schema inputs, targets, credentials, and UI labels.
 
 Register execution behavior with `registerExecutableAdapter()` in
 `src/lib/executable-adapters.ts`. An adapter builds a serializable invocation, previews it,
