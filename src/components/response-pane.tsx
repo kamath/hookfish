@@ -422,8 +422,8 @@ export function ResponsePane({
               >
                 <button
                   type="button"
-                  className={`flex min-h-6 min-w-0 flex-1 pr-3 text-left outline-none ${
-                    isActive ? 'items-start' : 'items-center'
+                  className={`flex min-h-6 min-w-0 text-left outline-none ${
+                    isActive ? 'items-start pr-1' : 'flex-1 items-center pr-3'
                   }`}
                   style={{ paddingInlineStart: '0.25rem' }}
                   onClick={() => {
@@ -458,10 +458,10 @@ export function ResponsePane({
                     ) : null}
                   </span>
                   <span
-                    className={`min-w-0 flex-1 ${
+                    className={`min-w-0 ${
                       isActive
                         ? 'whitespace-pre-wrap break-words'
-                        : 'overflow-hidden text-ellipsis whitespace-pre'
+                        : 'flex-1 overflow-hidden text-ellipsis whitespace-pre'
                     }`}
                   >
                     {node.label !== undefined ? (
@@ -481,7 +481,7 @@ export function ResponsePane({
                 {isActive ? (
                   <button
                     type="button"
-                    className="inline-flex min-h-6 shrink-0 items-center gap-1 px-1 text-faint outline-none hover:text-ink"
+                    className="inline-flex min-h-6 shrink-0 items-center gap-1.5 bg-ink/10 px-2 text-xs font-medium text-ink outline-none hover:bg-ink/15"
                     aria-label={
                       isCopied
                         ? 'Copied JSON node'
@@ -515,6 +515,7 @@ export function ResponsePane({
                         />
                       </svg>
                     )}
+                    {isCopied ? 'Copied' : 'Copy'}
                   </button>
                 ) : null}
               </div>
