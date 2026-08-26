@@ -1,8 +1,14 @@
 import { notFound } from '@tanstack/react-router'
 import type { ApiSummary, ClientApi } from './client-types'
-import { apiAuthStored, clearApiAuth } from './auth'
+import {
+  apiAuthStored,
+  clearApiAuth,
+  readApiAuth,
+  saveApiAuth,
+} from './auth'
 import { DEFAULTS_VERSION, mergeDefaultSpecs } from './defaults'
 import { sourceAdapterFor } from './source-adapters'
+import { closeMcpConnection } from './mcp/client'
 import { readApisJson, readDefaultsVersion, writeApisJson, writeDefaultsVersion } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
@@ -83,9 +89,20 @@ export function listApis(): ApiSummary[] {
   return loadApis()
 }
 
-export async function addApi(url: string, kind = 'openapi'): Promise<{ id: string }> {
+export async function addApi(
+  url: string,
+  kind = 'openapi',
+  credentials: Record<string, string> = {},
+): Promise<{ id: string }> {
   const id = crypto.randomUUID()
-  const client = await sourceAdapterFor(kind).load(url, id)
+  saveApiAuth(id, credentials)
+  let client: ClientApi
+  try {
+    client = await sourceAdapterFor(kind).load(url, id, credentials)
+  } catch (error) {
+    clearApiAuth(id)
+    throw error
+  }
   const apis = loadApis()
   apis.unshift({
     id,
@@ -106,7 +123,11 @@ export async function getApi(id: string): Promise<ClientApi> {
     throw notFound()
   }
 
-  const client = await sourceAdapterFor(row.kind).load(row.sourceUrl, row.id)
+  const client = await sourceAdapterFor(row.kind).load(
+    row.sourceUrl,
+    row.id,
+    readApiAuth(row.id),
+  )
   rememberSpecMeta(row.id, client)
 
   return {
@@ -118,4 +139,5 @@ export async function getApi(id: string): Promise<ClientApi> {
 export function removeApi(id: string) {
   saveApis(loadApis().filter((api) => api.id !== id))
   clearApiAuth(id)
+  void closeMcpConnection(id)
 }

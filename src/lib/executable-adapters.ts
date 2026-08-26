@@ -8,6 +8,7 @@ import { asRecord, buildRequestUrl, omitEmpty } from './build-request'
 import { toFetch } from './export-snippet'
 import { buildOperationRequest, httpBindingFor, type ExecuteRequest } from './invoke'
 import { executeRequest } from './invoke.functions'
+import { mcpExecutableAdapter } from './mcp/executable'
 
 export type InvocationContext = {
   source: ExecutableSource
@@ -20,6 +21,11 @@ export type InvocationContext = {
 export type ExecutableAdapter = {
   buildInvocation: (context: InvocationContext) => unknown
   execute: (invocation: unknown) => Promise<ExecutionResult>
+  continue?: (
+    invocation: unknown,
+    inputResponses: Record<string, unknown>,
+    requestState?: string,
+  ) => Promise<ExecutionResult>
   preview: (context: Omit<InvocationContext, 'credentials'>) => string
   exportSnippet?: (invocation: unknown) => string
 }
@@ -82,3 +88,5 @@ registerExecutableAdapter('openapi', {
   },
   exportSnippet: (invocation) => toFetch(asHttpInvocation(invocation)),
 })
+
+registerExecutableAdapter('mcp', mcpExecutableAdapter)

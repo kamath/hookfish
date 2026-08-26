@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
+import { ProtocolTrace } from './protocol-trace'
 
 type ResponseNode = {
   id: string
@@ -103,6 +104,7 @@ export function ResponsePane({
   onResend,
   executeLabel,
   executingLabel,
+  onContinue,
 }: {
   result: ExecutionResult
   pending: boolean
@@ -111,9 +113,20 @@ export function ResponsePane({
   onResend: () => void
   executeLabel: string
   executingLabel: string
+  onContinue?: (inputResponses: Record<string, unknown>) => void
 }) {
   const body = useMemo(() => parseBody(result.body), [result.body])
   const [detailsVisible, setDetailsVisible] = useState(false)
+  const [inputError, setInputError] = useState<string>()
+  const [inputResponses, setInputResponses] = useState(() =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.keys(result.inputRequired?.requests ?? {}).map((name) => [name, {}]),
+      ),
+      null,
+      2,
+    ),
+  )
   const [expanded, setExpanded] = useState<Set<string>>(() =>
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
@@ -133,6 +146,16 @@ export function ResponsePane({
 
   useEffect(() => {
     setDetailsVisible(false)
+    setInputError(undefined)
+    setInputResponses(
+      JSON.stringify(
+        Object.fromEntries(
+          Object.keys(result.inputRequired?.requests ?? {}).map((name) => [name, {}]),
+        ),
+        null,
+        2,
+      ),
+    )
     setExpanded(body.root?.collection ? new Set([body.root.id]) : new Set())
     setSelected(body.root?.children?.length ? 1 : 0)
   }, [body, result])
@@ -268,6 +291,51 @@ export function ResponsePane({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
+        {result.inputRequired && onContinue ? (
+          <section className="mb-3 bg-ink/5 px-3 py-3">
+            <p className="text-sm text-ink">The server needs additional client input.</p>
+            <pre className="mt-2 overflow-auto whitespace-pre-wrap font-mono text-xs text-mute">
+              {JSON.stringify(result.inputRequired.requests, null, 2)}
+            </pre>
+            <label className="mt-3 block">
+              <span className="text-xs text-mute">Input responses (JSON)</span>
+              <textarea
+                className="mt-1 min-h-32 w-full resize-y bg-paper px-2 py-2 font-mono text-xs text-ink outline-none focus:bg-white"
+                value={inputResponses}
+                onChange={(event) => setInputResponses(event.target.value)}
+              />
+            </label>
+            {inputError ? (
+              <p className="mt-2 text-xs text-error" role="alert">
+                {inputError}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="exec-solid mt-2 px-3 py-1.5 text-sm font-medium"
+              disabled={pending}
+              onClick={() => {
+                try {
+                  const parsed = JSON.parse(inputResponses) as unknown
+                  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    throw new Error('Responses must be a JSON object.')
+                  }
+                  setInputError(undefined)
+                  onContinue(parsed as Record<string, unknown>)
+                } catch (nextError) {
+                  setInputError(
+                    nextError instanceof Error ? nextError.message : 'Enter valid JSON.',
+                  )
+                }
+              }}
+            >
+              {pending ? executingLabel : 'Continue'}
+            </button>
+          </section>
+        ) : null}
+
+        <ProtocolTrace entries={result.trace ?? []} />
+
         {result.details && result.details.items.length > 0 ? (
           <div className="mb-3">
             <button

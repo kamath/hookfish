@@ -124,6 +124,7 @@ export function ExecutableClient({
 }) {
   const [formData, setFormData] = useState<unknown>({})
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
+  const [lastInvocation, setLastInvocation] = useState<unknown>()
   const [result, setResult] = useState<ExecutionResult | null>(null)
   const [askingAuth, setAskingAuth] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -133,16 +134,23 @@ export function ExecutableClient({
   const navigate = useNavigate()
   const adapter = executableAdapterFor(api)
   const invoke = useMutation({
-    mutationFn: (next: unknown) =>
-      adapter.execute(
-        adapter.buildInvocation({
-          source: api,
-          executable: operation,
-          target,
-          formData: next,
-          credentials: readApiAuth(api.id),
-        }),
-      ),
+    mutationFn: ({
+      invocation,
+      continuation,
+    }: {
+      invocation: unknown
+      continuation?: {
+        inputResponses: Record<string, unknown>
+        requestState?: string
+      }
+    }) =>
+      continuation && adapter.continue
+        ? adapter.continue(
+            invocation,
+            continuation.inputResponses,
+            continuation.requestState,
+          )
+        : adapter.execute(invocation),
     onSuccess: (nextResult) => {
       setResult(nextResult)
       showResponse()
@@ -254,13 +262,25 @@ export function ExecutableClient({
       void onAuthContinue(asRecord(asRecord(next).auth), request)
       return
     }
-    invoke.mutate(request)
+    executeForm(request)
   }
 
   async function onAuthContinue(value: Record<string, unknown>, request: unknown) {
     await onSaveAuth(value)
     setAskingAuth(false)
-    invoke.mutate(request)
+    executeForm(request)
+  }
+
+  function executeForm(value: unknown) {
+    const invocation = adapter.buildInvocation({
+      source: api,
+      executable: operation,
+      target,
+      formData: value,
+      credentials: readApiAuth(api.id),
+    })
+    setLastInvocation(invocation)
+    invoke.mutate({ invocation })
   }
 
   function showInput(insert: boolean) {
@@ -297,9 +317,21 @@ export function ExecutableClient({
           pending={pending}
           error={error}
           onBack={() => showInput(false)}
-          onResend={() => invoke.mutate(lastSubmission)}
+          onResend={() => executeForm(lastSubmission)}
           executeLabel={api.labels.executed}
           executingLabel={api.labels.executing}
+          onContinue={
+            result.inputRequired && lastInvocation && adapter.continue
+              ? (inputResponses) =>
+                  invoke.mutate({
+                    invocation: lastInvocation,
+                    continuation: {
+                      inputResponses,
+                      requestState: result.inputRequired?.requestState,
+                    },
+                  })
+              : undefined
+          }
         />
       </div>
     )

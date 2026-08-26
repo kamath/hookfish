@@ -28,7 +28,15 @@ function Home() {
   const apis = apisQuery.data ?? []
 
   const add = useMutation({
-    mutationFn: ({ url, kind }: { url: string; kind: string }) => addApi(url, kind),
+    mutationFn: ({
+      url,
+      kind,
+      credentials,
+    }: {
+      url: string
+      kind: string
+      credentials: Record<string, string>
+    }) => addApi(url, kind, credentials),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
@@ -93,8 +101,14 @@ function Home() {
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
-    const url = String(new FormData(form).get('url') ?? '').trim()
-    add.mutate({ url, kind: sourceKind })
+    const values = new FormData(form)
+    const url = String(values.get('url') ?? '').trim()
+    const credentials = Object.fromEntries(
+      (sourceOption?.credentialFields ?? [])
+        .map((field) => [field.name, String(values.get(field.name) ?? '').trim()])
+        .filter(([, value]) => value),
+    )
+    add.mutate({ url, kind: sourceKind, credentials })
   }
 
   function onRemove(id: string, title: string) {
@@ -149,6 +163,22 @@ function Home() {
             <Kbd hotkey="I" />
           </span>
         </div>
+        {(sourceOption?.credentialFields ?? []).map((field) => (
+          <label key={field.name} className="min-w-0 flex-1">
+            <span className="sr-only">{field.label}</span>
+            <input
+              name={field.name}
+              type={field.type ?? 'text'}
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass}
+              placeholder={field.placeholder ?? field.label}
+              onFocus={() => {
+                activate('specs', 'edit')
+              }}
+            />
+          </label>
+        ))}
         <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
           {add.isPending ? 'Reading…' : 'Add source'}
         </button>

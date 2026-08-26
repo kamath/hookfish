@@ -16,6 +16,10 @@
   --accent-http-delete: #a33b32;
   --accent-http-head: #5c4a8a;
   --accent-http-options: #5c4a8a;
+  --accent-mcp-tool: #7a3e9d;
+  --accent-mcp-resource: #a05a19;
+  --accent-mcp-template: #8a6d1d;
+  --accent-mcp-prompt: #166b68;
   --exec-color: var(--signal);
   color-scheme: light;
 }

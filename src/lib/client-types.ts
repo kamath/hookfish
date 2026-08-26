@@ -2,6 +2,14 @@ export type JsonSchema = Record<string, unknown>
 
 export type FormUiSchema = Record<string, unknown>
 
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
 export type HttpMethod =
   | 'get'
   | 'post'
@@ -18,7 +26,21 @@ export type HttpBinding = {
   contentType?: string
 }
 
-export type ExecutableBinding = HttpBinding | ({ type: string } & Record<string, unknown>)
+export type McpBinding = {
+  type: 'mcp'
+  kind: 'tool' | 'resource' | 'resource-template' | 'prompt'
+  method: 'tools/call' | 'resources/read' | 'prompts/get'
+  name: string
+  headerParameters?: Array<{
+    path: string[]
+    header: string
+  }>
+}
+
+export type ExecutableBinding =
+  | HttpBinding
+  | McpBinding
+  | ({ type: string } & Record<string, unknown>)
 
 export type Executable = {
   id: string
@@ -74,6 +96,7 @@ export type ExecutableSource = {
   adapterData?: unknown
   credentialSchema?: JsonSchema
   credentialUiSchema?: FormUiSchema
+  credentialsRequired?: boolean
   credentialsStored?: boolean
 }
 
@@ -100,8 +123,20 @@ export type ExecutionResult = {
   elapsedMs: number
   target?: string
   action?: string
+  trace?: ProtocolTraceEntry[]
+  inputRequired?: {
+    requests: Record<string, JsonValue>
+    requestState?: string
+  }
 }
 
+export type ProtocolTraceEntry = {
+  atMs: number
+  direction: 'out' | 'in'
+  kind: 'http' | 'jsonrpc' | 'sse' | 'notification'
+  summary: string
+  detail?: JsonValue
+}
 // Compatibility aliases for the OpenAPI storage and parser modules. UI code should
 // consume the protocol-neutral names above.
 export type ClientOperation = Executable

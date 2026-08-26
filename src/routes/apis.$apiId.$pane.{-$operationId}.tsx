@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { Kbd } from '../components/hints'
+import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
@@ -26,6 +27,7 @@ import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from 
 import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
+import { subscribeMcpChanges } from '../lib/mcp/client'
 
 type Search = {
   q?: string
@@ -163,7 +165,9 @@ function ApiClientPage() {
 
   const api = apiQuery.data
   const canAuth = hasAuthFields(api.credentialSchema)
-  const needsAuth = Boolean(canAuth && !api.credentialsStored)
+  const needsAuth = Boolean(
+    canAuth && api.credentialsRequired !== false && !api.credentialsStored,
+  )
 
   return (
     <ApiWorkbench
@@ -205,6 +209,7 @@ function ApiWorkbench({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
+  const queryClient = useQueryClient()
   const activePane = usePane()
   const [serverUrl, setServerUrl] = useState(api.targets[0] ?? '')
   const [filterValue, setFilterValue] = useState(search.q ?? '')
@@ -216,6 +221,17 @@ function ApiWorkbench({
   useEffect(() => {
     activate(routePane, 'command')
   }, [api.id, routePane])
+
+  useEffect(() => {
+    if (api.kind !== 'mcp') {
+      return
+    }
+    return subscribeMcpChanges(api.id, () => {
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(api.id).queryKey,
+      })
+    })
+  }, [api.id, api.kind, queryClient])
 
   useEffect(() => {
     const routeFilter = search.q ?? ''
@@ -613,6 +629,7 @@ function ApiWorkbench({
             ) : null}
           </div>
         </div>
+        <McpServerPanel source={api} />
       </div>
 
       <div

@@ -663,6 +663,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
     adapterData: { authSchemes: specAuthSchemes(spec) },
     credentialSchema: authSchema,
     credentialUiSchema: authUiSchema(authSchema),
+    credentialsRequired: true,
   }
 }
 
