@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
@@ -10,8 +10,8 @@ import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
-import { consumePointerIntent, useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
-import { activate, enterEdit, getPane, useChrome } from '../lib/mode'
+import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
@@ -19,13 +19,25 @@ type Search = {
   q?: string
 }
 
-export const Route = createFileRoute('/apis/$apiId/{-$operationId}')({
+export const Route = createFileRoute('/apis/$apiId/$pane/{-$operationId}')({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
     q: typeof search.q === 'string' ? search.q : undefined,
   }),
   component: ApiClientPage,
 })
+
+type WorkbenchPane = Exclude<Pane, 'specs'>
+
+function readPane(value: string, operationId?: string): WorkbenchPane {
+  if (value === 'routes' && !operationId) {
+    return value
+  }
+  if ((value === 'input' || value === 'response') && operationId) {
+    return value
+  }
+  throw notFound()
+}
 
 function operationQueryText(operation: ClientOperation) {
   return [
@@ -58,8 +70,11 @@ function groupOperations(operations: ClientOperation[], tagGroups: TagGroup[]) {
     buckets.set(name, bucket)
   }
 
-  const groups: Array<{ name?: string; description?: string; operations: ClientOperation[] }> =
-    []
+  const groups: Array<{
+    name?: string
+    description?: string
+    operations: ClientOperation[]
+  }> = []
 
   for (const tag of tagGroups) {
     const items = buckets.get(tag.name)
@@ -99,7 +114,9 @@ function ApiClientPage() {
       saveApiAuth(apiId, fieldsFromForm(value))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
+      await queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(apiId).queryKey,
+      })
     },
   })
 
@@ -108,7 +125,9 @@ function ApiClientPage() {
       clearApiAuth(apiId)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: apiQueryOptions(apiId).queryKey })
+      await queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(apiId).queryKey,
+      })
     },
   })
 
@@ -169,21 +188,53 @@ function ApiWorkbench({
   authPending: boolean
   authError: unknown
 }) {
-  const { operationId } = Route.useParams()
+  const { operationId, pane: paneParam } = Route.useParams()
+  const routePane = readPane(paneParam, operationId)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
-  const { pane } = useChrome()
+  const activePane = usePane()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
+  const [filterValue, setFilterValue] = useState(search.q ?? '')
+  const deferredFilterValue = useDeferredValue(filterValue)
+  const committedFilterRef = useRef(search.q ?? '')
   const [heldOp, setHeldOp] = useState(operationId)
   const heldOpRef = useRef(operationId)
   const localOpRef = useRef(false)
   useEffect(() => {
-    activate(operationId ? 'form' : 'list', 'command')
-  }, [api.id, operationId])
+    activate(routePane, 'command')
+  }, [api.id, routePane])
+
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (routeFilter !== committedFilterRef.current) {
+      committedFilterRef.current = routeFilter
+      setFilterValue(routeFilter)
+    }
+  }, [search.q])
+
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (filterValue === routeFilter) {
+      committedFilterRef.current = routeFilter
+      return
+    }
+    const timer = window.setTimeout(() => {
+      committedFilterRef.current = filterValue
+      void navigate({
+        search: (previous) => ({
+          ...previous,
+          q: filterValue || undefined,
+        }),
+        replace: true,
+        resetScroll: false,
+      })
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [filterValue, navigate, search.q])
 
   const ranked = useMemo(() => {
-    const query = search.q?.trim() ?? ''
+    const query = deferredFilterValue.trim()
     if (!query) {
       return undefined
     }
@@ -195,22 +246,22 @@ function ApiWorkbench({
       .filter((item) => item.score != null)
       .sort((left, right) => (right.score ?? 0) - (left.score ?? 0))
       .map((item) => item.operation)
-  }, [api.operations, search.q])
+  }, [api.operations, deferredFilterValue])
   const groups = useMemo(
-    () =>
-      ranked ? [] : groupOperations(api.operations, api.tagGroups ?? []),
+    () => (ranked ? [] : groupOperations(api.operations, api.tagGroups ?? [])),
     [api.operations, api.tagGroups, ranked],
   )
   const orderedOperations = useMemo(
     () => ranked ?? groups.flatMap((group) => group.operations),
     [groups, ranked],
   )
-  const selected =
-    orderedOperations.find((operation) => operation.id === (heldOp ?? operationId)) ??
-    orderedOperations[0]
-  const selectedIndex = selected
-    ? orderedOperations.findIndex((operation) => operation.id === selected.id)
-    : -1
+  const operationIndexById = useMemo(
+    () => new Map(orderedOperations.map((operation, index) => [operation.id, index])),
+    [orderedOperations],
+  )
+  const requestedIndex = operationIndexById.get(heldOp ?? operationId ?? '')
+  const selectedIndex = requestedIndex ?? (orderedOperations.length > 0 ? 0 : -1)
+  const selected = orderedOperations[selectedIndex]
   const manyServers = api.servers.length > 1
 
   useEffect(() => {
@@ -254,17 +305,15 @@ function ApiWorkbench({
     if (orderedOperations.length === 0) {
       return
     }
-    if (getPane() !== 'list') {
+    if (getPane() !== 'routes') {
       blurActive()
-      activate('list', 'command')
+      activate('routes', 'command')
     }
     const currentId = heldOpRef.current ?? selected?.id
-    const current = orderedOperations.findIndex((item) => item.id === currentId)
+    const current = currentId ? (operationIndexById.get(currentId) ?? -1) : -1
     const start = current === -1 ? 0 : current
     const next =
-      orderedOperations[
-        Math.min(Math.max(start + delta, 0), orderedOperations.length - 1)
-      ]
+      orderedOperations[Math.min(Math.max(start + delta, 0), orderedOperations.length - 1)]
     if (!next) {
       return
     }
@@ -279,10 +328,10 @@ function ApiWorkbench({
     }
     holdOp(first.id, true)
     revealOperation(first.id)
-  }, [search.q])
+  }, [deferredFilterValue])
 
   function focusFilter() {
-    activate('list', 'edit')
+    activate('routes', 'edit')
     document.getElementById('operation-filter')?.focus()
   }
 
@@ -291,10 +340,10 @@ function ApiWorkbench({
       return
     }
     holdOp(selected.id)
-    activate('form', 'command')
+    activate('input', 'command')
     void navigate({
-      to: '/apis/$apiId/{-$operationId}',
-      params: { apiId: api.id, operationId: selected.id },
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'input', operationId: selected.id },
       resetScroll: false,
     })
   }
@@ -305,10 +354,10 @@ function ApiWorkbench({
       return
     }
     holdOp(next.id)
-    activate('form', 'command')
+    activate('input', 'command')
     void navigate({
-      to: '/apis/$apiId/{-$operationId}',
-      params: { apiId: api.id, operationId: next.id },
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'input', operationId: next.id },
       replace: true,
       resetScroll: false,
     })
@@ -317,16 +366,30 @@ function ApiWorkbench({
 
   function stepBack() {
     if (getPane() === 'response') {
-      activate('form', 'command')
+      const parentOperationId = heldOpRef.current ?? operationId
+      if (!parentOperationId) {
+        return
+      }
+      activate('input', 'command')
+      void navigate({
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: {
+          apiId: api.id,
+          pane: 'input',
+          operationId: parentOperationId,
+        },
+        replace: true,
+        resetScroll: false,
+      })
       return
     }
-    if (getPane() === 'form') {
+    if (getPane() === 'input') {
       const parentOperationId = heldOpRef.current ?? operationId
-      activate('list', 'command')
+      activate('routes', 'command')
       blurActive()
       void navigate({
-        to: '/apis/$apiId/{-$operationId}',
-        params: { apiId: api.id, operationId: undefined },
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: { apiId: api.id, pane: 'routes', operationId: undefined },
         replace: true,
         resetScroll: false,
       })
@@ -335,14 +398,6 @@ function ApiWorkbench({
           document.getElementById(`op-${parentOperationId}`)?.focus()
         }, 0)
       }
-      return
-    }
-    if (search.q) {
-      void navigate({
-        search: (previous) => ({ ...previous, q: undefined }),
-        replace: true,
-        resetScroll: false,
-      })
       return
     }
     void home({ to: '/' })
@@ -361,26 +416,24 @@ function ApiWorkbench({
   }
 
   const canClear = Boolean(onClearAuth)
-  useViewFlags('list', {
+  usePaneFlags('routes', {
     canClear,
     manyServers,
-    hasFilter: Boolean(search.q),
-    noFilter: !search.q,
   })
-  useViewFlags('form', {
+  usePaneFlags('input', {
     canClear,
     canNextRoute: selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1,
     canPreviousRoute: selectedIndex > 0,
     manyServers,
   })
-  useStepKeys('list', move)
-  useFormPaneNavigation('form', 'call-form')
+  useStepKeys('routes', move)
+  useFormPaneNavigation('input', 'call-form')
 
-  useViewActions('list', {
+  usePaneActions('routes', {
     filter: () => {
       focusFilter()
     },
-    fields: () => {
+    input: () => {
       openSelected()
     },
     clearAuth: {
@@ -391,10 +444,7 @@ function ApiWorkbench({
       },
       ignoreInputs: false,
     },
-    escape: () => {
-      stepBack()
-    },
-    clearEscape: () => {
+    parent: () => {
       stepBack()
     },
     prevServer: () => cycleServer(-1),
@@ -402,11 +452,11 @@ function ApiWorkbench({
     command: (event) => {
       event.preventDefault()
       blurActive()
-      activate('list', 'command')
+      activate('routes', 'command')
     },
   })
 
-  useViewActions('form', {
+  usePaneActions('input', {
     previousRoute: () => navigateOperation(-1),
     nextRoute: () => navigateOperation(1),
     clearAuth: {
@@ -417,7 +467,7 @@ function ApiWorkbench({
       },
       ignoreInputs: false,
     },
-    routes: () => {
+    parent: () => {
       stepBack()
     },
     prevServer: () => cycleServer(-1),
@@ -426,9 +476,9 @@ function ApiWorkbench({
 
   function renderOperation(operation: ClientOperation) {
     const active = operation.id === selected?.id
-    const index = orderedOperations.findIndex((item) => item.id === operation.id)
+    const index = operationIndexById.get(operation.id) ?? -1
     const navigationHint =
-      pane !== 'list'
+      activePane !== 'routes'
         ? undefined
         : active
           ? 'Enter'
@@ -442,20 +492,20 @@ function ApiWorkbench({
       <li key={operation.id}>
         <Link
           id={`op-${operation.id}`}
-          to="/apis/$apiId/{-$operationId}"
-          params={{ apiId: api.id, operationId: operation.id }}
+          to="/apis/$apiId/$pane/{-$operationId}"
+          params={{ apiId: api.id, pane: 'input', operationId: operation.id }}
           resetScroll={false}
           onClick={() => {
             holdOp(operation.id)
-            activate('form', 'command')
+            activate('input', 'command')
           }}
           onPointerEnter={() => {
             if (!consumePointerIntent()) {
               return
             }
-            if (pane !== 'list') {
+            if (activePane !== 'routes') {
               blurActive()
-              activate('list', 'command')
+              activate('routes', 'command')
             }
             if (heldOpRef.current !== operation.id) {
               holdOp(operation.id)
@@ -468,19 +518,12 @@ function ApiWorkbench({
           <span className="inline-flex w-8 shrink-0 justify-end">
             {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
           </span>
-          <span
-            data-oc-method-label
-            className="w-12 shrink-0 font-mono text-xs tabular-nums"
-          >
+          <span data-oc-method-label className="w-12 shrink-0 font-mono text-xs tabular-nums">
             {operation.method.toUpperCase()}
           </span>
-          <span className="min-w-0 truncate font-mono text-xs">
-            {operation.path}
-          </span>
+          <span className="min-w-0 truncate font-mono text-xs">{operation.path}</span>
           {description ? (
-            <span className="min-w-0 flex-1 truncate text-xs text-faint">
-              {description}
-            </span>
+            <span className="min-w-0 flex-1 truncate text-xs text-faint">{description}</span>
           ) : null}
         </Link>
       </li>
@@ -530,20 +573,14 @@ function ApiWorkbench({
             </div>
           ) : null}
           <div className="ml-auto flex items-center gap-3">
-            {pane !== 'response' ? (
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
-                onClick={stepBack}
-              >
-                {pane === 'form'
-                  ? 'Routes'
-                  : search.q
-                    ? 'Clear filter'
-                    : 'Specs'}
-                <Kbd hotkey="Escape" />
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
+              onClick={stepBack}
+            >
+              {activePane === 'response' ? 'Input' : activePane === 'input' ? 'Routes' : 'Specs'}
+              <Kbd hotkey="Escape" />
+            </button>
             {onClearAuth ? (
               <button
                 type="button"
@@ -563,14 +600,16 @@ function ApiWorkbench({
 
       <div
         className={`grid min-h-0 flex-1 grid-cols-1 ${
-          selected && (pane === 'form' || pane === 'response')
+          selected && (activePane === 'input' || activePane === 'response')
             ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
             : ''
         }`}
       >
         <aside
           className={`flex min-h-0 flex-col border-rule ${
-            pane === 'form' || pane === 'response' ? 'hidden lg:flex lg:border-r' : 'flex'
+            activePane === 'input' || activePane === 'response'
+              ? 'hidden lg:flex lg:border-r'
+              : 'flex'
           }`}
         >
           <div className="shrink-0 px-3 py-2">
@@ -585,35 +624,22 @@ function ApiWorkbench({
                 autoComplete="off"
                 spellCheck={false}
                 className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                  search.q ? 'pr-16' : 'pr-9'
+                  filterValue ? 'pr-16' : 'pr-9'
                 }`}
-                value={search.q ?? ''}
+                value={filterValue}
                 onFocus={() => {
-                  activate('list', 'edit')
+                  activate('routes', 'edit')
                 }}
-                onChange={(event) =>
-                  void navigate({
-                    search: (previous) => ({
-                      ...previous,
-                      q: event.target.value || undefined,
-                    }),
-                    replace: true,
-                    resetScroll: false,
-                  })
-                }
+                onChange={(event) => setFilterValue(event.target.value)}
                 placeholder="Filter routes"
               />
-              {search.q ? (
+              {filterValue ? (
                 <button
                   type="button"
                   aria-label="Clear route filter"
                   className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
                   onClick={() => {
-                    void navigate({
-                      search: (previous) => ({ ...previous, q: undefined }),
-                      replace: true,
-                      resetScroll: false,
-                    })
+                    setFilterValue('')
                     document.getElementById('operation-filter')?.focus()
                   }}
                 >
@@ -642,9 +668,7 @@ function ApiWorkbench({
             {orderedOperations.length === 0 ? (
               <p className="px-3 py-3 text-sm text-mute">No matches.</p>
             ) : ranked ? (
-              <ol>
-                {orderedOperations.map((operation) => renderOperation(operation))}
-              </ol>
+              <ol>{orderedOperations.map((operation) => renderOperation(operation))}</ol>
             ) : (
               groups.map((group) => {
                 const title = oneLine(group.name)
@@ -655,15 +679,11 @@ function ApiWorkbench({
                       <header className="px-3 pb-1 pt-3">
                         <p className="truncate text-[11px] text-mute">{title}</p>
                         {groupDescription ? (
-                          <p className="truncate text-[11px] text-faint">
-                            {groupDescription}
-                          </p>
+                          <p className="truncate text-[11px] text-faint">{groupDescription}</p>
                         ) : null}
                       </header>
                     ) : null}
-                    <ol>
-                      {group.operations.map((operation) => renderOperation(operation))}
-                    </ol>
+                    <ol>{group.operations.map((operation) => renderOperation(operation))}</ol>
                   </section>
                 )
               })
@@ -671,7 +691,7 @@ function ApiWorkbench({
           </nav>
         </aside>
 
-        {selected && (pane === 'form' || pane === 'response') ? (
+        {selected && (activePane === 'input' || activePane === 'response') ? (
           <OperationClient
             key={selected.id}
             api={api}
@@ -682,9 +702,7 @@ function ApiWorkbench({
             authUiSchema={api.authUiSchema}
             authPending={authPending}
             authError={authError}
-            onPreviousOperation={
-              selectedIndex > 0 ? () => navigateOperation(-1) : undefined
-            }
+            onPreviousOperation={selectedIndex > 0 ? () => navigateOperation(-1) : undefined}
             onNextOperation={
               selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
                 ? () => navigateOperation(1)

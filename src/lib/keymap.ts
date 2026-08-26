@@ -2,19 +2,10 @@ import { useEffect, useRef } from 'react'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import {
-  enterCommand,
-  getMode,
-  getView,
-  modeAtom,
-  store,
-  viewAtom,
-  type Mode,
-  type View,
-} from './chrome'
+import { chromeAtom, enterCommand, getMode, modeAtom, type Mode, type Pane } from './chrome'
 import { blurActive, isEditing } from './focus'
 
-export type ViewBinding = {
+export type PaneBinding = {
   id: string
   hotkey: RegisterableHotkey
   label: string
@@ -22,201 +13,273 @@ export type ViewBinding = {
   flag?: string
 }
 
-export type ViewAction = {
+export type PaneAction = {
   callback: (event: KeyboardEvent) => void
   enabled?: boolean
   ignoreInputs?: boolean
 }
 
-export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
-  home: [
-    { id: 'open', hotkey: 'Enter', label: 'open' },
-    { id: 'next', hotkey: 'J', label: 'next spec', flag: 'hasSpecs' },
-    { id: 'previous', hotkey: 'K', label: 'previous spec', flag: 'hasSpecs' },
-    { id: 'insert', hotkey: 'I', label: 'insert' },
-    { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
-  ],
-  list: [
-    { id: 'filter', hotkey: '/', label: 'filter' },
-    { id: 'next', hotkey: 'J', label: 'next' },
-    { id: 'previous', hotkey: 'K', label: 'previous' },
-    { id: 'fields', hotkey: 'Enter', label: 'fields' },
-    {
-      id: 'clearAuth',
-      hotkey: 'Mod+Backspace',
-      label: 'clear auth',
-      flag: 'canClear',
-      modes: ['command', 'edit'],
-    },
-    { id: 'escape', hotkey: 'Escape', label: 'specs', flag: 'noFilter' },
-    { id: 'clearEscape', hotkey: 'Escape', label: 'clear filter', flag: 'hasFilter' },
-    { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
-    { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
-    { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
-  ],
-  form: [
-    { id: 'previousRoute', hotkey: 'H', label: 'previous route', flag: 'canPreviousRoute' },
-    { id: 'nextRoute', hotkey: 'L', label: 'next route', flag: 'canNextRoute' },
-    { id: 'expand', hotkey: 'Enter', label: 'edit' },
-    { id: 'insert', hotkey: 'I', label: 'edit' },
-    { id: 'copyFetch', hotkey: 'Y', label: 'copy fetch' },
-    { id: 'send', hotkey: 'Mod+Enter', label: 'send', modes: ['command', 'edit'] },
-    {
-      id: 'clearAuth',
-      hotkey: 'Mod+Backspace',
-      label: 'clear auth',
-      flag: 'canClear',
-      modes: ['command', 'edit'],
-    },
-    { id: 'routes', hotkey: 'Escape', label: 'routes' },
-    { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
-    { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
-    { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
-    { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
-  ],
-  response: [
-    { id: 'next', hotkey: 'J', label: 'next line' },
-    { id: 'previous', hotkey: 'K', label: 'previous line' },
-    { id: 'expand', hotkey: 'Enter', label: 'expand' },
-    { id: 'resend', hotkey: 'Mod+Enter', label: 'resend', modes: ['command', 'edit'] },
-    { id: 'headers', hotkey: 'H', label: 'headers', flag: 'hasHeaders' },
-    { id: 'children', hotkey: 'A', label: 'toggle children', flag: 'canToggleChildren' },
-    { id: 'request', hotkey: 'Escape', label: 'request' },
-  ],
+export type PaneConfig = {
+  parent?: Pane
+  path: string
+  bindings: readonly PaneBinding[]
 }
 
-export type ViewFlags = Partial<Record<View, Record<string, boolean>>>
+export const paneConfig: Record<Pane, PaneConfig> = {
+  specs: {
+    path: '/',
+    bindings: [
+      { id: 'open', hotkey: 'Enter', label: 'open' },
+      { id: 'next', hotkey: 'J', label: 'next spec', flag: 'hasSpecs' },
+      { id: 'previous', hotkey: 'K', label: 'previous spec', flag: 'hasSpecs' },
+      { id: 'insert', hotkey: 'I', label: 'insert' },
+      { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
+    ],
+  },
+  routes: {
+    parent: 'specs',
+    path: '/apis/$apiId/routes',
+    bindings: [
+      { id: 'filter', hotkey: '/', label: 'filter' },
+      { id: 'next', hotkey: 'J', label: 'next' },
+      { id: 'previous', hotkey: 'K', label: 'previous' },
+      { id: 'input', hotkey: 'Enter', label: 'input' },
+      {
+        id: 'clearAuth',
+        hotkey: 'Mod+Backspace',
+        label: 'clear auth',
+        flag: 'canClear',
+        modes: ['command', 'edit'],
+      },
+      { id: 'parent', hotkey: 'Escape', label: 'specs' },
+      {
+        id: 'prevServer',
+        hotkey: '[',
+        label: 'previous server',
+        flag: 'manyServers',
+      },
+      {
+        id: 'nextServer',
+        hotkey: ']',
+        label: 'next server',
+        flag: 'manyServers',
+      },
+      { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
+    ],
+  },
+  input: {
+    parent: 'routes',
+    path: '/apis/$apiId/input/$operationId',
+    bindings: [
+      {
+        id: 'previousRoute',
+        hotkey: 'H',
+        label: 'previous route',
+        flag: 'canPreviousRoute',
+      },
+      {
+        id: 'nextRoute',
+        hotkey: 'L',
+        label: 'next route',
+        flag: 'canNextRoute',
+      },
+      { id: 'expand', hotkey: 'Enter', label: 'edit' },
+      { id: 'insert', hotkey: 'I', label: 'edit' },
+      { id: 'copyFetch', hotkey: 'Y', label: 'copy fetch' },
+      {
+        id: 'send',
+        hotkey: 'Mod+Enter',
+        label: 'send',
+        modes: ['command', 'edit'],
+      },
+      {
+        id: 'clearAuth',
+        hotkey: 'Mod+Backspace',
+        label: 'clear auth',
+        flag: 'canClear',
+        modes: ['command', 'edit'],
+      },
+      { id: 'parent', hotkey: 'Escape', label: 'routes' },
+      {
+        id: 'prevServer',
+        hotkey: '[',
+        label: 'previous server',
+        flag: 'manyServers',
+      },
+      {
+        id: 'nextServer',
+        hotkey: ']',
+        label: 'next server',
+        flag: 'manyServers',
+      },
+      { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
+      { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
+    ],
+  },
+  response: {
+    parent: 'input',
+    path: '/apis/$apiId/response/$operationId',
+    bindings: [
+      { id: 'next', hotkey: 'J', label: 'next line' },
+      { id: 'previous', hotkey: 'K', label: 'previous line' },
+      { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      {
+        id: 'resend',
+        hotkey: 'Mod+Enter',
+        label: 'resend',
+        modes: ['command', 'edit'],
+      },
+      { id: 'headers', hotkey: 'H', label: 'headers', flag: 'hasHeaders' },
+      {
+        id: 'children',
+        hotkey: 'A',
+        label: 'toggle children',
+        flag: 'canToggleChildren',
+      },
+      { id: 'parent', hotkey: 'Escape', label: 'input' },
+    ],
+  },
+}
 
-export const viewFlagsAtom = atom<ViewFlags>({})
+const registeredPaneBindings = (Object.entries(paneConfig) as Array<[Pane, PaneConfig]>).flatMap(
+  ([pane, config]) => config.bindings.map((binding) => ({ pane, binding })),
+)
+const noopKeybinding = () => {}
+
+type Registration = {
+  pane: Pane
+  actions?: Partial<Record<string, PaneAction>>
+  flags?: Record<string, boolean>
+}
 
 export function useShowKeybindings() {
   return useAtomValue(modeAtom) === 'command'
 }
 
-export function useViewFlags(view: View, flags: Record<string, boolean>) {
-  const setFlags = useSetAtom(viewFlagsAtom)
-  const serialized = JSON.stringify(flags)
+const registrationsAtom = atom(new Map<symbol, Registration>())
+export const activeKeybindingsAtom = atom((get) => {
+  const chrome = get(chromeAtom)
+  const flags: Record<string, boolean> = {}
+  for (const registration of get(registrationsAtom).values()) {
+    if (registration.pane === chrome.pane) {
+      Object.assign(flags, registration.flags)
+    }
+  }
+  return paneConfig[chrome.pane].bindings.filter((binding) => {
+    const modes = binding.modes ?? ['command']
+    return modes.includes(chrome.mode) && (!binding.flag || Boolean(flags[binding.flag]))
+  })
+})
+
+function useRegistration(registration: Registration) {
+  const setRegistrations = useSetAtom(registrationsAtom)
+  const id = useRef(Symbol('pane-registration'))
+  const current = useRef(registration)
+  current.current = registration
+  const actionKeys = Object.keys(registration.actions ?? {})
+    .sort()
+    .join('|')
+  const actionState = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(registration.actions ?? {}).map(([key, action]) => [
+        key,
+        { enabled: action?.enabled, ignoreInputs: action?.ignoreInputs },
+      ]),
+    ),
+  )
+  const serialized = JSON.stringify(registration.flags ?? {})
 
   useEffect(() => {
-    const parsed = JSON.parse(serialized) as Record<string, boolean>
-    setFlags((previous) => ({
-      ...previous,
-      [view]: { ...previous[view], ...parsed },
-    }))
+    const actions = Object.fromEntries(
+      actionKeys
+        .split('|')
+        .filter(Boolean)
+        .map((key) => [
+          key,
+          {
+            callback: (event: KeyboardEvent) => current.current.actions?.[key]?.callback(event),
+            get enabled() {
+              return current.current.actions?.[key]?.enabled
+            },
+            get ignoreInputs() {
+              return current.current.actions?.[key]?.ignoreInputs
+            },
+          },
+        ]),
+    ) as Partial<Record<string, PaneAction>>
+    const next: Registration = {
+      pane: registration.pane,
+      actions,
+      flags: registration.flags ? (JSON.parse(serialized) as Record<string, boolean>) : undefined,
+    }
+    setRegistrations((previous) => new Map(previous).set(id.current, next))
     return () => {
-      const owned = Object.keys(parsed)
-      setFlags((previous) => {
-        const current = { ...previous[view] }
-        for (const key of owned) {
-          delete current[key]
-        }
-        return { ...previous, [view]: current }
+      setRegistrations((previous) => {
+        const nextRegistrations = new Map(previous)
+        nextRegistrations.delete(id.current)
+        return nextRegistrations
       })
     }
-  }, [view, serialized, setFlags])
+  }, [registration.pane, actionKeys, actionState, serialized, setRegistrations])
 }
 
-export function useViewActions(
-  view: View,
-  actions: Partial<Record<string, ViewAction | ((event: KeyboardEvent) => void)>>,
+export function usePaneFlags(pane: Pane, flags: Record<string, boolean>) {
+  useRegistration({ pane, flags })
+}
+
+export function usePaneActions(
+  pane: Pane,
+  actions: Partial<Record<string, PaneAction | ((event: KeyboardEvent) => void)>>,
 ) {
-  const mode = useAtomValue(modeAtom)
-  const currentView = useAtomValue(viewAtom)
-  const flags = useAtomValue(viewFlagsAtom)[view] ?? {}
+  const normalized = Object.fromEntries(
+    Object.entries(actions).map(([id, action]) => [
+      id,
+      typeof action === 'function' ? { callback: action } : action,
+    ]),
+  ) as Partial<Record<string, PaneAction>>
+  useRegistration({ pane, actions: normalized })
+}
+
+export function useGlobalKeybindings() {
+  const chrome = useAtomValue(chromeAtom)
+  const registrations = useAtomValue(registrationsAtom)
+  const actions: Partial<Record<string, PaneAction>> = {}
+  const flags: Record<string, boolean> = {}
+  for (const registration of registrations.values()) {
+    if (registration.pane !== chrome.pane) {
+      continue
+    }
+    Object.assign(actions, registration.actions)
+    Object.assign(flags, registration.flags)
+  }
 
   useHotkeys(
-    viewKeymaps[view].flatMap((binding) => {
+    registeredPaneBindings.map(({ pane, binding }) => {
       const action = actions[binding.id]
-      if (!action) {
-        return []
-      }
-      const spec = typeof action === 'function' ? { callback: action } : action
       const modes = binding.modes ?? ['command']
       const flagOn = !binding.flag || Boolean(flags[binding.flag])
-      return [
-        {
-          hotkey: binding.hotkey,
-          callback: spec.callback,
-          options: {
-            enabled:
-              spec.enabled !== false &&
-              flagOn &&
-              modes.includes(mode) &&
-              currentView === view,
-            ignoreInputs: spec.ignoreInputs ?? !modes.includes('edit'),
-          },
+      return {
+        hotkey: binding.hotkey,
+        callback: action?.callback ?? noopKeybinding,
+        options: {
+          enabled:
+            pane === chrome.pane &&
+            Boolean(action) &&
+            action?.enabled !== false &&
+            flagOn &&
+            modes.includes(chrome.mode),
+          ignoreInputs: action?.ignoreInputs ?? !modes.includes('edit'),
         },
-      ]
+      }
     }),
   )
 }
 
-type StepHandler = (delta: number) => void
-
-export const viewStepsAtom = atom<Partial<Record<View, StepHandler>>>({})
-
-export function useViewStep(view: View, step: StepHandler, enabled = true) {
-  const setSteps = useSetAtom(viewStepsAtom)
-  const stepRef = useRef(step)
-  stepRef.current = step
-
-  useEffect(() => {
-    if (!enabled) {
-      setSteps((previous) => {
-        if (!previous[view]) {
-          return previous
-        }
-        const next = { ...previous }
-        delete next[view]
-        return next
-      })
-      return
-    }
-
-    const handler: StepHandler = (delta) => stepRef.current(delta)
-    setSteps((previous) => ({ ...previous, [view]: handler }))
-    return () => {
-      setSteps((previous) => {
-        if (previous[view] !== handler) {
-          return previous
-        }
-        const next = { ...previous }
-        delete next[view]
-        return next
-      })
-    }
-  }, [view, enabled, setSteps])
-}
-
-let lastStepAt = 0
-
-export function bindStepKeys() {
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return
-    }
-    if (getMode() !== 'command') {
-      return
-    }
-    const key = event.key.toLowerCase()
-    if (key !== 'j' && key !== 'k') {
-      return
-    }
-    if (event.timeStamp === lastStepAt) {
-      return
-    }
-    const step = store.get(viewStepsAtom)[getView()]
-    if (!step) {
-      return
-    }
-    lastStepAt = event.timeStamp
-    consumePointerIntent()
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    step(key === 'j' ? 1 : -1)
-  }
-  document.addEventListener('keydown', onKeyDown, { capture: true })
-  return () => document.removeEventListener('keydown', onKeyDown, { capture: true })
+export function usePaneStep(pane: Pane, step: (delta: number) => void, enabled = true) {
+  usePaneActions(pane, {
+    next: { callback: () => step(1), enabled },
+    previous: { callback: () => step(-1), enabled },
+  })
 }
 
 export function bindEnterMode() {

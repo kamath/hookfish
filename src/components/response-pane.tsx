@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { InvokeResult } from '../lib/client-types'
-import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
+import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 
 type ResponseNode = {
@@ -113,9 +113,7 @@ export function ResponsePane({
   const [expanded, setExpanded] = useState<Set<string>>(() =>
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
-  const [selected, setSelected] = useState(() =>
-    body.root?.children?.length ? 1 : 0,
-  )
+  const [selected, setSelected] = useState(() => (body.root?.children?.length ? 1 : 0))
   const rows = useMemo(
     () =>
       body.root
@@ -140,9 +138,7 @@ export function ResponsePane({
   }, [rows.length])
 
   function move(delta: number) {
-    setSelected((current) =>
-      Math.min(Math.max(current + delta, 0), Math.max(rows.length - 1, 0)),
-    )
+    setSelected((current) => Math.min(Math.max(current + delta, 0), Math.max(rows.length - 1, 0)))
   }
 
   function toggleSelected() {
@@ -167,8 +163,7 @@ export function ResponsePane({
       return
     }
     const selectedNode = rows[selected]
-    const id =
-      selectedNode?.toggleId ?? (selectedNode?.collection ? selectedNode.id : undefined)
+    const id = selectedNode?.toggleId ?? (selectedNode?.collection ? selectedNode.id : undefined)
     if (!id) {
       return
     }
@@ -200,12 +195,12 @@ export function ResponsePane({
   const activeRow = rows[selected]
   const firstActiveChildId = activeRow?.children?.[0]?.id
   const canToggleChildren = Boolean(activeRow?.collection)
-  useViewFlags('response', {
+  usePaneFlags('response', {
     canToggleChildren,
     hasHeaders: result.headers.length > 0,
   })
   useStepKeys('response', move)
-  useViewActions('response', {
+  usePaneActions('response', {
     expand: (event) => {
       event.preventDefault()
       if (rows[selected]?.collection || rows[selected]?.toggleId) {
@@ -220,26 +215,18 @@ export function ResponsePane({
     },
     headers: () => setHeadersVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
-    request: (event) => {
-      event.preventDefault()
-      onBack()
-    },
   })
 
   return (
-    <section
-      id="response-pane"
-      className="flex h-full min-h-0 min-w-0 flex-col"
-      aria-live="polite"
-    >
+    <section id="response-pane" className="flex h-full min-h-0 min-w-0 flex-col" aria-live="polite">
       <div className="flex flex-wrap items-center gap-3 border-b border-rule px-3 py-2 md:px-4">
         <p className="font-mono text-xs tabular-nums text-ink">
           {result.status} {result.statusText}
         </p>
         <p className="font-mono text-xs text-faint">
-          {new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
-            result.elapsedMs,
-          )}
+          {new Intl.NumberFormat(undefined, {
+            maximumFractionDigits: 0,
+          }).format(result.elapsedMs)}
           &nbsp;ms
         </p>
         <div className="ml-auto flex items-center gap-3">
@@ -356,9 +343,7 @@ export function ResponsePane({
                 {node.label !== undefined ? (
                   <span className="text-mute">{node.label}: </span>
                 ) : null}
-                <span
-                  className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}
-                >
+                <span className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}>
                   {node.collection
                     ? collectionMark(node, isExpanded)
                     : node.raw

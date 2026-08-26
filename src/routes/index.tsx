@@ -7,7 +7,7 @@ import { addApi, removeApi } from '../lib/apis'
 import { ARCADE_SPEC_URL } from '../lib/defaults'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
+import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
 import { inputClass, primaryButtonClass } from '../lib/ui'
 
@@ -27,10 +27,12 @@ function Home() {
   const add = useMutation({
     mutationFn: (url: string) => addApi(url),
     onSuccess: async ({ id }) => {
-      await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+      await queryClient.invalidateQueries({
+        queryKey: apisQueryOptions.queryKey,
+      })
       await router.navigate({
-        to: '/apis/$apiId/{-$operationId}',
-        params: { apiId: id, operationId: undefined },
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: { apiId: id, pane: 'routes', operationId: undefined },
       })
     },
     onError: () => {
@@ -43,12 +45,14 @@ function Home() {
       removeApi(id)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+      await queryClient.invalidateQueries({
+        queryKey: apisQueryOptions.queryKey,
+      })
     },
   })
 
   useEffect(() => {
-    activate('home', 'command')
+    activate('specs', 'command')
   }, [])
 
   function move(delta: number) {
@@ -58,23 +62,23 @@ function Home() {
     })
   }
 
-  useViewFlags('home', { hasSpecs: apis.length > 0 })
-  useStepKeys('home', move, apis.length > 0)
-  useViewActions('home', {
+  usePaneFlags('specs', { hasSpecs: apis.length > 0 })
+  useStepKeys('specs', move, apis.length > 0)
+  usePaneActions('specs', {
     open: {
       callback: () => {
         const api = apis[selected]
         if (api) {
           void router.navigate({
-            to: '/apis/$apiId/{-$operationId}',
-            params: { apiId: api.id, operationId: undefined },
+            to: '/apis/$apiId/$pane/{-$operationId}',
+            params: { apiId: api.id, pane: 'routes', operationId: undefined },
           })
         }
       },
       enabled: apis.length > 0,
     },
     insert: () => {
-      activate('home', 'edit')
+      activate('specs', 'edit')
       urlRef.current?.focus()
     },
     command: () => {
@@ -98,7 +102,10 @@ function Home() {
   }
 
   return (
-    <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4">
+    <main
+      id="main"
+      className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4"
+    >
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <label htmlFor="url" className="sr-only">
           OpenAPI URL
@@ -116,18 +123,14 @@ function Home() {
             className={`${inputClass} pr-10`}
             placeholder={ARCADE_SPEC_URL}
             onFocus={() => {
-              activate('home', 'edit')
+              activate('specs', 'edit')
             }}
           />
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
             <Kbd hotkey="I" />
           </span>
         </div>
-        <button
-          type="submit"
-          className={`${primaryButtonClass} shrink-0`}
-          disabled={add.isPending}
-        >
+        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
           {add.isPending ? 'Reading…' : 'Open'}
         </button>
       </form>
@@ -170,8 +173,12 @@ function Home() {
                   className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                 >
                   <Link
-                    to="/apis/$apiId/{-$operationId}"
-                    params={{ apiId: api.id, operationId: undefined }}
+                    to="/apis/$apiId/$pane/{-$operationId}"
+                    params={{
+                      apiId: api.id,
+                      pane: 'routes',
+                      operationId: undefined,
+                    }}
                     className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
                     onFocus={() => setSelected(index)}
                   >

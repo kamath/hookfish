@@ -10,44 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApisApiIdChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.{-$operationId}'
+import { Route as ApisApiIdPaneChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.$pane.{-$operationId}'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApisApiIdChar123OperationIdChar125Route =
-  ApisApiIdChar123OperationIdChar125RouteImport.update({
-    id: '/apis/$apiId/{-$operationId}',
-    path: '/apis/$apiId/{-$operationId}',
+const ApisApiIdPaneChar123OperationIdChar125Route =
+  ApisApiIdPaneChar123OperationIdChar125RouteImport.update({
+    id: '/apis/$apiId/$pane/{-$operationId}',
+    path: '/apis/$apiId/$pane/{-$operationId}',
     getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/apis/$apiId/{-$operationId}': typeof ApisApiIdChar123OperationIdChar125Route
+  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/apis/$apiId/{-$operationId}': typeof ApisApiIdChar123OperationIdChar125Route
+  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/apis/$apiId/{-$operationId}': typeof ApisApiIdChar123OperationIdChar125Route
+  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/apis/$apiId/{-$operationId}'
+  fullPaths: '/' | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/apis/$apiId/{-$operationId}'
-  id: '__root__' | '/' | '/apis/$apiId/{-$operationId}'
+  to: '/' | '/apis/$apiId/$pane/{-$operationId}'
+  id: '__root__' | '/' | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApisApiIdChar123OperationIdChar125Route: typeof ApisApiIdChar123OperationIdChar125Route
+  ApisApiIdPaneChar123OperationIdChar125Route: typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 
 declare module '@tanstack/react-router' {
@@ -59,11 +59,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apis/$apiId/{-$operationId}': {
-      id: '/apis/$apiId/{-$operationId}'
-      path: '/apis/$apiId/{-$operationId}'
-      fullPath: '/apis/$apiId/{-$operationId}'
-      preLoaderRoute: typeof ApisApiIdChar123OperationIdChar125RouteImport
+    '/apis/$apiId/$pane/{-$operationId}': {
+      id: '/apis/$apiId/$pane/{-$operationId}'
+      path: '/apis/$apiId/$pane/{-$operationId}'
+      fullPath: '/apis/$apiId/$pane/{-$operationId}'
+      preLoaderRoute: typeof ApisApiIdPaneChar123OperationIdChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -71,8 +71,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApisApiIdChar123OperationIdChar125Route:
-    ApisApiIdChar123OperationIdChar125Route,
+  ApisApiIdPaneChar123OperationIdChar125Route:
+    ApisApiIdPaneChar123OperationIdChar125Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

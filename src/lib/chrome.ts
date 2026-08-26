@@ -2,54 +2,59 @@ import { atom, getDefaultStore, useAtomValue } from 'jotai'
 import { isEditing } from './focus'
 
 export type Mode = 'command' | 'edit'
-export type View = 'home' | 'list' | 'form' | 'response'
-export type Pane = View
+export type Pane = 'specs' | 'routes' | 'input' | 'response'
 
 export const store = getDefaultStore()
 
-export const modeAtom = atom<Mode>('command')
-export const viewAtom = atom<View>('home')
-
 export type Chrome = {
   mode: Mode
-  view: View
-  pane: View
+  pane: Pane
+}
+
+export const chromeAtom = atom<Chrome>({ mode: 'command', pane: 'specs' })
+export const modeAtom = atom((get) => get(chromeAtom).mode)
+export const paneAtom = atom((get) => get(chromeAtom).pane)
+
+function syncDocumentMode(mode: Mode) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.ocMode = mode
+  }
 }
 
 export function getMode() {
-  return store.get(modeAtom)
-}
-
-export function getView() {
-  return store.get(viewAtom)
+  return store.get(chromeAtom).mode
 }
 
 export function getPane() {
-  return getView()
+  return store.get(chromeAtom).pane
 }
 
 export function getChrome(): Chrome {
-  const view = getView()
-  return { mode: getMode(), view, pane: view }
+  return store.get(chromeAtom)
 }
 
 export function setMode(mode: Mode) {
   if (getMode() === mode) {
     return
   }
-  store.set(modeAtom, mode)
+  store.set(chromeAtom, (current) => ({ ...current, mode }))
+  syncDocumentMode(mode)
 }
 
-export function setView(view: View) {
-  if (getView() === view) {
+export function setPane(pane: Pane) {
+  if (getPane() === pane) {
     return
   }
-  store.set(viewAtom, view)
+  store.set(chromeAtom, (current) => ({ ...current, pane }))
 }
 
-export function activate(view: View, mode: Mode = 'command') {
-  setView(view)
-  setMode(mode)
+export function activate(pane: Pane, mode: Mode = 'command') {
+  const current = getChrome()
+  if (current.pane === pane && current.mode === mode) {
+    return
+  }
+  store.set(chromeAtom, { pane, mode })
+  syncDocumentMode(mode)
 }
 
 export function enterEdit() {
@@ -69,12 +74,7 @@ export function setInsertMode(next: boolean) {
 }
 
 export function subscribeChrome(listener: () => void) {
-  const unsubMode = store.sub(modeAtom, listener)
-  const unsubView = store.sub(viewAtom, listener)
-  return () => {
-    unsubMode()
-    unsubView()
-  }
+  return store.sub(chromeAtom, listener)
 }
 
 export function subscribeFormMode(listener: () => void) {
@@ -85,28 +85,26 @@ export function useMode() {
   return useAtomValue(modeAtom)
 }
 
-export function useView() {
-  return useAtomValue(viewAtom)
+export function usePane() {
+  return useAtomValue(paneAtom)
 }
 
 export function useChrome(): Chrome {
-  const mode = useMode()
-  const view = useView()
-  return { mode, view, pane: view }
+  return useAtomValue(chromeAtom)
 }
 
-export function paneForTarget(target: EventTarget | null): View | undefined {
+export function paneForTarget(target: EventTarget | null): Pane | undefined {
   if (!(target instanceof HTMLElement)) {
     return undefined
   }
   if (target.id === 'operation-filter') {
-    return 'list'
+    return 'routes'
   }
   if (target.id === 'url') {
-    return 'home'
+    return 'specs'
   }
   if (target.closest('#call-form')) {
-    return 'form'
+    return 'input'
   }
   if (target.closest('#response-pane')) {
     return 'response'

@@ -1,6 +1,6 @@
 import { blurActive, isEditing } from './focus'
-import { enterCommand, enterEdit, isInsertMode, type View } from './chrome'
-import { consumePointerIntent, useStepKeys, useViewActions } from './keys'
+import { enterCommand, enterEdit, isInsertMode, type Pane } from './chrome'
+import { consumePointerIntent, usePaneActions, useStepKeys } from './keys'
 
 const TABBABLE_SELECTOR = [
   'a[href]',
@@ -30,12 +30,50 @@ function isTabbable(element: HTMLElement) {
   return true
 }
 
+type FormInputCache = {
+  dirty: boolean
+  items: HTMLElement[]
+  observer?: MutationObserver
+}
+
+const formInputCaches = new WeakMap<HTMLElement, FormInputCache>()
+
+function cachedFormInputs(root: HTMLElement) {
+  let cache = formInputCaches.get(root)
+  if (!cache) {
+    cache = { dirty: true, items: [] }
+    if (typeof MutationObserver !== 'undefined') {
+      cache.observer = new MutationObserver(() => {
+        if (cache) {
+          cache.dirty = true
+        }
+      })
+      cache.observer.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class', 'disabled', 'hidden', 'style', 'tabindex', 'type'],
+      })
+    }
+    formInputCaches.set(root, cache)
+  }
+
+  if (cache.observer?.takeRecords().length) {
+    cache.dirty = true
+  }
+  if (cache.dirty) {
+    cache.items = [...root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)].filter(isTabbable)
+    cache.dirty = false
+  }
+  return cache.items
+}
+
 export function listFormInputs(rootId: string): HTMLElement[] {
   const root = document.getElementById(rootId)
   if (!root) {
     return []
   }
-  return [...root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)].filter(isTabbable)
+  return cachedFormInputs(root)
 }
 
 function formRoot(rootId: string): HTMLElement | null {
@@ -159,18 +197,14 @@ function indexOfCurrent(root: HTMLElement, items: HTMLElement[], delta: number):
 
   if (delta > 0) {
     const following = items.findIndex(
-      (item) =>
-        (active.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      (item) => (active.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
     )
     return following === -1 ? items.length - 1 : following - 1
   }
 
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index]
-    if (
-      item &&
-      (active.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_PRECEDING) !== 0
-    ) {
+    if (item && (active.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_PRECEDING) !== 0) {
       return index + 1
     }
   }
@@ -270,6 +304,8 @@ export function bindFormTabSync(rootId: string) {
   return () => {
     root.removeEventListener('focusin', onFocusIn)
     root.removeEventListener('pointerover', onPointerOver)
+    formInputCaches.get(root)?.observer?.disconnect()
+    formInputCaches.delete(root)
   }
 }
 
@@ -304,14 +340,17 @@ export function moveInputTab(rootId: string, delta: number): boolean {
 }
 
 function firstRequiredInput(root: HTMLElement): HTMLElement | undefined {
-  for (const field of root.querySelectorAll<HTMLElement>('[data-oc-nav="field"][data-oc-required="true"]')) {
+  for (const field of root.querySelectorAll<HTMLElement>(
+    '[data-oc-nav="field"][data-oc-required="true"]',
+  )) {
     const input = editableIn(field)
     if (input && isTabbable(input)) {
       return input
     }
   }
   return listFormInputs(root.id).find(
-    (item) => isEditableControl(item) && 'required' in item && Boolean((item as HTMLInputElement).required),
+    (item) =>
+      isEditableControl(item) && 'required' in item && Boolean((item as HTMLInputElement).required),
   )
 }
 
@@ -378,15 +417,19 @@ export function selectFirstInput(rootId: string): boolean {
 }
 
 export function useFormPaneNavigation(
-  view: View,
+  pane: Pane,
   formId: string,
   options?: { stepKeys?: boolean },
 ) {
-  useStepKeys(view, (delta) => {
-    moveFormTab(formId, delta)
-  }, options?.stepKeys !== false)
+  useStepKeys(
+    pane,
+    (delta) => {
+      moveFormTab(formId, delta)
+    },
+    options?.stepKeys !== false,
+  )
 
-  useViewActions(view, {
+  usePaneActions(pane, {
     expand: () => {
       confirmForm(formId)
     },

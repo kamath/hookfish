@@ -10,7 +10,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
-import { bindEnterMode, bindStepKeys } from '../lib/keymap'
+import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
 import appCss from '../styles.css?url'
 
@@ -85,16 +85,15 @@ function AppShell() {
   useEffect(() => {
     const unbindFocus = bindModeFromFocus()
     const unbindEnter = bindEnterMode()
-    const unbindSteps = bindStepKeys()
     return () => {
       unbindFocus()
       unbindEnter()
-      unbindSteps()
     }
   }, [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>
+      <GlobalKeybindings />
       <div className="flex h-dvh flex-col overflow-hidden">
         <a
           href="#main"
@@ -118,6 +117,11 @@ function AppShell() {
       </div>
     </HotkeysProvider>
   )
+}
+
+function GlobalKeybindings() {
+  useGlobalKeybindings()
+  return null
 }
 
 function ErrorPage({ error }: { error: Error }) {

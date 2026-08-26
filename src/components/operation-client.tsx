@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import validator from '@rjsf/validator-ajv8'
 import type { IChangeEvent } from '@rjsf/core'
-import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
+import type {
+  ClientApi,
+  ClientOperation,
+  FormUiSchema,
+  InvokeResult,
+  JsonSchema,
+} from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
-import {
-  bindFormTabSync,
-  selectDefaultFormItem,
-  selectMatchingFormItem,
-} from '../lib/form-nav'
+import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
-import { useViewActions, useViewFlags } from '../lib/keys'
-import { activate, useChrome } from '../lib/mode'
+import { usePaneActions, usePaneFlags } from '../lib/keys'
+import { activate, usePane } from '../lib/mode'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
@@ -127,7 +130,8 @@ export function OperationClient({
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
-  const { pane } = useChrome()
+  const pane = usePane()
+  const navigate = useNavigate()
   const invoke = useMutation({
     mutationFn: (next: unknown) =>
       executeRequest({
@@ -141,13 +145,11 @@ export function OperationClient({
       }),
     onSuccess: (nextResult) => {
       setResult(nextResult)
-      activate('response', 'command')
+      showResponse()
     },
   })
   const pending = invoke.isPending
-  const error = invoke.isError
-    ? queryErrorMessage(invoke.error, 'The request failed.')
-    : null
+  const error = invoke.isError ? queryErrorMessage(invoke.error, 'The request failed.') : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
 
   useEffect(() => {
@@ -207,8 +209,8 @@ export function OperationClient({
     }
   }
 
-  useViewFlags('form', { hasResult: Boolean(result) })
-  useViewActions('form', {
+  usePaneFlags('input', { hasResult: Boolean(result) })
+  usePaneActions('input', {
     send: {
       callback: () => {
         if (pending || authPending) {
@@ -218,10 +220,13 @@ export function OperationClient({
       },
       ignoreInputs: false,
     },
-    output: () => activate('response', 'command'),
+    output: () => showResponse(),
     copyFetch: () => {
       void copyFetch()
     },
+  })
+  usePaneActions('response', {
+    parent: () => showInput(false),
   })
 
   const previewUrl = useMemo(() => {
@@ -259,11 +264,27 @@ export function OperationClient({
     invoke.mutate(request)
   }
 
-  function showForm(insert: boolean) {
-    activate('form', 'command')
+  function showInput(insert: boolean) {
+    activate('input', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'input', operationId: operation.id },
+      replace: true,
+      resetScroll: false,
+    })
     if (insert) {
       window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     }
+  }
+
+  function showResponse() {
+    activate('response', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'response', operationId: operation.id },
+      replace: true,
+      resetScroll: false,
+    })
   }
 
   if (pane === 'response' && result) {
@@ -273,10 +294,28 @@ export function OperationClient({
           result={result}
           pending={pending}
           error={error}
-          onBack={() => showForm(false)}
+          onBack={() => showInput(false)}
           onResend={() => invoke.mutate(lastSubmission)}
         />
       </div>
+    )
+  }
+
+  if (pane === 'response') {
+    return (
+      <section className="flex h-full min-h-0 items-center justify-center px-4 text-center">
+        <div>
+          <p className="text-sm text-mute">No response is available in this session.</p>
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-2 text-sm text-ink hover:text-signal"
+            onClick={() => showInput(false)}
+          >
+            Input
+            <Kbd hotkey="Escape" />
+          </button>
+        </div>
+      </section>
     )
   }
 
@@ -288,18 +327,11 @@ export function OperationClient({
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
-          <span
-            data-oc-method-label
-            className="api-ink font-mono text-xs tabular-nums"
-          >
+          <span data-oc-method-label className="api-ink font-mono text-xs tabular-nums">
             {operation.method.toUpperCase()}
           </span>
-          <span className="min-w-0 truncate font-mono text-xs text-ink">
-            {operation.path}
-          </span>
-          {operation.deprecated ? (
-            <span className="text-xs text-signal">deprecated</span>
-          ) : null}
+          <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.path}</span>
+          {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -323,7 +355,7 @@ export function OperationClient({
               <button
                 type="button"
                 className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15"
-                onClick={() => activate('response', 'command')}
+                onClick={showResponse}
               >
                 View output
                 <Kbd hotkey="O" />
