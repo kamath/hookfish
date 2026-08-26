@@ -350,6 +350,11 @@ function ApiWorkbench({
     if (getPane() === 'form') {
       activate('list', 'command')
       blurActive()
+      void navigate({
+        search: (previous) => ({ ...previous, op: undefined }),
+        replace: true,
+        resetScroll: false,
+      })
       return
     }
     if (search.q) {
