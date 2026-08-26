@@ -21,6 +21,7 @@ function Home() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
+  const sourceKindRef = useRef<HTMLSelectElement>(null)
   const [selected, setSelected] = useState(0)
   const sourceOptions = sourceAdapterOptions()
   const [sourceKind, setSourceKind] = useState(sourceOptions[0]?.kind ?? 'openapi')
@@ -92,6 +93,14 @@ function Home() {
       activate('specs', 'edit')
       urlRef.current?.focus()
     },
+    sourceType: {
+      callback: () => {
+        activate('specs', 'edit')
+        sourceKindRef.current?.focus()
+        sourceKindRef.current?.showPicker?.()
+      },
+      ignoreInputs: false,
+    },
     command: () => {
       enterCommand()
       blurActive()
@@ -131,19 +140,35 @@ function Home() {
         <label htmlFor="source-kind" className="sr-only">
           Source type
         </label>
-        <select
-          id="source-kind"
-          name="source-kind"
-          className={`${inputClass} shrink-0 sm:w-auto`}
-          value={sourceKind}
-          onChange={(event) => setSourceKind(event.target.value)}
-        >
-          {sourceOptions.map((option) => (
-            <option key={option.kind} value={option.kind}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative shrink-0">
+          <select
+            ref={sourceKindRef}
+            id="source-kind"
+            name="source-kind"
+            className="min-h-11 appearance-none bg-ink/5 py-2 pl-3 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
+            value={sourceKind}
+            onFocus={() => {
+              activate('specs', 'edit')
+            }}
+            onChange={(event) => setSourceKind(event.target.value)}
+          >
+            {sourceOptions.map((option) => (
+              <option key={option.kind} value={option.kind}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-mute"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path d="m4 6 4 4 4-4" />
+          </svg>
+        </div>
         <label htmlFor="url" className="sr-only">
           {sourceOption?.inputLabel ?? 'Source URL'}
         </label>

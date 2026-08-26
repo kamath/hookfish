@@ -32,6 +32,12 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'open', hotkey: 'Enter', label: 'open' },
       { id: 'next', hotkey: 'J', label: 'next source', flag: 'hasSpecs' },
       { id: 'previous', hotkey: 'K', label: 'previous source', flag: 'hasSpecs' },
+      {
+        id: 'sourceType',
+        hotkey: 'Mod+/',
+        label: 'source type',
+        modes: ['command', 'edit'],
+      },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
