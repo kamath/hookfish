@@ -175,7 +175,7 @@ export function useViewActions(
               flagOn &&
               modes.includes(mode) &&
               currentView === view,
-            ignoreInputs: spec.ignoreInputs ?? modes.includes('edit'),
+            ignoreInputs: spec.ignoreInputs ?? !modes.includes('edit'),
           },
         },
       ]
