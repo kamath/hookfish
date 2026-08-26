@@ -347,6 +347,18 @@ function ApiWorkbench({
 
   useEditHotkeys([
     {
+      hotkey: 'Enter',
+      callback: (event) => {
+        if (document.activeElement?.id !== 'operation-filter' || !selected) {
+          return
+        }
+        event.preventDefault()
+        activate('list', 'command')
+        blurActive()
+        document.getElementById(`op-${selected.id}`)?.focus()
+      },
+    },
+    {
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
@@ -610,7 +622,7 @@ function ApiWorkbench({
                 type="search"
                 autoComplete="off"
                 spellCheck={false}
-                className="min-h-9 w-full appearance-none bg-ink/10 px-2.5 pr-7 text-sm text-ink outline-none placeholder:text-mute"
+                className="min-h-9 w-full appearance-none bg-ink/10 px-2.5 pr-9 text-sm text-ink outline-none placeholder:text-mute"
                 value={search.q ?? ''}
                 onFocus={() => {
                   activate('list', 'edit')
@@ -627,7 +639,32 @@ function ApiWorkbench({
                 }
                 placeholder="Filter routes"
               />
-              {search.q ? null : (
+              {search.q ? (
+                <button
+                  type="button"
+                  aria-label="Clear route filter"
+                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                  onClick={() => {
+                    void navigate({
+                      search: (previous) => ({ ...previous, q: undefined }),
+                      replace: true,
+                      resetScroll: false,
+                    })
+                    document.getElementById('operation-filter')?.focus()
+                  }}
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 16 16"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M3 3l10 10M13 3L3 13" />
+                  </svg>
+                </button>
+              ) : (
                 <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
                   <Kbd hotkey="/" />
                 </span>

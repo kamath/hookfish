@@ -59,6 +59,10 @@ body {
   touch-action: manipulation;
 }
 
+#operation-filter::-webkit-search-cancel-button {
+  appearance: none;
+}
+
 .rjsf fieldset {
   min-inline-size: 0;
 }
