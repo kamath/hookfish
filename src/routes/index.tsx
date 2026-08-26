@@ -150,7 +150,11 @@ function Home() {
             onFocus={() => {
               activate('specs', 'edit')
             }}
-            onChange={(event) => setSourceKind(event.target.value)}
+            onChange={(event) => {
+              setSourceKind(event.target.value)
+              event.currentTarget.blur()
+              enterCommand()
+            }}
           >
             {sourceOptions.map((option) => (
               <option key={option.kind} value={option.kind}>
