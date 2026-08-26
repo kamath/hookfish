@@ -6,6 +6,42 @@ import { specToClient } from './openapi'
 import { fetchSpec } from './spec.functions'
 import { readApisJson, readDefaultsVersion, writeApisJson, writeDefaultsVersion } from './storage'
 
+const specCache = new Map<string, unknown>()
+const specPending = new Map<string, Promise<unknown>>()
+const clientCache = new Map<string, ClientApi>()
+
+async function loadSpecDocument(url: string): Promise<unknown> {
+  const cached = specCache.get(url)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const pending = specPending.get(url)
+  if (pending) {
+    return pending
+  }
+
+  const request = fetchSpec({ data: { url } }).then(
+    (spec) => {
+      specCache.set(url, spec)
+      specPending.delete(url)
+      return spec
+    },
+    (error: unknown) => {
+      specPending.delete(url)
+      throw error
+    },
+  )
+  specPending.set(url, request)
+  return request
+}
+
+function prefetchSpecs(apis: ApiSummary[]) {
+  for (const api of apis.slice(0, 2)) {
+    void getApi(api.id).catch(() => {})
+  }
+}
+
 function isApiSummary(value: unknown): value is ApiSummary {
   if (!value || typeof value !== 'object') {
     return false
@@ -56,13 +92,16 @@ function rememberSpecMeta(id: string, client: ClientApi) {
 }
 
 export function listApis(): ApiSummary[] {
-  return loadApis()
+  const apis = loadApis()
+  prefetchSpecs(apis)
+  return apis
 }
 
 export async function addApi(url: string): Promise<{ id: string }> {
-  const spec = await fetchSpec({ data: { url } })
+  const spec = await loadSpecDocument(url)
   const id = crypto.randomUUID()
   const client = specToClient(spec, url, id)
+  clientCache.set(id, client)
   const apis = loadApis()
   apis.unshift({
     id,
@@ -82,9 +121,13 @@ export async function getApi(id: string): Promise<ClientApi> {
     throw notFound()
   }
 
-  const spec = await fetchSpec({ data: { url: row.specUrl } })
-  const client = specToClient(spec, row.specUrl, row.id)
-  rememberSpecMeta(row.id, client)
+  let client = clientCache.get(row.id)
+  if (!client || client.specUrl !== row.specUrl) {
+    const spec = await loadSpecDocument(row.specUrl)
+    client = specToClient(spec, row.specUrl, row.id)
+    clientCache.set(row.id, client)
+    rememberSpecMeta(row.id, client)
+  }
 
   return {
     ...client,
@@ -93,6 +136,12 @@ export async function getApi(id: string): Promise<ClientApi> {
 }
 
 export function removeApi(id: string) {
+  const row = loadApis().find((api) => api.id === id)
   saveApis(loadApis().filter((api) => api.id !== id))
+  if (row) {
+    specCache.delete(row.specUrl)
+    specPending.delete(row.specUrl)
+    clientCache.delete(id)
+  }
   clearApiAuth(id)
 }

@@ -1,23 +1,40 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import validator from '@rjsf/validator-ajv8'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema } from '../lib/client-types'
-import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, insertCurrentInput, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { activate, useChrome } from '../lib/mode'
 import { readApiAuth } from '../lib/auth'
+import { toCurl } from '../lib/export-snippet'
 import { buildOperationRequest } from '../lib/invoke'
 import { executeRequest } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
-import { formPrimaryButtonClass } from '../lib/ui'
+import { formGhostButtonClass, formPrimaryButtonClass } from '../lib/ui'
 import { AuthFields } from './auth-fields'
 import { Kbd } from './hints'
-import { RequestSnippet } from './request-snippet'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.left = '-9999px'
+    document.body.appendChild(area)
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    return ok
+  }
+}
 
 export function OperationClient({
   api,
@@ -44,6 +61,7 @@ export function OperationClient({
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
   const [result, setResult] = useState<InvokeResult | null>(null)
   const [askingAuth, setAskingAuth] = useState(false)
+  const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const { mode, pane } = useChrome()
@@ -71,6 +89,7 @@ export function OperationClient({
 
   useEffect(() => {
     setAskingAuth(false)
+    setCopied(false)
     const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
@@ -84,6 +103,35 @@ export function OperationClient({
     const timer = window.setTimeout(() => insertCurrentInput('inline-auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [showAuth])
+
+  useEffect(() => {
+    if (!copied) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopied(false), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  async function copyCurl() {
+    try {
+      const ok = await copyText(
+        toCurl(
+          buildOperationRequest({
+            serverUrl,
+            operation,
+            formData: formDataRef.current,
+            auth: readApiAuth(api.id),
+            authSchemes: api.authSchemes,
+          }),
+        ),
+      )
+      if (ok) {
+        setCopied(true)
+      }
+    } catch {
+      setCopied(false)
+    }
+  }
 
   useHotkey(
     'Mod+Enter',
@@ -100,38 +148,13 @@ export function OperationClient({
     () => activate('response', 'command'),
     { enabled: pane === 'form' && mode === 'command' && Boolean(result) },
   )
-
-  const previewUrl = useMemo(() => {
-    const data = asRecord(formData)
-    try {
-      return buildRequestUrl(
-        serverUrl,
-        operation.path,
-        asRecord(omitEmpty(data.path)),
-        asRecord(omitEmpty(data.query)),
-      )
-    } catch {
-      return `${serverUrl}${operation.path}`
-    }
-  }, [formData, operation.path, serverUrl])
-
-  const previewRequest = useMemo(() => {
-    try {
-      return buildOperationRequest({
-        serverUrl,
-        operation,
-        formData,
-        auth: readApiAuth(api.id),
-        authSchemes: api.authSchemes,
-      })
-    } catch {
-      return {
-        method: operation.method.toUpperCase(),
-        url: previewUrl,
-        headers: {},
-      }
-    }
-  }, [api.authSchemes, api.id, formData, operation, previewUrl, serverUrl])
+  useHotkey(
+    'C',
+    () => {
+      void copyCurl()
+    },
+    { enabled: pane === 'form' && mode === 'command' },
+  )
 
   function onSubmit({ formData: next }: IChangeEvent) {
     setFormData(next)
@@ -216,30 +239,43 @@ export function OperationClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <RequestSnippet request={previewRequest} />
               {error ? (
                 <p className="text-xs text-error" role="alert">
                   {error}
                 </p>
               ) : null}
               {showAuth ? null : (
-                <button
-                  type="submit"
-                  className={`${formPrimaryButtonClass} api-solid`}
-                  disabled={pending}
-                >
-                  {pending ? (
-                    'Sending…'
-                  ) : (
-                    <>
-                      <span className="mr-2 inline-flex gap-1">
-                        <Kbd hotkey="Mod" />
-                        <Kbd hotkey="Enter" />
-                      </span>
-                      Send
-                    </>
-                  )}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className={`${formGhostButtonClass} gap-2`}
+                    aria-live="polite"
+                    aria-label={copied ? 'Copied cURL' : 'Copy as cURL'}
+                    onClick={() => {
+                      void copyCurl()
+                    }}
+                  >
+                    <Kbd hotkey="C" />
+                    {copied ? 'Copied' : 'Copy as cURL'}
+                  </button>
+                  <button
+                    type="submit"
+                    className={`${formPrimaryButtonClass} api-solid`}
+                    disabled={pending}
+                  >
+                    {pending ? (
+                      'Sending…'
+                    ) : (
+                      <>
+                        <span className="mr-2 inline-flex gap-1">
+                          <Kbd hotkey="Mod" />
+                          <Kbd hotkey="Enter" />
+                        </span>
+                        Send
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </SwissForm>
