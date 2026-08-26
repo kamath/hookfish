@@ -217,7 +217,7 @@ function mergeParameters(
 function requestBodySchema(
   operation: Json,
   root: unknown,
-): { schema: JsonSchema; contentType: string } | undefined {
+): { schema: JsonSchema; contentType: string; required?: boolean } | undefined {
   if (isObject(operation.requestBody)) {
     const body = deref(operation.requestBody, root)
     if (!isObject(body) || !isObject(body.content)) {
@@ -237,7 +237,11 @@ function requestBodySchema(
 
     const media = content[preferred]
     if (!media.schema) {
-      return { schema: { type: 'object', title: 'Body' }, contentType: preferred }
+      return {
+        schema: { type: 'object', title: 'Body' },
+        contentType: preferred,
+        required: body.required === true,
+      }
     }
 
     return {
@@ -246,6 +250,7 @@ function requestBodySchema(
         title: 'Body',
       },
       contentType: preferred,
+      required: body.required === true,
     }
   }
 
@@ -260,6 +265,7 @@ function requestBodySchema(
         title: 'Body',
       },
       contentType: 'application/json',
+      required: Boolean(bodyParam.required),
     }
   }
 
@@ -285,6 +291,7 @@ function requestBodySchema(
         required,
       },
       contentType: 'application/x-www-form-urlencoded',
+      required: required.length > 0,
     }
   }
 
@@ -398,7 +405,7 @@ function groupTitle(location: string): string {
     case 'path':
       return 'Path'
     case 'query':
-      return 'Query'
+      return 'Additional Params'
     case 'header':
       return 'Headers'
     case 'cookie':
@@ -415,6 +422,7 @@ function operationToForm(
   defs: Record<string, JsonSchema>,
 ): { schema: JsonSchema; uiSchema: FormUiSchema; contentType?: string } {
   const properties: Record<string, JsonSchema> = {}
+  const requiredGroups: string[] = []
   const uiSchema: FormUiSchema = {
     'ui:submitButtonOptions': { norender: true },
     'ui:options': { autocomplete: 'off' },
@@ -456,17 +464,24 @@ function operationToForm(
       properties: groupProperties,
       required: requiredByGroup[location],
     }
+    if ((requiredByGroup[location] ?? []).length > 0) {
+      requiredGroups.push(location)
+    }
   }
 
   const body = requestBodySchema(operation, root)
   if (body) {
     properties.body = body.schema
+    if (body.required) {
+      requiredGroups.push('body')
+    }
   }
 
   return {
     schema: {
       type: 'object',
       properties,
+      required: requiredGroups,
       $defs: defs,
     },
     uiSchema,
