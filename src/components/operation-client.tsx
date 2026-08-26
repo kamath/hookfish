@@ -4,10 +4,10 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { ClientApi, ClientOperation, InvokeResult } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
-import { focusFirstInput } from '../lib/form-nav'
+import { bindFormTabSync, selectFirstInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { invokeOperation } from '../lib/invoke.functions'
-import { primaryButtonClass } from '../lib/ui'
+import { formPrimaryButtonClass } from '../lib/ui'
 import { SwissForm } from './swiss-form'
 
 function formatBody(body: string): string {
@@ -33,9 +33,11 @@ export function OperationClient({
   const [result, setResult] = useState<InvokeResult | null>(null)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => focusFirstInput('call-form'), 0)
+    const timer = window.setTimeout(() => selectFirstInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
+
+  useEffect(() => bindFormTabSync('call-form'), [operation.id])
 
   useHotkey(
     'Mod+Enter',
@@ -83,7 +85,7 @@ export function OperationClient({
 
   return (
     <div
-      className={`grid min-h-0 grid-cols-1 ${
+      className={`grid h-full min-h-0 grid-cols-1 overflow-hidden ${
         result ? 'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]' : ''
       }`}
     >
@@ -100,7 +102,7 @@ export function OperationClient({
           ) : null}
         </div>
 
-        <div className="px-3 py-4 md:px-4">
+        <div className="px-3 py-3 md:px-4">
           <SwissForm
             id="call-form"
             schema={operation.schema as never}
@@ -113,14 +115,14 @@ export function OperationClient({
             omitExtraData
             idPrefix={operation.id}
           >
-            <div className="flex flex-col gap-3 border-t border-rule pt-4">
+            <div className="flex flex-col gap-2 border-t border-rule pt-3">
               <p className="break-all font-mono text-xs text-mute">{previewUrl}</p>
               {error ? (
-                <p className="text-sm text-signal" role="alert">
+                <p className="text-xs text-signal" role="alert">
                   {error}
                 </p>
               ) : null}
-              <button type="submit" className={primaryButtonClass} disabled={pending}>
+              <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
                 {pending ? 'Sending…' : 'Send'}
               </button>
             </div>

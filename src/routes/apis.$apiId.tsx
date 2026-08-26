@@ -7,8 +7,8 @@ import { OperationClient } from '../components/operation-client'
 import { getApi } from '../lib/apis.functions'
 import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
-import { blurActive, isEditing } from '../lib/focus'
-import { activateFocusedControl, focusFirstInput, moveInputTab } from '../lib/form-nav'
+import { blurActive } from '../lib/focus'
+import { activateCurrentControl, exitInsert, insertCurrentInput, moveInputTab, selectFirstInput } from '../lib/form-nav'
 import { asRecord } from '../lib/build-request'
 import { repeatHotkey, useRepeatDelta, useTrailingCommit } from '../lib/repeat'
 import { inputClass } from '../lib/ui'
@@ -111,7 +111,6 @@ function ApiClientPage() {
       callback: () => {
         void navigate({ to: '/' })
       },
-      options: { enabled: showAuth },
     },
   ])
 
@@ -268,26 +267,28 @@ function ApiWorkbench({
       callback: () => {
         nudge(1)
       },
-      options: { ...repeatHotkey, ignoreInputs: pane === 'form' ? false : true },
+      options: repeatHotkey,
     },
     {
       hotkey: 'K',
       callback: () => {
         nudge(-1)
       },
-      options: { ...repeatHotkey, ignoreInputs: pane === 'form' ? false : true },
+      options: repeatHotkey,
     },
     {
       hotkey: 'Enter',
       callback: () => {
         opCommit.flush()
         if (pane === 'form') {
-          activateFocusedControl()
+          if (!activateCurrentControl('call-form')) {
+            insertCurrentInput('call-form')
+          }
           return
         }
         if (selected) {
           setPane('form')
-          window.setTimeout(() => focusFirstInput('call-form'), 0)
+          window.setTimeout(() => selectFirstInput('call-form'), 0)
         }
       },
     },
@@ -296,20 +297,19 @@ function ApiWorkbench({
       callback: () => {
         opCommit.flush()
         if (pane === 'form') {
-          focusFirstInput('call-form')
+          insertCurrentInput('call-form')
           return
         }
         if (selected) {
           setPane('form')
-          window.setTimeout(() => focusFirstInput('call-form'), 0)
+          window.setTimeout(() => insertCurrentInput('call-form'), 0)
         }
       },
     },
     {
       hotkey: 'Escape',
       callback: () => {
-        if (isEditing()) {
-          blurActive()
+        if (exitInsert('call-form')) {
           return
         }
         stepBack()
@@ -330,12 +330,6 @@ function ApiWorkbench({
       hotkey: ']',
       callback: () => cycleServer(1),
       options: { enabled: manyServers },
-    },
-    {
-      hotkey: 'N',
-      callback: () => {
-        void home({ to: '/' })
-      },
     },
   ])
 
@@ -358,7 +352,7 @@ function ApiWorkbench({
   ]
 
   return (
-    <main id="main" className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col bg-paper">
+    <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-rule px-3 py-2 md:px-4">
         <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
         {manyServers ? (

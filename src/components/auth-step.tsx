@@ -4,10 +4,9 @@ import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { blurActive, isEditing } from '../lib/focus'
-import { activateFocusedControl, focusFirstInput, moveInputTab } from '../lib/form-nav'
+import { activateCurrentControl, bindFormTabSync, exitInsert, insertCurrentInput, moveInputTab, selectFirstInput } from '../lib/form-nav'
 import { repeatHotkey, useRepeatDelta } from '../lib/repeat'
-import { primaryButtonClass } from '../lib/ui'
+import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
 import { SwissForm } from './swiss-form'
 
@@ -30,14 +29,11 @@ export function AuthStep({
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const field = document.querySelector<HTMLInputElement>(
-        '#auth-form input, #auth-form textarea',
-      )
-      field?.focus()
-    }, 0)
+    const timer = window.setTimeout(() => selectFirstInput('auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [])
+
+  useEffect(() => bindFormTabSync('auth-form'), [])
 
   const nudge = useRepeatDelta((delta) => {
     moveInputTab('auth-form', delta)
@@ -56,7 +52,7 @@ export function AuthStep({
     {
       hotkey: 'I',
       callback: () => {
-        focusFirstInput('auth-form')
+        insertCurrentInput('auth-form')
       },
     },
     {
@@ -64,26 +60,27 @@ export function AuthStep({
       callback: () => {
         nudge(1)
       },
-      options: { ...repeatHotkey, ignoreInputs: false },
+      options: repeatHotkey,
     },
     {
       hotkey: 'K',
       callback: () => {
         nudge(-1)
       },
-      options: { ...repeatHotkey, ignoreInputs: false },
+      options: repeatHotkey,
     },
     {
       hotkey: 'Enter',
       callback: () => {
-        activateFocusedControl()
+        if (!activateCurrentControl('auth-form')) {
+          insertCurrentInput('auth-form')
+        }
       },
     },
     {
       hotkey: 'Escape',
       callback: () => {
-        if (isEditing()) {
-          blurActive()
+        if (exitInsert('auth-form')) {
           return
         }
         onLeave()
@@ -98,13 +95,13 @@ export function AuthStep({
   ])
 
   return (
-    <main id="main" className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col px-3 py-8 md:px-4">
+    <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden px-3 py-8 md:px-4">
       <p className="text-sm text-mute">{title}</p>
       <p className="mt-2 text-sm text-ink">
         {stored ? 'Replace a stored key, or leave a field blank to keep it.' : 'Sign in to the API first.'}
       </p>
       <p className="mt-1 text-xs text-mute">Keys stay on the server.</p>
-      <div className="mt-8 flex-1">
+      <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
         <SwissForm
           id="auth-form"
           idPrefix="auth"
@@ -122,7 +119,7 @@ export function AuthStep({
           showErrorList={false}
           omitExtraData
         >
-          <button type="submit" className={primaryButtonClass} disabled={pending}>
+          <button type="submit" className={formPrimaryButtonClass} disabled={pending}>
             {pending ? 'Saving…' : 'Continue'}
           </button>
         </SwissForm>
