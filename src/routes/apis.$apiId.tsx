@@ -284,7 +284,7 @@ function ApiWorkbench({
     document.getElementById('operation-filter')?.focus()
   }
 
-  function openSelected(insert: boolean) {
+  function openSelected() {
     if (!selected) {
       return
     }
@@ -295,9 +295,7 @@ function ApiWorkbench({
       replace: true,
       resetScroll: false,
     })
-    if (insert) {
-      window.setTimeout(() => selectDefaultInput('call-form'), 0)
-    }
+    window.setTimeout(() => selectDefaultInput('call-form'), 0)
   }
 
   function stepBack() {
@@ -369,10 +367,7 @@ function ApiWorkbench({
       focusFilter()
     },
     fields: () => {
-      openSelected(true)
-    },
-    insert: () => {
-      openSelected(false)
+      openSelected()
     },
     clearAuth: {
       callback: () => {
@@ -388,17 +383,8 @@ function ApiWorkbench({
     clearEscape: () => {
       stepBack()
     },
-    back: () => {
-      stepBack()
-    },
-    clearBack: () => {
-      stepBack()
-    },
     prevServer: () => cycleServer(-1),
     nextServer: () => cycleServer(1),
-    home: () => {
-      void home({ to: '/' })
-    },
     confirmFilter: (event) => {
       if (document.activeElement?.id !== 'operation-filter' || !selected) {
         return
@@ -427,14 +413,8 @@ function ApiWorkbench({
     operations: () => {
       stepBack()
     },
-    back: () => {
-      stepBack()
-    },
     prevServer: () => cycleServer(-1),
     nextServer: () => cycleServer(1),
-    home: () => {
-      void home({ to: '/' })
-    },
   })
 
   function renderOperation(operation: ClientOperation) {
@@ -511,7 +491,15 @@ function ApiWorkbench({
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (
-            <>
+            <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+                aria-label="Previous server"
+                onClick={() => cycleServer(-1)}
+              >
+                <Kbd hotkey="[" />
+              </button>
               <label htmlFor="server-url" className="sr-only">
                 Server
               </label>
@@ -522,28 +510,52 @@ function ApiWorkbench({
                 inputMode="url"
                 autoComplete="off"
                 spellCheck={false}
-                className={`${inputClass} max-w-xl flex-1`}
+                className={`${inputClass} min-w-0 flex-1`}
                 value={serverUrl}
                 onFocus={() => {
                   enterEdit()
                 }}
                 onChange={(event) => setServerUrl(event.target.value)}
               />
-            </>
+              <button
+                type="button"
+                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+                aria-label="Next server"
+                onClick={() => cycleServer(1)}
+              >
+                <Kbd hotkey="]" />
+              </button>
+            </div>
           ) : null}
-          {onClearAuth ? (
-            <button
-              type="button"
-              className="ml-auto inline-flex items-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
-              disabled={authPending}
-              onClick={() => {
-                void onClearAuth()
-              }}
-            >
-              Clear Auth
-              <Kbd hotkey="Mod+Backspace" />
-            </button>
-          ) : null}
+          <div className="ml-auto flex items-center gap-3">
+            {pane !== 'response' ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
+                onClick={stepBack}
+              >
+                {pane === 'form'
+                  ? 'Operations'
+                  : search.q
+                    ? 'Clear filter'
+                    : 'Specs'}
+                <Kbd hotkey="Escape" />
+              </button>
+            ) : null}
+            {onClearAuth ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
+                disabled={authPending}
+                onClick={() => {
+                  void onClearAuth()
+                }}
+              >
+                Clear Auth
+                <Kbd hotkey="Mod+Backspace" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -570,7 +582,9 @@ function ApiWorkbench({
                 type="search"
                 autoComplete="off"
                 spellCheck={false}
-                className="min-h-9 w-full appearance-none bg-ink/10 px-2.5 pr-9 text-sm text-ink outline-none placeholder:text-mute"
+                className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                  search.q ? 'pr-16' : 'pr-9'
+                }`}
                 value={search.q ?? ''}
                 onFocus={() => {
                   activate('list', 'edit')
@@ -591,7 +605,7 @@ function ApiWorkbench({
                 <button
                   type="button"
                   aria-label="Clear route filter"
-                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                  className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
                   onClick={() => {
                     void navigate({
                       search: (previous) => ({ ...previous, q: undefined }),
@@ -612,11 +626,10 @@ function ApiWorkbench({
                     <path d="M3 3l10 10M13 3L3 13" />
                   </svg>
                 </button>
-              ) : (
-                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                  <Kbd hotkey="/" />
-                </span>
-              )}
+              ) : null}
+              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                <Kbd hotkey="/" />
+              </span>
             </div>
           </div>
           <nav

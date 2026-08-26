@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { InvokeResult } from '../lib/client-types'
-import { useStepKeys, useViewActions } from '../lib/keys'
+import { useStepKeys, useViewActions, useViewFlags } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 
 type ResponseNode = {
@@ -197,6 +197,12 @@ export function ResponsePane({
     })
   }
 
+  const canToggleChildren =
+    selected === 1 && Boolean(rows[selected]?.collection)
+  useViewFlags('response', {
+    canToggleChildren,
+    hasHeaders: result.headers.length > 0,
+  })
   useStepKeys('response', move)
   useViewActions('response', {
     expand: (event) => {
@@ -210,14 +216,6 @@ export function ResponsePane({
       if (!pending) {
         onResend()
       }
-    },
-    tabNext: (event) => {
-      event.preventDefault()
-      move(1)
-    },
-    tabPrev: (event) => {
-      event.preventDefault()
-      move(-1)
     },
     headers: () => setHeadersVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),

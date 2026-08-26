@@ -367,12 +367,6 @@ export function useFormPaneNavigation(
   }, options?.stepKeys !== false)
 
   useViewActions(view, {
-    tabNext: () => {
-      moveFormTab(formId, 1)
-    },
-    tabPrev: () => {
-      moveFormTab(formId, -1)
-    },
     expand: () => {
       confirmForm(formId)
     },

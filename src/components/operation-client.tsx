@@ -6,7 +6,14 @@ import type { ClientApi, ClientOperation, FormUiSchema, InvokeResult, JsonSchema
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { toFetch, withAuthPlaceholders } from '../lib/export-snippet'
-import { bindFormTabSync, insertMatchingInput, selectDefaultInput } from '../lib/form-nav'
+import {
+  bindFormTabSync,
+  confirmForm,
+  insertCurrentInput,
+  insertMatchingInput,
+  moveFormTab,
+  selectDefaultInput,
+} from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
 import { useViewActions, useViewFlags } from '../lib/keys'
 import { activate, useChrome } from '../lib/mode'
@@ -292,18 +299,50 @@ export function OperationClient({
           {operation.deprecated ? (
             <span className="text-xs text-signal">deprecated</span>
           ) : null}
-          {result ? (
+          <KeyHints className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
-              onClick={() => activate('response', 'command')}
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
+              onClick={() => moveFormTab('call-form', -1)}
             >
-              View output
-              <KeyHints>
-                <Kbd hotkey="O" />
-              </KeyHints>
+              Previous
+              <Kbd hotkey="K" />
             </button>
-          ) : null}
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
+              onClick={() => moveFormTab('call-form', 1)}
+            >
+              Next
+              <Kbd hotkey="J" />
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
+              onClick={() => insertCurrentInput('call-form')}
+            >
+              Edit
+              <Kbd hotkey="I" />
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink"
+              onClick={() => confirmForm('call-form')}
+            >
+              Expand
+              <Kbd hotkey="Enter" />
+            </button>
+            {result ? (
+              <button
+                type="button"
+                className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15"
+                onClick={() => activate('response', 'command')}
+              >
+                View output
+                <Kbd hotkey="O" />
+              </button>
+            ) : null}
+          </KeyHints>
         </div>
 
         <div className="px-3 py-3 md:px-4">

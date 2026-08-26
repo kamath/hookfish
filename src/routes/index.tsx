@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { Kbd, KeyHints } from '../components/hints'
+import { Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { ARCADE_SPEC_URL } from '../lib/defaults'
@@ -73,12 +73,6 @@ function Home() {
       urlRef.current?.focus()
     },
     keys: () => setHelp((value) => !value),
-    blur: () => {
-      blurActive()
-    },
-    dismissHelp: () => {
-      setHelp(false)
-    },
     command: () => {
       enterCommand()
       blurActive()
@@ -106,30 +100,41 @@ function Home() {
         <label htmlFor="url" className="sr-only">
           OpenAPI URL
         </label>
-        <input
-          ref={urlRef}
-          id="url"
-          name="url"
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          spellCheck={false}
-          required
-          className={inputClass}
-          placeholder={ARCADE_SPEC_URL}
-          onFocus={() => {
-            activate('home', 'edit')
-          }}
-        />
+        <div className="relative min-w-0 flex-1">
+          <input
+            ref={urlRef}
+            id="url"
+            name="url"
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
+            required
+            className={`${inputClass} pr-10`}
+            placeholder={ARCADE_SPEC_URL}
+            onFocus={() => {
+              activate('home', 'edit')
+            }}
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+            <Kbd hotkey="I" />
+          </span>
+        </div>
         <button
           type="submit"
-          className={`${primaryButtonClass} shrink-0 gap-2`}
+          className={`${primaryButtonClass} shrink-0`}
           disabled={add.isPending}
         >
           {add.isPending ? 'Reading…' : 'Open'}
-          <KeyHints>
-            <Kbd hotkey="Enter" />
-          </KeyHints>
+        </button>
+        <button
+          type="button"
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 border border-rule px-3 py-2 text-sm text-ink hover:bg-ink/10"
+          aria-expanded={help}
+          onClick={() => setHelp((value) => !value)}
+        >
+          Keys
+          <Kbd hotkey={{ key: '/', shift: true }} />
         </button>
       </form>
       {add.isError ? (

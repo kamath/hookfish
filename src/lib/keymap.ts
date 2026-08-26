@@ -10,7 +10,6 @@ export type ViewBinding = {
   label: string
   modes?: readonly Mode[]
   flag?: string
-  hint?: boolean
 }
 
 export type ViewAction = {
@@ -26,8 +25,6 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     { id: 'previous', hotkey: 'K', label: 'previous spec', flag: 'hasSpecs' },
     { id: 'insert', hotkey: 'I', label: 'insert' },
     { id: 'keys', hotkey: { key: '/', shift: true }, label: 'keys' },
-    { id: 'blur', hotkey: 'Backspace', label: 'blur', hint: false },
-    { id: 'dismissHelp', hotkey: 'Escape', label: 'dismiss', hint: false },
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
   list: [
@@ -35,7 +32,6 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     { id: 'next', hotkey: 'J', label: 'next' },
     { id: 'previous', hotkey: 'K', label: 'previous' },
     { id: 'fields', hotkey: 'Enter', label: 'fields' },
-    { id: 'insert', hotkey: 'I', label: 'fields' },
     {
       id: 'clearAuth',
       hotkey: 'Mod+Backspace',
@@ -45,11 +41,8 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
     },
     { id: 'escape', hotkey: 'Escape', label: 'specs', flag: 'noFilter' },
     { id: 'clearEscape', hotkey: 'Escape', label: 'clear filter', flag: 'hasFilter' },
-    { id: 'back', hotkey: 'Backspace', label: 'back', flag: 'noFilter' },
-    { id: 'clearBack', hotkey: 'Backspace', label: 'clear filter', flag: 'hasFilter' },
     { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
     { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
-    { id: 'home', hotkey: 'N', label: 'home' },
     { id: 'confirmFilter', hotkey: 'Enter', label: 'open', modes: ['edit'] },
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
@@ -68,24 +61,18 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
       modes: ['command', 'edit'],
     },
     { id: 'operations', hotkey: 'Escape', label: 'operations' },
-    { id: 'back', hotkey: 'Backspace', label: 'back' },
     { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
     { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
-    { id: 'home', hotkey: 'N', label: 'home' },
-    { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult', hint: false },
-    { id: 'tabNext', hotkey: { key: 'Tab' }, label: 'next', hint: false },
-    { id: 'tabPrev', hotkey: { key: 'Tab', shift: true }, label: 'previous', hint: false },
+    { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
     { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
   ],
   response: [
     { id: 'next', hotkey: 'J', label: 'next line' },
     { id: 'previous', hotkey: 'K', label: 'previous line' },
-    { id: 'tabNext', hotkey: { key: 'Tab' }, label: 'next line' },
-    { id: 'tabPrev', hotkey: { key: 'Tab', shift: true }, label: 'previous line', hint: false },
     { id: 'expand', hotkey: 'Enter', label: 'expand' },
     { id: 'resend', hotkey: 'Mod+Enter', label: 'resend', modes: ['command', 'edit'] },
-    { id: 'headers', hotkey: 'H', label: 'headers' },
-    { id: 'children', hotkey: 'A', label: 'toggle children' },
+    { id: 'headers', hotkey: 'H', label: 'headers', flag: 'hasHeaders' },
+    { id: 'children', hotkey: 'A', label: 'toggle children', flag: 'canToggleChildren' },
     { id: 'request', hotkey: 'Escape', label: 'request' },
   ],
 }
