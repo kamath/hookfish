@@ -331,9 +331,8 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   markItem(root, next)
   scrollMark(next)
   next.focus({ preventScroll: true })
-  // Focusing an editable control normally enters edit mode. J/K navigation is
-  // explicitly command-mode traversal, so retain focus while restoring command mode.
-  enterCommand()
+  // Let the global focus binding enter edit mode for editable controls, exactly
+  // as native Tab navigation does. Buttons retain command mode.
   syncMode(root)
   return true
 }

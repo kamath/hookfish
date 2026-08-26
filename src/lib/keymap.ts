@@ -71,6 +71,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'routes',
     path: '/apis/$apiId/input/$operationId',
     bindings: [
+      { id: 'next', hotkey: 'J', label: 'next control' },
+      { id: 'previous', hotkey: 'K', label: 'previous control' },
       {
         id: 'previousRoute',
         hotkey: 'H',
