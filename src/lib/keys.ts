@@ -1,12 +1,7 @@
+import { useHotkeys } from '@tanstack/react-hotkeys'
+import type { UseHotkeyDefinition } from '@tanstack/react-hotkeys'
 import { useEffect, useRef } from 'react'
-import { isEditing } from './focus'
-
-/** Always hear the key, even after focus moved into a field. Decide in the callback. */
-export const commandHotkey = {
-  ignoreInputs: false,
-  preventDefault: false,
-  requireReset: true,
-} as const
+import { getMode, useChrome, type Mode, type Pane } from './mode'
 
 let lastStepAt = 0
 let pointerX = Number.NaN
@@ -35,7 +30,7 @@ export function consumePointerIntent() {
   return moved
 }
 
-/** One document listener. J/K move one step per key event; ignored while typing. */
+/** One document listener. J/K move one step per key event; command mode only. */
 export function useStepKeys(step: (delta: number) => void, enabled = true) {
   const stepRef = useRef(step)
   const enabledRef = useRef(enabled)
@@ -47,7 +42,7 @@ export function useStepKeys(step: (delta: number) => void, enabled = true) {
       if (!enabledRef.current || event.metaKey || event.ctrlKey || event.altKey) {
         return
       }
-      if (isEditing()) {
+      if (getMode() !== 'command') {
         return
       }
       const key = event.key.toLowerCase()
@@ -66,4 +61,23 @@ export function useStepKeys(step: (delta: number) => void, enabled = true) {
     document.addEventListener('keydown', onKeyDown, { capture: true })
     return () => document.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [])
+}
+
+export function usePaneHotkeys(
+  pane: Pane,
+  modes: readonly Mode[],
+  hotkeys: UseHotkeyDefinition[],
+) {
+  const chrome = useChrome()
+  useHotkeys(hotkeys, {
+    enabled: modes.includes(chrome.mode) && chrome.pane === pane,
+  })
+}
+
+export function useEditHotkeys(hotkeys: UseHotkeyDefinition[]) {
+  const { mode } = useChrome()
+  useHotkeys(hotkeys, {
+    enabled: mode === 'edit',
+    ignoreInputs: false,
+  })
 }

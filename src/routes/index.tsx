@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { useHotkeys } from '@tanstack/react-hotkeys'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis.functions'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { useStepKeys } from '../lib/keys'
+import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { activate, enterCommand, useChrome } from '../lib/mode'
 import { inputClass, primaryButtonClass } from '../lib/ui'
 import { HintBar } from '../components/hints'
 
@@ -19,6 +19,7 @@ function Home() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const urlRef = useRef<HTMLInputElement>(null)
+  const { mode } = useChrome()
   const [selected, setSelected] = useState(0)
   const [help, setHelp] = useState(false)
   const apis = apisQuery.data ?? []
@@ -42,6 +43,7 @@ function Home() {
   })
 
   useEffect(() => {
+    activate('home', 'edit')
     urlRef.current?.focus()
   }, [])
 
@@ -54,17 +56,22 @@ function Home() {
 
   useStepKeys(move, apis.length > 0)
 
-  useHotkeys([
+  useEditHotkeys([
     {
       hotkey: 'Escape',
       callback: () => {
+        enterCommand()
         blurActive()
         setHelp(false)
       },
     },
+  ])
+
+  usePaneHotkeys('home', ['command'], [
     {
       hotkey: 'I',
       callback: () => {
+        activate('home', 'edit')
         urlRef.current?.focus()
       },
     },
@@ -82,6 +89,12 @@ function Home() {
       hotkey: 'Backspace',
       callback: () => {
         blurActive()
+      },
+    },
+    {
+      hotkey: 'Escape',
+      callback: () => {
+        setHelp(false)
       },
     },
     {
@@ -104,19 +117,20 @@ function Home() {
     remove.mutate(id)
   }
 
-  const hints = [
-    { hotkey: 'Enter', label: 'open' },
-    ...(apis.length > 0
-      ? [
-          { hotkey: 'J', label: 'next spec' },
-          { hotkey: 'K', label: 'previous spec' },
+  const hints =
+    mode === 'edit'
+      ? [{ hotkey: 'Escape', label: 'command' }]
+      : [
+          { hotkey: 'Enter', label: 'open' },
+          ...(apis.length > 0
+            ? [
+                { hotkey: 'J', label: 'next spec' },
+                { hotkey: 'K', label: 'previous spec' },
+              ]
+            : []),
+          { hotkey: 'I', label: 'insert' },
+          { hotkey: { key: '/', shift: true }, label: 'keys' },
         ]
-      : []),
-    { hotkey: 'Escape', label: 'leave the field' },
-    { hotkey: 'Backspace', label: 'leave the field' },
-    { hotkey: 'I', label: 'insert' },
-    { hotkey: { key: '/', shift: true }, label: 'keys' },
-  ]
 
   return (
     <main id="main" className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4">
@@ -135,6 +149,9 @@ function Home() {
           required
           className={inputClass}
           placeholder="https://petstore3.swagger.io/api/v3/openapi.json"
+          onFocus={() => {
+            activate('home', 'edit')
+          }}
         />
         <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
           {add.isPending ? 'Reading…' : 'Open'}

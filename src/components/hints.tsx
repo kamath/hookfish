@@ -26,7 +26,7 @@ export function Hint({
   label: string
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-mute">
+    <span className="inline-flex items-center gap-1 text-xs text-mute">
       <Kbd hotkey={hotkey} />
       {label}
     </span>

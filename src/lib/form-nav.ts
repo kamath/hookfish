@@ -1,5 +1,5 @@
 import { blurActive, isEditing } from './focus'
-import { isInsertMode, setInsertMode } from './form-mode'
+import { enterCommand, enterEdit, isInsertMode } from './mode'
 import { consumePointerIntent } from './keys'
 
 const TABBABLE_SELECTOR = [
@@ -239,7 +239,7 @@ export function bindFormTabSync(rootId: string) {
     }
     markItem(root, items[index])
     if (isEditing()) {
-      setInsertMode(true)
+      enterEdit()
     }
     syncMode(root)
   }
@@ -259,7 +259,7 @@ export function bindFormTabSync(rootId: string) {
     }
     if (isEditing()) {
       blurActive()
-      setInsertMode(false)
+      enterCommand()
     }
     markItem(root, next)
     syncMode(root)
@@ -291,7 +291,7 @@ export function moveFormTab(rootId: string, delta: number): boolean {
     return false
   }
 
-  setInsertMode(false)
+  enterCommand()
   blurActive()
   markItem(root, next)
   syncMode(root)
@@ -333,7 +333,7 @@ export function selectDefaultInput(rootId: string): boolean {
   const required = firstRequiredInput(root)
   if (required) {
     markItem(root, required)
-    setInsertMode(true)
+    enterEdit()
     syncMode(root)
     scrollMark(required)
     scheduleInsertFocus(required)
@@ -345,7 +345,7 @@ export function selectDefaultInput(rootId: string): boolean {
     return false
   }
 
-  setInsertMode(false)
+  enterCommand()
   markItem(root, send)
   syncMode(root)
   scrollMark(send)
@@ -370,7 +370,7 @@ export function insertCurrentInput(rootId: string): boolean {
   }
 
   markItem(root, target)
-  setInsertMode(true)
+  enterEdit()
   syncMode(root)
   scrollMark(target)
   blurActive()
@@ -399,7 +399,7 @@ export function exitInsert(rootId: string): boolean {
   if (!isEditing()) {
     const root = formRoot(rootId)
     if (isInsertMode() && root) {
-      setInsertMode(false)
+      enterCommand()
       syncMode(root)
     }
     return false
@@ -410,7 +410,7 @@ export function exitInsert(rootId: string): boolean {
   const active = document.activeElement
   const index = items.findIndex((item) => item === active)
   blurActive()
-  setInsertMode(false)
+  enterCommand()
   if (root) {
     if (index !== -1 && items[index]) {
       markItem(root, items[index])

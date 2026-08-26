@@ -9,7 +9,8 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
+import { bindModeFromFocus } from '../lib/mode'
 import { sessionQueryOptions } from '../lib/queries'
 import appCss from '../styles.css?url'
 
@@ -82,6 +83,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 
 function AppShell() {
   const session = useQuery(sessionQueryOptions)
+  useEffect(() => bindModeFromFocus(), [])
 
   return (
     <HotkeysProvider defaultOptions={hotkeyDefaults}>

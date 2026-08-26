@@ -7,6 +7,7 @@ import type { ClientApi, ClientOperation } from '../lib/client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from '../lib/build-request'
 import { bindFormTabSync, selectDefaultInput } from '../lib/form-nav'
 import { submitForm } from '../lib/focus'
+import { useChrome } from '../lib/mode'
 import { invokeOperation } from '../lib/invoke.functions'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
@@ -54,6 +55,7 @@ export function OperationClient({
 
   useEffect(() => bindFormTabSync('call-form'), [operation.id])
 
+  const { pane } = useChrome()
   useHotkey(
     'Mod+Enter',
     () => {
@@ -61,7 +63,7 @@ export function OperationClient({
         submitForm('call-form')
       }
     },
-    { ignoreInputs: false },
+    { enabled: pane === 'form', ignoreInputs: false },
   )
 
   const previewUrl = useMemo(() => {

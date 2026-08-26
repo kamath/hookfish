@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import validator from '@rjsf/validator-ajv8'
-import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { IChangeEvent } from '@rjsf/core'
 import type { FormUiSchema, JsonSchema } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { bindFormTabSync, confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
-import { commandHotkey, useStepKeys } from '../lib/keys'
+import { bindFormTabSync, confirmForm, insertCurrentInput, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import { useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { activate, enterCommand, useChrome } from '../lib/mode'
+import { blurActive } from '../lib/focus'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { HintBar } from './hints'
@@ -31,8 +32,10 @@ export function AuthStep({
   onLeave: () => void
 }) {
   const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { mode } = useChrome()
 
   useEffect(() => {
+    activate('auth', 'command')
     const timer = window.setTimeout(() => selectDefaultInput('auth-form'), 0)
     return () => window.clearTimeout(timer)
   }, [])
@@ -43,7 +46,7 @@ export function AuthStep({
     moveFormTab('auth-form', delta)
   })
 
-  useHotkeys([
+  usePaneHotkeys('auth', ['command', 'edit'], [
     {
       hotkey: 'Mod+Enter',
       callback: () => {
@@ -53,16 +56,14 @@ export function AuthStep({
       },
       options: { ignoreInputs: false },
     },
+  ])
+
+  usePaneHotkeys('auth', ['command'], [
     {
       hotkey: 'I',
-      callback: (event) => {
-        if (isTypingInCurrentField('auth-form')) {
-          return
-        }
-        event.preventDefault()
+      callback: () => {
         insertCurrentInput('auth-form')
       },
-      options: commandHotkey,
     },
     {
       hotkey: { key: 'Tab' },
@@ -78,30 +79,31 @@ export function AuthStep({
     },
     {
       hotkey: 'Enter',
-      callback: (event) => {
-        if (document.activeElement instanceof HTMLTextAreaElement) {
-          return
-        }
-        event.preventDefault()
+      callback: () => {
         confirmForm('auth-form')
       },
-      options: commandHotkey,
     },
     {
       hotkey: 'Escape',
-      callback: (event) => {
-        event.preventDefault()
-        if (exitInsert('auth-form')) {
-          return
-        }
+      callback: () => {
         onLeave()
       },
-      options: commandHotkey,
     },
     {
       hotkey: 'Backspace',
       callback: () => {
         onLeave()
+      },
+    },
+  ])
+
+  useEditHotkeys([
+    {
+      hotkey: 'Escape',
+      callback: (event) => {
+        event.preventDefault()
+        enterCommand()
+        blurActive()
       },
     },
   ])
@@ -139,14 +141,21 @@ export function AuthStep({
         </SwissForm>
       </div>
       <HintBar
-        items={[
-          { hotkey: 'Mod+Enter', label: 'continue' },
-          { hotkey: 'J', label: 'next input' },
-          { hotkey: 'K', label: 'previous input' },
-          { hotkey: 'I', label: 'insert' },
-          { hotkey: 'Backspace', label: 'back' },
-          { hotkey: 'Escape', label: 'leave or specs' },
-        ]}
+        items={
+          mode === 'edit'
+            ? [
+                { hotkey: 'Mod+Enter', label: 'continue' },
+                { hotkey: 'Escape', label: 'command' },
+              ]
+            : [
+                { hotkey: 'Mod+Enter', label: 'continue' },
+                { hotkey: 'J', label: 'next input' },
+                { hotkey: 'K', label: 'previous input' },
+                { hotkey: 'I', label: 'insert' },
+                { hotkey: 'Backspace', label: 'back' },
+                { hotkey: 'Escape', label: 'specs' },
+              ]
+        }
       />
     </main>
   )

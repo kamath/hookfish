@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useHotkeys } from '@tanstack/react-hotkeys'
 import { AuthStep } from '../components/auth-step'
-import { HintBar } from '../components/hints'
+import { HintBar, Kbd } from '../components/hints'
 import { OperationClient } from '../components/operation-client'
 import { QueryStatus } from '../components/query-status'
 import { fieldsFromForm, saveApiAuth } from '../lib/auth.functions'
 import type { ClientApi, ClientOperation, JsonSchema, TagGroup } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
 import { blurActive } from '../lib/focus'
-import { setInsertMode } from '../lib/form-mode'
-import { confirmForm, exitInsert, insertCurrentInput, isTypingInCurrentField, moveFormTab, selectDefaultInput } from '../lib/form-nav'
-import { commandHotkey, consumePointerIntent, useStepKeys } from '../lib/keys'
+import { confirmForm, insertCurrentInput, moveFormTab, selectDefaultInput } from '../lib/form-nav'
+import { fuzzyScore } from '../lib/fuzzy'
+import { consumePointerIntent, useEditHotkeys, usePaneHotkeys, useStepKeys } from '../lib/keys'
+import { activate, enterCommand, enterEdit, getPane, useChrome } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 
@@ -29,23 +29,15 @@ export const Route = createFileRoute('/apis/$apiId')({
   component: ApiClientPage,
 })
 
-function matches(operation: ClientOperation, query: string) {
-  if (!query) {
-    return true
-  }
-
-  const haystack = [
-    operation.id,
+function operationQueryText(operation: ClientOperation) {
+  return [
     operation.method,
     operation.path,
+    operation.id,
+    ...operation.tags,
     operation.summary ?? '',
     operation.description ?? '',
-    ...operation.tags,
-  ]
-    .join(' ')
-    .toLowerCase()
-
-  return haystack.includes(query.toLowerCase())
+  ].join(' ')
 }
 
 function oneLine(value?: string) {
@@ -117,15 +109,6 @@ function ApiClientPage() {
     },
   })
 
-  useHotkeys([
-    {
-      hotkey: 'N',
-      callback: () => {
-        void navigate({ to: '/' })
-      },
-    },
-  ])
-
   if (apiQuery.isPending) {
     return <QueryStatus label="Reading the spec…" />
   }
@@ -195,31 +178,37 @@ function ApiWorkbench({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const home = useNavigate()
+  const { mode, pane } = useChrome()
   const [serverUrl, setServerUrl] = useState(api.servers[0] ?? '')
-  const [filterOpen, setFilterOpen] = useState(Boolean(search.q))
-  const [pane, setPane] = useState<'list' | 'form'>(search.op ? 'form' : 'list')
   const [heldOp, setHeldOp] = useState(search.op)
   const heldOpRef = useRef(search.op)
   const localOpRef = useRef(false)
-  const paneRef = useRef(pane)
-  paneRef.current = pane
   useEffect(() => {
-    if (pane === 'list') {
-      setInsertMode(false)
-    }
-  }, [pane])
+    activate(search.op ? 'form' : 'list', 'command')
+  }, [api.id])
 
-  const visible = useMemo(
-    () => api.operations.filter((operation) => matches(operation, search.q ?? '')),
-    [api.operations, search.q],
-  )
+  const ranked = useMemo(() => {
+    const query = search.q?.trim() ?? ''
+    if (!query) {
+      return undefined
+    }
+    return api.operations
+      .map((operation) => ({
+        operation,
+        score: fuzzyScore(operationQueryText(operation), query),
+      }))
+      .filter((item) => item.score != null)
+      .sort((left, right) => (right.score ?? 0) - (left.score ?? 0))
+      .map((item) => item.operation)
+  }, [api.operations, search.q])
   const groups = useMemo(
-    () => groupOperations(visible, api.tagGroups ?? []),
-    [api.tagGroups, visible],
+    () =>
+      ranked ? [] : groupOperations(api.operations, api.tagGroups ?? []),
+    [api.operations, api.tagGroups, ranked],
   )
   const orderedOperations = useMemo(
-    () => groups.flatMap((group) => group.operations),
-    [groups],
+    () => ranked ?? groups.flatMap((group) => group.operations),
+    [groups, ranked],
   )
   const selected =
     orderedOperations.find((operation) => operation.id === (heldOp ?? search.op)) ??
@@ -263,9 +252,9 @@ function ApiWorkbench({
     if (orderedOperations.length === 0) {
       return
     }
-    if (paneRef.current !== 'list') {
+    if (getPane() !== 'list') {
       blurActive()
-      setPane('list')
+      activate('list', 'command')
     }
     const currentId = heldOpRef.current ?? selected?.id
     const current = orderedOperations.findIndex((item) => item.id === currentId)
@@ -281,19 +270,39 @@ function ApiWorkbench({
     revealOperation(next.id)
   }
 
+  function focusFilter() {
+    activate('list', 'edit')
+    document.getElementById('operation-filter')?.focus()
+  }
+
+  function openSelected(insert: boolean) {
+    if (!selected) {
+      return
+    }
+    holdOp(selected.id)
+    activate('form', 'command')
+    void navigate({
+      search: (previous) => ({ ...previous, op: selected.id }),
+      replace: true,
+      resetScroll: false,
+    })
+    if (insert) {
+      window.setTimeout(() => selectDefaultInput('call-form'), 0)
+    }
+  }
+
   function stepBack() {
-    if (filterOpen) {
-      setFilterOpen(false)
+    if (getPane() === 'form') {
+      activate('list', 'command')
+      blurActive()
+      return
+    }
+    if (search.q) {
       void navigate({
         search: (previous) => ({ ...previous, q: undefined }),
         replace: true,
         resetScroll: false,
       })
-      return
-    }
-    if (pane === 'form') {
-      setPane('list')
-      blurActive()
       return
     }
     void home({ to: '/' })
@@ -312,7 +321,7 @@ function ApiWorkbench({
   }
 
   function nudge(delta: number) {
-    if (paneRef.current === 'form') {
+    if (getPane() === 'form') {
       moveFormTab('call-form', delta)
       return
     }
@@ -321,89 +330,41 @@ function ApiWorkbench({
 
   useStepKeys(nudge)
 
-  useHotkeys([
-    {
-      hotkey: '/',
-      callback: () => {
-        setFilterOpen(true)
-        window.setTimeout(() => {
-          document.getElementById('operation-filter')?.focus()
-        }, 0)
-      },
-    },
-    {
-      hotkey: { key: 'Tab' },
-      callback: () => {
-        nudge(1)
-      },
-      options: { enabled: pane === 'form' },
-    },
-    {
-      hotkey: { key: 'Tab', shift: true },
-      callback: () => {
-        nudge(-1)
-      },
-      options: { enabled: pane === 'form' },
-    },
-    {
-      hotkey: 'Enter',
-      callback: (event) => {
-        if (paneRef.current === 'form') {
-          if (document.activeElement instanceof HTMLTextAreaElement) {
-            return
-          }
-          event.preventDefault()
-          confirmForm('call-form')
-          return
-        }
-        event.preventDefault()
-        if (selected) {
-          holdOp(selected.id)
-          setPane('form')
-          void navigate({
-            search: (previous) => ({ ...previous, op: selected.id }),
-            replace: true,
-            resetScroll: false,
-          })
-          window.setTimeout(() => selectDefaultInput('call-form'), 0)
-        }
-      },
-      options: commandHotkey,
-    },
-    {
-      hotkey: 'I',
-      callback: (event) => {
-        if (paneRef.current === 'form') {
-          if (isTypingInCurrentField('call-form')) {
-            return
-          }
-          event.preventDefault()
-          insertCurrentInput('call-form')
-          return
-        }
-        event.preventDefault()
-        if (selected) {
-          holdOp(selected.id)
-          setPane('form')
-          void navigate({
-            search: (previous) => ({ ...previous, op: selected.id }),
-            replace: true,
-            resetScroll: false,
-          })
-        }
-      },
-      options: commandHotkey,
-    },
+  useEditHotkeys([
     {
       hotkey: 'Escape',
       callback: (event) => {
         event.preventDefault()
-        if (exitInsert('call-form')) {
-          return
-        }
+        enterCommand()
+        blurActive()
+      },
+    },
+  ])
+
+  usePaneHotkeys('list', ['command'], [
+    {
+      hotkey: '/',
+      callback: () => {
+        focusFilter()
+      },
+    },
+    {
+      hotkey: 'Enter',
+      callback: () => {
+        openSelected(true)
+      },
+    },
+    {
+      hotkey: 'I',
+      callback: () => {
+        openSelected(false)
+      },
+    },
+    {
+      hotkey: 'Escape',
+      callback: () => {
         stepBack()
       },
-      options: commandHotkey,
     },
     {
       hotkey: 'Backspace',
@@ -421,57 +382,195 @@ function ApiWorkbench({
       callback: () => cycleServer(1),
       options: { enabled: manyServers },
     },
+    {
+      hotkey: 'N',
+      callback: () => {
+        void home({ to: '/' })
+      },
+    },
   ])
 
-  const hints = [
-    { hotkey: '/', label: 'filter' },
-    { hotkey: 'J', label: 'next' },
-    { hotkey: 'K', label: 'previous' },
-    { hotkey: 'Enter', label: pane === 'form' ? 'expand' : 'fields' },
-    { hotkey: 'I', label: 'insert' },
-    { hotkey: 'Mod+Enter', label: 'send' },
-    { hotkey: 'Backspace', label: 'back' },
-    { hotkey: 'Escape', label: pane === 'form' ? 'operations' : 'specs' },
-    ...(manyServers
+  usePaneHotkeys('form', ['command'], [
+    {
+      hotkey: { key: 'Tab' },
+      callback: () => {
+        nudge(1)
+      },
+    },
+    {
+      hotkey: { key: 'Tab', shift: true },
+      callback: () => {
+        nudge(-1)
+      },
+    },
+    {
+      hotkey: 'Enter',
+      callback: () => {
+        confirmForm('call-form')
+      },
+    },
+    {
+      hotkey: 'I',
+      callback: () => {
+        insertCurrentInput('call-form')
+      },
+    },
+    {
+      hotkey: 'Escape',
+      callback: () => {
+        stepBack()
+      },
+    },
+    {
+      hotkey: 'Backspace',
+      callback: () => {
+        stepBack()
+      },
+    },
+    {
+      hotkey: '[',
+      callback: () => cycleServer(-1),
+      options: { enabled: manyServers },
+    },
+    {
+      hotkey: ']',
+      callback: () => cycleServer(1),
+      options: { enabled: manyServers },
+    },
+    {
+      hotkey: 'N',
+      callback: () => {
+        void home({ to: '/' })
+      },
+    },
+  ])
+
+  function renderOperation(operation: ClientOperation) {
+    const active = operation.id === selected?.id
+    const description = oneLine(operation.summary ?? operation.description)
+    return (
+      <li key={operation.id}>
+        <Link
+          id={`op-${operation.id}`}
+          to="/apis/$apiId"
+          params={{ apiId: api.id }}
+          search={(previous) => ({
+            ...previous,
+            op: operation.id,
+          })}
+          resetScroll={false}
+          onClick={() => {
+            holdOp(operation.id)
+            activate('form', 'command')
+          }}
+          onPointerEnter={() => {
+            if (
+              pane !== 'list' ||
+              heldOpRef.current === operation.id ||
+              !consumePointerIntent()
+            ) {
+              return
+            }
+            holdOp(operation.id)
+          }}
+          data-oc-method={operation.method}
+          data-oc-active={active || undefined}
+          className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal"
+        >
+          <span
+            data-oc-method-label
+            className="w-12 shrink-0 font-mono text-xs tabular-nums"
+          >
+            {operation.method.toUpperCase()}
+          </span>
+          <span className="min-w-0 truncate font-mono text-xs">
+            {operation.path}
+          </span>
+          {description ? (
+            <span className="min-w-0 flex-1 truncate text-xs text-faint">
+              {description}
+            </span>
+          ) : null}
+        </Link>
+      </li>
+    )
+  }
+
+  const serverHints = manyServers
+    ? [
+        { hotkey: '[', label: 'previous server' },
+        { hotkey: ']', label: 'next server' },
+      ]
+    : []
+  const hints =
+    mode === 'edit'
       ? [
-          { hotkey: '[', label: 'previous server' },
-          { hotkey: ']', label: 'next server' },
+          { hotkey: 'Escape', label: 'command' },
+          ...(pane === 'form' ? [{ hotkey: 'Mod+Enter', label: 'send' }] : []),
         ]
-      : []),
-    { hotkey: 'N', label: 'home' },
-  ]
+      : pane === 'form'
+        ? [
+            { hotkey: 'J', label: 'next' },
+            { hotkey: 'K', label: 'previous' },
+            { hotkey: 'I', label: 'insert' },
+            { hotkey: 'Enter', label: 'expand' },
+            { hotkey: 'Mod+Enter', label: 'send' },
+            { hotkey: 'Escape', label: 'operations' },
+            { hotkey: 'Backspace', label: 'back' },
+            ...serverHints,
+            { hotkey: 'N', label: 'home' },
+          ]
+        : [
+            { hotkey: '/', label: 'filter' },
+            { hotkey: 'J', label: 'next' },
+            { hotkey: 'K', label: 'previous' },
+            { hotkey: 'Enter', label: 'fields' },
+            { hotkey: 'I', label: 'fields' },
+            {
+              hotkey: 'Escape',
+              label: search.q ? 'clear filter' : 'specs',
+            },
+            { hotkey: 'Backspace', label: search.q ? 'clear filter' : 'back' },
+            ...serverHints,
+            { hotkey: 'N', label: 'home' },
+          ]
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-rule px-3 py-2 md:px-4">
-        <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
-        {manyServers ? (
-          <>
-            <label htmlFor="server-url" className="sr-only">
-              Server
-            </label>
-            <input
-              id="server-url"
-              name="server-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              spellCheck={false}
-              className={`${inputClass} max-w-xl flex-1`}
-              value={serverUrl}
-              onChange={(event) => setServerUrl(event.target.value)}
-            />
-          </>
-        ) : null}
-        {onEditAuth ? (
-          <button
-            type="button"
-            className="ml-auto text-sm text-mute hover:text-ink"
-            onClick={onEditAuth}
-          >
-            Auth
-          </button>
-        ) : null}
+      <div className="shrink-0 border-b border-rule">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
+          <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
+          {manyServers ? (
+            <>
+              <label htmlFor="server-url" className="sr-only">
+                Server
+              </label>
+              <input
+                id="server-url"
+                name="server-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                className={`${inputClass} max-w-xl flex-1`}
+                value={serverUrl}
+                onFocus={() => {
+                  enterEdit()
+                }}
+                onChange={(event) => setServerUrl(event.target.value)}
+              />
+            </>
+          ) : null}
+          {onEditAuth ? (
+            <button
+              type="button"
+              className="ml-auto text-sm text-mute hover:text-ink"
+              onClick={onEditAuth}
+            >
+              Auth
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -486,10 +585,10 @@ function ApiWorkbench({
             pane === 'form' ? 'hidden lg:flex lg:border-r' : 'flex'
           }`}
         >
-          {filterOpen ? (
-            <div className="shrink-0 p-3">
+          <div className="shrink-0 px-3 py-2">
+            <div className="relative w-52">
               <label htmlFor="operation-filter" className="sr-only">
-                Filter operations
+                Filter routes
               </label>
               <input
                 id="operation-filter"
@@ -497,8 +596,11 @@ function ApiWorkbench({
                 type="search"
                 autoComplete="off"
                 spellCheck={false}
-                className={inputClass}
+                className="min-h-9 w-full appearance-none bg-ink/10 px-2.5 pr-7 text-sm text-ink outline-none placeholder:text-mute"
                 value={search.q ?? ''}
+                onFocus={() => {
+                  activate('list', 'edit')
+                }}
                 onChange={(event) =>
                   void navigate({
                     search: (previous) => ({
@@ -509,18 +611,26 @@ function ApiWorkbench({
                     resetScroll: false,
                   })
                 }
-                placeholder="Filter"
+                placeholder="Filter routes"
               />
+              {search.q ? null : (
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                  <Kbd hotkey="/" />
+                </span>
+              )}
             </div>
-          ) : null}
-
+          </div>
           <nav
             aria-label="Operations"
             data-operation-list
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >
-            {visible.length === 0 ? (
+            {orderedOperations.length === 0 ? (
               <p className="px-3 py-3 text-sm text-mute">No matches.</p>
+            ) : ranked ? (
+              <ol>
+                {orderedOperations.map((operation) => renderOperation(operation))}
+              </ol>
             ) : (
               groups.map((group) => {
                 const title = oneLine(group.name)
@@ -538,58 +648,7 @@ function ApiWorkbench({
                       </header>
                     ) : null}
                     <ol>
-                      {group.operations.map((operation) => {
-                        const active = operation.id === selected?.id
-                        const description = oneLine(
-                          operation.summary ?? operation.description,
-                        )
-                        return (
-                          <li key={operation.id}>
-                            <Link
-                              id={`op-${operation.id}`}
-                              to="/apis/$apiId"
-                              params={{ apiId: api.id }}
-                              search={(previous) => ({
-                                ...previous,
-                                op: operation.id,
-                              })}
-                              resetScroll={false}
-                              onClick={() => {
-                                holdOp(operation.id)
-                                setPane('form')
-                              }}
-                              onPointerEnter={() => {
-                                if (
-                                  pane !== 'list' ||
-                                  heldOpRef.current === operation.id ||
-                                  !consumePointerIntent()
-                                ) {
-                                  return
-                                }
-                                holdOp(operation.id)
-                              }}
-                              data-oc-method={operation.method}
-                              data-oc-active={active || undefined}
-                              className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none focus-visible:text-signal"
-                            >
-                              <span
-                                data-oc-method-label
-                                className="w-12 shrink-0 font-mono text-xs tabular-nums"
-                              >
-                                {operation.method.toUpperCase()}
-                              </span>
-                              <span className="min-w-0 truncate font-mono text-xs">
-                                {operation.path}
-                              </span>
-                              {description ? (
-                                <span className="min-w-0 flex-1 truncate text-xs text-faint">
-                                  {description}
-                                </span>
-                              ) : null}
-                            </Link>
-                          </li>
-                        )
-                      })}
+                      {group.operations.map((operation) => renderOperation(operation))}
                     </ol>
                   </section>
                 )
