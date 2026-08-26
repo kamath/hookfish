@@ -344,15 +344,15 @@ export function OperationClient({
                 {showAuth ? (
                   <button
                     type="button"
-                    className="inline-flex min-h-8 items-center justify-center gap-2 border-0 bg-ink/10 px-3 py-1 text-xs font-medium text-ink shadow-none outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
+                    className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
                     aria-live="polite"
                     aria-label={copied ? 'Copied fetch' : 'Copy as fetch'}
                     onClick={() => {
                       void copyFetch()
                     }}
                   >
+                    Copy as fetch
                     <Kbd hotkey="Y" />
-                    {copied ? 'Copied' : 'Copy as fetch'}
                   </button>
                 ) : null}
                 <button
