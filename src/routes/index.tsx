@@ -187,6 +187,12 @@ function Home() {
             onFocus={() => {
               activate('specs', 'edit')
             }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
+                event.preventDefault()
+                event.currentTarget.form?.requestSubmit()
+              }
+            }}
           />
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
             <Kbd hotkey="I" />
