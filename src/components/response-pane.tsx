@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
+import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 import { ProtocolTrace } from './protocol-trace'
@@ -21,6 +22,7 @@ function buildNode(value: unknown, id = 'root', depth = 0, label?: string): Resp
       id,
       label,
       depth,
+      value,
       collection: 'array',
       children: value.map((item, index) =>
         buildNode(item, `${id}.${index}`, depth + 1, `[${index}]`),
@@ -32,6 +34,7 @@ function buildNode(value: unknown, id = 'root', depth = 0, label?: string): Resp
       id,
       label,
       depth,
+      value,
       collection: 'object',
       children: Object.entries(value).map(([key, item], index) =>
         buildNode(item, `${id}.${index}`, depth + 1, key),
@@ -96,6 +99,15 @@ function scalarText(value: unknown) {
   return encoded === undefined ? String(value) : encoded
 }
 
+function nodeCopyText(node: ResponseNode, root?: ResponseNode) {
+  const target = node.toggleId && root ? (findNode(root, node.toggleId) ?? node) : node
+  if (target.raw) {
+    return String(target.value)
+  }
+  const encoded = JSON.stringify(target.value, null, 2)
+  return encoded === undefined ? String(target.value) : encoded
+}
+
 export function ResponsePane({
   result,
   pending,
@@ -131,6 +143,7 @@ export function ResponsePane({
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
   const [selected, setSelected] = useState(() => (body.root?.children?.length ? 1 : 0))
+  const [copiedNodeId, setCopiedNodeId] = useState<string>()
   const rows = useMemo(
     () =>
       body.root
@@ -158,7 +171,16 @@ export function ResponsePane({
     )
     setExpanded(body.root?.collection ? new Set([body.root.id]) : new Set())
     setSelected(body.root?.children?.length ? 1 : 0)
+    setCopiedNodeId(undefined)
   }, [body, result])
+
+  useEffect(() => {
+    if (!copiedNodeId) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopiedNodeId(undefined), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copiedNodeId])
 
   useEffect(() => {
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
@@ -219,6 +241,11 @@ export function ResponsePane({
     })
   }
 
+  async function copyNode(node: ResponseNode) {
+    const copied = await copyText(nodeCopyText(node, body.root))
+    setCopiedNodeId(copied ? node.id : undefined)
+  }
+
   const activeRow = rows[selected]
   const firstActiveChildId = activeRow?.children?.[0]?.id
   const canToggleChildren = Boolean(activeRow?.collection)
@@ -242,6 +269,13 @@ export function ResponsePane({
     },
     details: () => setDetailsVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
+    copyNode: (event) => {
+      event.preventDefault()
+      const node = rows[selected]
+      if (node) {
+        void copyNode(node)
+      }
+    },
   })
 
   return (
@@ -361,11 +395,13 @@ export function ResponsePane({
           </div>
         ) : null}
 
-        <div className="w-max min-w-full font-mono text-sm leading-relaxed" role="tree">
+        <div className="min-w-0 w-full font-mono text-sm leading-relaxed" role="tree">
           {rows.map((node, index) => {
             const isExpanded = expanded.has(node.id)
+            const isActive = index === selected
+            const isCopied = copiedNodeId === node.id
             const navigationHint =
-              index === selected && (node.collection || node.toggleId)
+              isActive && (node.collection || node.toggleId)
                 ? 'Enter'
                 : index === selected - 1
                   ? 'K'
@@ -374,59 +410,113 @@ export function ResponsePane({
                     : undefined
             const childrenHint = node.id === firstActiveChildId ? 'A' : undefined
             return (
-              <button
+              <div
                 key={node.id}
-                type="button"
                 role="treeitem"
-                aria-current={index === selected ? 'true' : undefined}
+                aria-current={isActive ? 'true' : undefined}
                 aria-expanded={node.collection ? isExpanded : undefined}
-                data-oc-current={index === selected ? 'true' : undefined}
-                className={`flex min-h-6 w-full items-center whitespace-pre pr-3 text-left outline-none ${
-                  index === selected ? 'exec-active' : ''
+                data-oc-current={isActive ? 'true' : undefined}
+                className={`flex min-h-6 w-full min-w-0 ${
+                  isActive ? 'exec-active items-start' : 'items-center'
                 }`}
-                style={{ paddingInlineStart: '0.25rem' }}
-                onClick={() => {
-                  setSelected(index)
-                  if (node.collection) {
-                    setExpanded((current) => {
-                      const next = new Set(current)
-                      if (next.has(node.id)) {
-                        next.delete(node.id)
-                      } else {
-                        next.add(node.id)
-                      }
-                      return next
-                    })
-                  }
-                }}
               >
-                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
-                  {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                </span>
-                <span
-                  className="inline-flex items-center"
-                  style={{ marginInlineStart: `${node.depth * 1.25}rem` }}
+                <button
+                  type="button"
+                  className="inline-flex min-h-6 w-14 shrink-0 items-center justify-end gap-1 pr-2 text-faint outline-none hover:text-ink"
+                  aria-label={
+                    isCopied
+                      ? 'Copied JSON node'
+                      : `Copy ${node.label ?? 'JSON node'} and descendants`
+                  }
+                  title={isCopied ? 'Copied' : 'Copy node and descendants'}
+                  onClick={() => {
+                    setSelected(index)
+                    void copyNode(node)
+                  }}
                 >
-                  <span className="inline-block w-4 text-faint">
-                    {node.collection ? (isExpanded ? '▾' : '▸') : ''}
+                  {isActive ? <Kbd hotkey="Y" /> : null}
+                  {isCopied ? (
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                      <path
+                        d="m3 8.5 3 3 7-7"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                      <path
+                        d="M5.5 5.5h7v7h-7zM3.5 10.5h-1v-7h7v1"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinejoin="round"
+                        strokeWidth="1.25"
+                      />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`flex min-h-6 min-w-0 flex-1 pr-3 text-left outline-none ${
+                    isActive ? 'items-start' : 'items-center'
+                  }`}
+                  style={{ paddingInlineStart: '0.25rem' }}
+                  onClick={() => {
+                    setSelected(index)
+                    if (node.collection) {
+                      setExpanded((current) => {
+                        const next = new Set(current)
+                        if (next.has(node.id)) {
+                          next.delete(node.id)
+                        } else {
+                          next.add(node.id)
+                        }
+                        return next
+                      })
+                    }
+                  }}
+                >
+                  <span className="inline-flex w-8 shrink-0 justify-end pr-2">
+                    {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                   </span>
-                  {childrenHint ? (
-                    <span className="mr-2 inline-flex">
-                      <Kbd hotkey={childrenHint} />
+                  <span
+                    className="inline-flex shrink-0 items-center"
+                    style={{ marginInlineStart: `${node.depth * 1.25}rem` }}
+                  >
+                    <span className="inline-block w-4 text-faint">
+                      {node.collection ? (isExpanded ? '▾' : '▸') : ''}
                     </span>
-                  ) : null}
-                </span>
-                {node.label !== undefined ? (
-                  <span className="text-mute">{node.label}: </span>
-                ) : null}
-                <span className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}>
-                  {node.collection
-                    ? collectionMark(node, isExpanded)
-                    : node.raw
-                      ? String(node.value)
-                      : scalarText(node.value)}
-                </span>
-              </button>
+                    {childrenHint ? (
+                      <span className="mr-2 inline-flex">
+                        <Kbd hotkey={childrenHint} />
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 ${
+                      isActive
+                        ? 'whitespace-pre-wrap break-words'
+                        : 'overflow-hidden text-ellipsis whitespace-pre'
+                    }`}
+                  >
+                    {node.label !== undefined ? (
+                      <span className="text-mute">{node.label}: </span>
+                    ) : null}
+                    <span
+                      className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}
+                    >
+                      {node.collection
+                        ? collectionMark(node, isExpanded)
+                        : node.raw
+                          ? String(node.value)
+                          : scalarText(node.value)}
+                    </span>
+                  </span>
+                </button>
+              </div>
             )
           })}
         </div>

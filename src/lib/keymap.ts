@@ -133,6 +133,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', label: 'next line' },
       { id: 'previous', hotkey: 'K', label: 'previous line' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      { id: 'copyNode', hotkey: 'Y', label: 'copy node' },
       {
         id: 'resend',
         hotkey: 'Mod+Enter',
