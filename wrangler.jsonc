@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "openapi-client",
+  "name": "hookfish",
   "compatibility_date": "2026-08-25",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
