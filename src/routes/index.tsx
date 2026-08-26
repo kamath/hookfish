@@ -146,7 +146,7 @@ function Home() {
             id="source-kind"
             name="source-kind"
             data-oc-command-focus="true"
-            className="min-h-11 appearance-none bg-ink/5 py-2 pl-3 pr-20 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
+            className="min-h-11 appearance-none bg-ink/5 py-2 pl-16 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
             value={sourceKind}
             onChange={(event) => {
               setSourceKind(event.target.value)
@@ -160,7 +160,7 @@ function Home() {
               </option>
             ))}
             </select>
-            <span className="pointer-events-none absolute inset-y-0 right-7 flex items-center">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
               <Kbd hotkey="Mod+/" />
             </span>
             <svg
