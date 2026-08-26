@@ -115,6 +115,7 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
 export function bindModeFromFocus() {
   const onFocusIn = (event: FocusEvent) => {
     if (!isEditing()) {
+      enterCommand()
       return
     }
     const view = paneForTarget(event.target)
