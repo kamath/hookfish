@@ -419,7 +419,7 @@ function ApiWorkbench({
       },
       ignoreInputs: false,
     },
-    operations: () => {
+    routes: () => {
       stepBack()
     },
     prevServer: () => cycleServer(-1),
@@ -543,7 +543,7 @@ function ApiWorkbench({
                 onClick={stepBack}
               >
                 {pane === 'form'
-                  ? 'Operations'
+                  ? 'Routes'
                   : search.q
                     ? 'Clear filter'
                     : 'Specs'}
@@ -641,7 +641,7 @@ function ApiWorkbench({
             </div>
           </div>
           <nav
-            aria-label="Operations"
+            aria-label="Routes"
             data-operation-list
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >

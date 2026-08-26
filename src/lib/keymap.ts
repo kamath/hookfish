@@ -57,7 +57,7 @@ export const viewKeymaps: Record<View, readonly ViewBinding[]> = {
       flag: 'canClear',
       modes: ['command', 'edit'],
     },
-    { id: 'operations', hotkey: 'Escape', label: 'operations' },
+    { id: 'routes', hotkey: 'Escape', label: 'routes' },
     { id: 'prevServer', hotkey: '[', label: 'previous server', flag: 'manyServers' },
     { id: 'nextServer', hotkey: ']', label: 'next server', flag: 'manyServers' },
     { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
