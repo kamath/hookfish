@@ -664,7 +664,7 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
     <p className="mb-2 text-sm text-ink">{notice}</p>
   ) : null
   const washClass = options.wash
-    ? 'oc-wash mt-3 bg-ink/10 -mx-3 px-3 py-3 md:-mx-4 md:px-4'
+    ? 'oc-wash mt-3 bg-ink/5 -mx-3 px-3 py-3 md:-mx-4 md:px-4'
     : ''
   const descriptionNode = description ? (
     <DescriptionField
