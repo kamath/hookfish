@@ -1,23 +1,42 @@
-import { useState } from 'react'
 import type { ExecutableSource } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
 import { useMcpTrace } from '../lib/mcp/trace'
-import { ProtocolTrace } from './protocol-trace'
 
-export function McpServerPanel({ source }: { source: ExecutableSource }) {
+export function McpServerPanel({
+  source,
+  traceOpen,
+  onToggleTrace,
+}: {
+  source: ExecutableSource
+  traceOpen?: boolean
+  onToggleTrace?: () => void
+}) {
   if (source.kind !== 'mcp') {
     return null
   }
-  return <McpServerChrome source={source} />
+  return (
+    <McpServerChrome
+      source={source}
+      traceOpen={traceOpen}
+      onToggleTrace={onToggleTrace}
+    />
+  )
 }
 
-function McpServerChrome({ source }: { source: ExecutableSource }) {
+function McpServerChrome({
+  source,
+  traceOpen,
+  onToggleTrace,
+}: {
+  source: ExecutableSource
+  traceOpen?: boolean
+  onToggleTrace?: () => void
+}) {
   const data = asRecord(source.adapterData)
   const capabilities = Object.keys(asRecord(data.capabilities))
   const capabilitySet = new Set(capabilities)
   const serverInfo = asRecord(data.serverInfo)
   const entries = useMcpTrace(source.id)
-  const [traceOpen, setTraceOpen] = useState(false)
   const counts = source.executables.reduce(
     (current, executable) => {
       if (executable.binding.type !== 'mcp') {
@@ -38,7 +57,7 @@ function McpServerChrome({ source }: { source: ExecutableSource }) {
     { tools: 0, prompts: 0, resources: 0 },
   )
   return (
-    <section className="relative bg-ink/5 px-3 py-2 text-xs md:px-4">
+    <section className="bg-ink/5 px-3 py-2 text-xs md:px-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-mono text-ink">
           MCP {typeof data.protocolVersion === 'string' ? data.protocolVersion : 'unknown'}
@@ -68,24 +87,12 @@ function McpServerChrome({ source }: { source: ExecutableSource }) {
         })}
         <button
           type="button"
-          data-oc-trace-toggle
           data-oc-command-focus="true"
-          aria-expanded={traceOpen}
-          aria-controls="protocol-trace-panel"
-          disabled={entries.length === 0 && !traceOpen}
+          aria-pressed={traceOpen}
           className={`px-1.5 py-0.5 font-mono ${
-            entries.length === 0 && !traceOpen
-              ? 'bg-ink/5 text-faint'
-              : traceOpen
-                ? 'bg-paper text-ink'
-                : 'bg-paper text-mute hover:text-ink'
+            traceOpen ? 'bg-paper text-ink' : 'bg-paper text-mute hover:text-ink'
           }`}
-          onClick={() => {
-            if (entries.length === 0 && !traceOpen) {
-              return
-            }
-            setTraceOpen((open) => !open)
-          }}
+          onClick={onToggleTrace}
         >
           trace {entries.length}
         </button>
@@ -109,9 +116,6 @@ function McpServerChrome({ source }: { source: ExecutableSource }) {
           <span className="ml-auto text-faint">sessionless</span>
         )}
       </div>
-      {traceOpen ? (
-        <ProtocolTrace entries={entries} onClose={() => setTraceOpen(false)} />
-      ) : null}
     </section>
   )
 }

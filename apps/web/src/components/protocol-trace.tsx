@@ -1,9 +1,7 @@
-import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ProtocolTraceEntry } from '../lib/client-types'
-import { isEditing } from '../lib/focus'
-import { protocolTraceOpenAtom } from '../lib/chrome'
-import { groupProtocolTrace, type ProtocolRpc } from '../lib/mcp/trace'
+import { useStepKeys } from '../lib/keys'
+import { groupProtocolTrace, useMcpTrace, type ProtocolRpc } from '../lib/mcp/trace'
 import { Kbd } from './hints'
 
 function moveSelection(
@@ -33,10 +31,10 @@ function JsonBlock({ value }: { value: unknown }) {
 
 function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
   return (
-    <ol className="mt-1 space-y-2 pb-2">
+    <ol className="mt-1 space-y-2 pb-3">
       {frames.map((frame, index) => (
         <li key={`${frame.atMs}:${frame.summary}:${index}`}>
-          <div className="flex gap-3 pl-8 font-mono text-[11px] text-mute">
+          <div className="flex gap-3 pl-8 font-mono text-xs text-mute">
             <span className="w-5 shrink-0">{frame.direction === 'out' ? '→' : '←'}</span>
             <span className="w-20 shrink-0 text-faint">{frame.kind}</span>
             <span className="min-w-0 text-ink">{frame.summary}</span>
@@ -48,20 +46,12 @@ function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
   )
 }
 
-export function ProtocolTrace({
-  entries,
-  onClose,
-}: {
-  entries: ProtocolTraceEntry[]
-  onClose: () => void
-}) {
+export function ProtocolTrace({ sourceId }: { sourceId: string }) {
+  const entries = useMcpTrace(sourceId)
   const groups = useMemo(() => groupProtocolTrace(entries), [entries])
   const [selectedId, setSelectedId] = useState<string>()
   const followLatest = useRef(true)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const closeRef = useRef(onClose)
-  const setTraceOpen = useSetAtom(protocolTraceOpenAtom)
-  closeRef.current = onClose
+  const listRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -77,59 +67,17 @@ export function ProtocolTrace({
     })
   }, [groups])
 
-  useEffect(() => {
-    setTraceOpen(true)
-    document.documentElement.dataset.ocTrace = 'open'
-    return () => {
-      setTraceOpen(false)
-      delete document.documentElement.dataset.ocTrace
-    }
-  }, [setTraceOpen])
+  function move(delta: number) {
+    const next = moveSelection(groups, selectedId, delta)
+    followLatest.current = next.followLatest
+    setSelectedId(next.id)
+  }
+
+  useStepKeys('trace', move, groups.length > 0)
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || isEditing()) {
-        return
-      }
-      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
-      if (key !== 'j' && key !== 'k' && key !== 'Escape') {
-        return
-      }
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (key === 'Escape') {
-        closeRef.current()
-        return
-      }
-      const next = moveSelection(groups, selectedId, key === 'j' ? 1 : -1)
-      followLatest.current = next.followLatest
-      setSelectedId(next.id)
-    }
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [groups, selectedId])
-
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) {
-        return
-      }
-      if (panelRef.current?.contains(target)) {
-        return
-      }
-      if (target instanceof Element && target.closest('[data-oc-trace-toggle]')) {
-        return
-      }
-      closeRef.current()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [])
-
-  useEffect(() => {
-    panelRef.current
-      ?.querySelector<HTMLElement>('[data-oc-trace-current="true"]')
+    listRef.current
+      ?.querySelector<HTMLElement>('[data-oc-current="true"]')
       ?.scrollIntoView({ block: 'nearest' })
   }, [selectedId, groups])
 
@@ -137,65 +85,65 @@ export function ProtocolTrace({
   const activeIndex = found === -1 ? Math.max(groups.length - 1, 0) : found
 
   return (
-    <div
-      ref={panelRef}
-      id="protocol-trace-panel"
-      data-oc-trace-panel
-      role="dialog"
+    <section
+      id="protocol-trace-pane"
+      ref={listRef}
+      className="flex min-h-0 min-w-0 flex-1 flex-col"
       aria-label="Protocol trace"
-      className="absolute inset-x-0 top-full z-20 max-h-[min(36rem,calc(100dvh-9rem))] overflow-auto bg-ink/10 px-3 py-2 md:px-4"
     >
-      {groups.length === 0 ? (
-        <p className="px-2 py-3 text-xs text-mute">No protocol messages yet.</p>
-      ) : (
-        <ol className="font-mono text-xs leading-relaxed">
-          {groups.map((group, index) => {
-            const active = group.id === selectedId
-            const navigationHint = active
-              ? undefined
-              : index === activeIndex - 1
-                ? 'K'
-                : index === activeIndex + 1
-                  ? 'J'
-                  : undefined
-            return (
-              <li key={group.id}>
-                <button
-                  type="button"
-                  data-oc-command-focus="true"
-                  data-oc-trace-current={active ? 'true' : undefined}
-                  aria-current={active ? 'true' : undefined}
-                  aria-expanded={active}
-                  className={`flex min-h-7 w-full items-center gap-3 py-1 text-left outline-none ${
-                    active ? 'exec-active' : ''
-                  }`}
-                  onClick={() => {
-                    followLatest.current = index === groups.length - 1
-                    setSelectedId(group.id)
-                  }}
-                >
-                  <span className="inline-flex w-8 shrink-0 justify-end">
-                    {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                  </span>
-                  <span className="w-14 shrink-0 text-right tabular-nums text-mute">
-                    {group.atMs} ms
-                  </span>
-                  <span className="w-5 shrink-0 text-mute">
-                    {group.direction === 'out' ? '→' : '←'}
-                  </span>
-                  <span className="min-w-0 truncate text-ink">{group.summary}</span>
-                  <span className="ml-auto shrink-0 text-faint">
-                    {group.frames.length === 1
-                      ? group.kind
-                      : `${group.frames.length} frames`}
-                  </span>
-                </button>
-                {active ? <RpcFrames frames={group.frames} /> : null}
-              </li>
-            )
-          })}
-        </ol>
-      )}
-    </div>
+      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
+        {groups.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-mute">No protocol messages yet.</p>
+        ) : (
+          <ol className="w-max min-w-full font-mono text-sm leading-relaxed">
+            {groups.map((group, index) => {
+              const active = group.id === selectedId
+              const navigationHint = active
+                ? undefined
+                : index === activeIndex - 1
+                  ? 'K'
+                  : index === activeIndex + 1
+                    ? 'J'
+                    : undefined
+              return (
+                <li key={group.id}>
+                  <button
+                    type="button"
+                    data-oc-command-focus="true"
+                    data-oc-current={active ? 'true' : undefined}
+                    aria-current={active ? 'true' : undefined}
+                    aria-expanded={active}
+                    className={`flex min-h-7 w-full items-center gap-3 py-1 text-left outline-none ${
+                      active ? 'exec-active' : ''
+                    }`}
+                    onClick={() => {
+                      followLatest.current = index === groups.length - 1
+                      setSelectedId(group.id)
+                    }}
+                  >
+                    <span className="inline-flex w-8 shrink-0 justify-end">
+                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                    </span>
+                    <span className="w-14 shrink-0 text-right tabular-nums text-mute">
+                      {group.atMs} ms
+                    </span>
+                    <span className="w-5 shrink-0 text-mute">
+                      {group.direction === 'out' ? '→' : '←'}
+                    </span>
+                    <span className="min-w-0 truncate text-ink">{group.summary}</span>
+                    <span className="ml-auto shrink-0 text-xs text-faint">
+                      {group.frames.length === 1
+                        ? group.kind
+                        : `${group.frames.length} frames`}
+                    </span>
+                  </button>
+                  {active ? <RpcFrames frames={group.frames} /> : null}
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
+    </section>
   )
 }

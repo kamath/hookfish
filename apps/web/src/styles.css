@@ -153,15 +153,6 @@ html[data-oc-mode='edit'] .oc-key-hints {
   display: none;
 }
 
-html[data-oc-trace='open'] .oc-key-hint,
-html[data-oc-trace='open'] .oc-key-hints {
-  display: none;
-}
-
-html[data-oc-trace='open'] [data-oc-trace-panel] .oc-key-hint {
-  display: inline-flex;
-}
-
 [data-oc-nav] {
   outline: none;
 }

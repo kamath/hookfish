@@ -7,7 +7,6 @@ import {
   enterCommand,
   getMode,
   modeAtom,
-  protocolTraceOpenAtom,
   type Mode,
   type Pane,
 } from './chrome'
@@ -157,6 +156,22 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'parent', hotkey: 'Escape', label: 'input' },
     ],
   },
+  trace: {
+    parent: 'routes',
+    path: '/apis/$apiId/trace',
+    bindings: [
+      { id: 'next', hotkey: 'J', label: 'next rpc' },
+      { id: 'previous', hotkey: 'K', label: 'previous rpc' },
+      {
+        id: 'clearAuth',
+        hotkey: 'Mod+Backspace',
+        label: 'clear auth',
+        flag: 'canClear',
+        modes: ['command', 'edit'],
+      },
+      { id: 'parent', hotkey: 'Escape', label: 'back' },
+    ],
+  },
 }
 
 const registeredPaneBindings = (Object.entries(paneConfig) as Array<[Pane, PaneConfig]>).flatMap(
@@ -176,9 +191,6 @@ export function useShowKeybindings() {
 
 const registrationsAtom = atom(new Map<symbol, Registration>())
 export const activeKeybindingsAtom = atom((get) => {
-  if (get(protocolTraceOpenAtom)) {
-    return []
-  }
   const chrome = get(chromeAtom)
   const flags: Record<string, boolean> = {}
   for (const registration of get(registrationsAtom).values()) {
@@ -264,7 +276,6 @@ export function usePaneActions(
 export function useGlobalKeybindings() {
   const chrome = useAtomValue(chromeAtom)
   const registrations = useAtomValue(registrationsAtom)
-  const protocolTraceOpen = useAtomValue(protocolTraceOpenAtom)
   const actions: Partial<Record<string, PaneAction>> = {}
   const flags: Record<string, boolean> = {}
   for (const registration of registrations.values()) {
@@ -285,7 +296,6 @@ export function useGlobalKeybindings() {
         callback: action?.callback ?? noopKeybinding,
         options: {
           enabled:
-            !protocolTraceOpen &&
             pane === chrome.pane &&
             Boolean(action) &&
             action?.enabled !== false &&

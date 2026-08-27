@@ -2,7 +2,7 @@ import { atom, getDefaultStore, useAtomValue } from 'jotai'
 import { isEditing } from './focus'
 
 export type Mode = 'command' | 'edit'
-export type Pane = 'specs' | 'routes' | 'input' | 'response'
+export type Pane = 'specs' | 'routes' | 'input' | 'response' | 'trace'
 
 export const store = getDefaultStore()
 
@@ -14,7 +14,6 @@ export type Chrome = {
 export const chromeAtom = atom<Chrome>({ mode: 'command', pane: 'specs' })
 export const modeAtom = atom((get) => get(chromeAtom).mode)
 export const paneAtom = atom((get) => get(chromeAtom).pane)
-export const protocolTraceOpenAtom = atom(false)
 
 function syncDocumentMode(mode: Mode) {
   if (typeof document !== 'undefined') {
@@ -109,6 +108,9 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
   }
   if (target.closest('#response-pane')) {
     return 'response'
+  }
+  if (target.closest('#protocol-trace-pane')) {
+    return 'trace'
   }
   return undefined
 }

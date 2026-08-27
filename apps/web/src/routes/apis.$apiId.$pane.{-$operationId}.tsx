@@ -11,6 +11,7 @@ import {
 import { Kbd } from '../components/hints'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
+import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import type {
@@ -45,6 +46,9 @@ export const Route = createFileRoute('/apis/$apiId/$pane/{-$operationId}')({
 type WorkbenchPane = Exclude<Pane, 'specs'>
 
 function readPane(value: string, operationId?: string): WorkbenchPane {
+  if (value === 'trace') {
+    return value
+  }
   if (value === 'routes' && !operationId) {
     return value
   }
@@ -400,6 +404,37 @@ function ApiWorkbench({
   }
 
   function stepBack() {
+    if (getPane() === 'trace') {
+      const parentOperationId = operationId ?? heldOpRef.current
+      if (operationId) {
+        activate('input', 'command')
+        void navigate({
+          to: '/apis/$apiId/$pane/{-$operationId}',
+          params: {
+            apiId: api.id,
+            pane: 'input',
+            operationId,
+          },
+          replace: true,
+          resetScroll: false,
+        })
+        return
+      }
+      activate('routes', 'command')
+      blurActive()
+      void navigate({
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: { apiId: api.id, pane: 'routes', operationId: undefined },
+        replace: true,
+        resetScroll: false,
+      })
+      if (parentOperationId) {
+        window.setTimeout(() => {
+          document.getElementById(`op-${parentOperationId}`)?.focus()
+        }, 0)
+      }
+      return
+    }
     if (getPane() === 'response') {
       const parentOperationId = heldOpRef.current ?? operationId
       if (!parentOperationId) {
@@ -438,6 +473,24 @@ function ApiWorkbench({
     void home({ to: '/' })
   }
 
+  function openTrace() {
+    if (getPane() === 'trace') {
+      stepBack()
+      return
+    }
+    const fromList = getPane() === 'routes'
+    activate('trace', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: {
+        apiId: api.id,
+        pane: 'trace',
+        operationId: fromList ? undefined : (heldOpRef.current ?? operationId),
+      },
+      resetScroll: false,
+    })
+  }
+
   function cycleServer(delta: number) {
     if (!manyServers) {
       return
@@ -460,6 +513,9 @@ function ApiWorkbench({
     canNextRoute: canNextOperation,
     canPreviousRoute: canPreviousOperation,
     manyServers,
+  })
+  usePaneFlags('trace', {
+    canClear,
   })
   useStepKeys('routes', move)
   useFormPaneNavigation('input', 'call-form')
@@ -507,6 +563,20 @@ function ApiWorkbench({
     },
     prevServer: () => cycleServer(-1),
     nextServer: () => cycleServer(1),
+  })
+
+  usePaneActions('trace', {
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
+        }
+      },
+      ignoreInputs: false,
+    },
+    parent: () => {
+      stepBack()
+    },
   })
 
   function renderOperation(operation: Executable) {
@@ -616,11 +686,15 @@ function ApiWorkbench({
               className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
               onClick={stepBack}
             >
-              {activePane === 'response'
-                ? 'Input'
-                : activePane === 'input'
-                  ? api.labels.executablePlural
-                  : api.labels.sourcePlural}
+              {activePane === 'trace'
+                ? operationId
+                  ? 'Input'
+                  : api.labels.executablePlural
+                : activePane === 'response'
+                  ? 'Input'
+                  : activePane === 'input'
+                    ? api.labels.executablePlural
+                    : api.labels.sourcePlural}
               <Kbd hotkey="Escape" />
             </button>
             {onClearAuth ? (
@@ -638,16 +712,23 @@ function ApiWorkbench({
             ) : null}
           </div>
         </div>
-        <McpServerPanel source={api} />
+        <McpServerPanel
+          source={api}
+          traceOpen={activePane === 'trace'}
+          onToggleTrace={openTrace}
+        />
       </div>
 
-      <div
-        className={`grid min-h-0 flex-1 grid-cols-1 ${
-          selected && (activePane === 'input' || activePane === 'response')
-            ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
-            : ''
-        }`}
-      >
+      {activePane === 'trace' ? (
+        <ProtocolTrace sourceId={api.id} />
+      ) : (
+        <div
+          className={`grid min-h-0 flex-1 grid-cols-1 ${
+            selected && (activePane === 'input' || activePane === 'response')
+              ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
+              : ''
+          }`}
+        >
         <aside
           className={`flex min-h-0 flex-col border-rule ${
             activePane === 'input' || activePane === 'response'
@@ -771,7 +852,8 @@ function ApiWorkbench({
             onSaveAuth={onSaveAuth}
           />
         ) : null}
-      </div>
+        </div>
+      )}
     </main>
   )
 }
