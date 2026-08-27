@@ -362,11 +362,7 @@ export function ExecutableClient({
         <div className="oc-bar sticky top-0 z-10 flex flex-col gap-2 px-3 py-2 md:flex-row md:items-center md:gap-3 md:px-4">
           <div className="flex min-w-0 items-center gap-3">
             {onBack ? (
-              <PaneBackButton
-                label={backLabel ?? 'Back'}
-                compactLabel="Back"
-                onClick={onBack}
-              />
+              <PaneBackButton label={backLabel ?? 'Back'} onClick={onBack} />
             ) : null}
             <div className="flex min-w-0 items-baseline gap-3">
               <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">

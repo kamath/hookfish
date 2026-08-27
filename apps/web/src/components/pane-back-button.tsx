@@ -5,12 +5,10 @@ export function PaneBackButton({
   label,
   onClick,
   className,
-  compactLabel,
 }: {
   label: string
   onClick: () => void
   className?: string
-  compactLabel?: string
 }) {
   return (
     <button
@@ -20,14 +18,7 @@ export function PaneBackButton({
       aria-label={label}
       onClick={onClick}
     >
-      {compactLabel ? (
-        <>
-          <span className="md:hidden">{compactLabel}</span>
-          <span className="max-md:hidden">{label}</span>
-        </>
-      ) : (
-        label
-      )}
+      {label}
       <KeyHints>
         <Kbd hotkey="Escape" />
       </KeyHints>

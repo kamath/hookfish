@@ -762,7 +762,7 @@ function ApiWorkbench({
           <div className="flex w-full items-center gap-1 md:ml-auto md:w-auto md:gap-3">
             <button
               type="button"
-              className="oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm text-mute hover:text-ink"
+              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm text-mute hover:text-ink"
               aria-label={backLabel}
               onClick={stepBack}
             >
@@ -842,8 +842,7 @@ function ApiWorkbench({
                 {activePane === 'routes' ? (
                   <PaneBackButton
                     label={`Back to ${api.labels.sourcePlural}`}
-                    compactLabel="Back"
-                    className={`min-h-9 ${filterValue ? 'max-md:hidden' : ''}`}
+                    className="min-h-9"
                     onClick={stepBack}
                   />
                 ) : null}
