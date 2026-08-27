@@ -423,9 +423,15 @@ export function ResponsePane({
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
-                    setExpanded((current) =>
-                      current.has(node.id) ? current : new Set(current).add(node.id),
-                    )
+                    setExpanded((current) => {
+                      const next = new Set(current)
+                      if (next.has(node.id)) {
+                        next.delete(node.id)
+                      } else {
+                        next.add(node.id)
+                      }
+                      return next
+                    })
                   }
                 }}
               >
