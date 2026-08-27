@@ -2,7 +2,7 @@ import { atom, getDefaultStore, useAtomValue } from 'jotai'
 import { isEditing } from './focus'
 
 export type Mode = 'command' | 'edit'
-export type Pane = 'specs' | 'routes' | 'input' | 'response'
+export type Pane = 'specs' | 'routes' | 'input' | 'response' | 'trace'
 
 export const store = getDefaultStore()
 
@@ -109,20 +109,24 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
   if (target.closest('#response-pane')) {
     return 'response'
   }
+  if (target.closest('#protocol-trace-pane') || target.closest('[data-oc-trace-toggle]')) {
+    return 'trace'
+  }
   return undefined
 }
 
 export function bindModeFromFocus() {
   const onFocusIn = (event: FocusEvent) => {
     const target = event.target
-    if (
+    const commandFocus =
       target instanceof HTMLElement &&
       target.closest('[data-oc-command-focus="true"]')
-    ) {
-      enterCommand()
-      return
-    }
-    if (!isEditing()) {
+    if (commandFocus || !isEditing()) {
+      const view = paneForTarget(target)
+      if (view) {
+        activate(view, 'command')
+        return
+      }
       enterCommand()
       return
     }

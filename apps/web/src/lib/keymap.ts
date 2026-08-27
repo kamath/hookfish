@@ -2,7 +2,14 @@ import { useEffect, useRef } from 'react'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import { chromeAtom, enterCommand, getMode, modeAtom, type Mode, type Pane } from './chrome'
+import {
+  chromeAtom,
+  enterCommand,
+  getMode,
+  modeAtom,
+  type Mode,
+  type Pane,
+} from './chrome'
 import { CATALOG, catalogActionId } from './catalog'
 import { blurActive, isEditing } from './focus'
 
@@ -17,6 +24,10 @@ export type PaneBinding = {
 
 export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
   return [binding.hotkey, ...(binding.aliases ?? [])]
+}
+
+export function sourceSubmitActionId(kind: string) {
+  return `submit-${kind}`
 }
 
 export type PaneAction = {
@@ -39,6 +50,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
+      { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
+      { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
       ...CATALOG.map((entry) => ({
         id: catalogActionId(entry),
         hotkey: entry.hotkey,
@@ -71,6 +84,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'nextTab', hotkey: 'Tab', label: 'next' },
       { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous' },
       { id: 'input', hotkey: 'Enter', label: 'input' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',
@@ -144,6 +158,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'manyServers',
       },
       { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },
@@ -169,6 +184,25 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canToggleChildren',
       },
       { id: 'parent', hotkey: 'Escape', label: 'input' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
+    ],
+  },
+  trace: {
+    parent: 'routes',
+    path: '/apis/$apiId/trace',
+    bindings: [
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next rpc' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous rpc' },
+      { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      { id: 'trace', hotkey: 'T', label: 'close' },
+      {
+        id: 'clearAuth',
+        hotkey: 'Mod+Backspace',
+        label: 'clear auth',
+        flag: 'canClear',
+        modes: ['command', 'edit'],
+      },
+      { id: 'parent', hotkey: 'Escape', label: 'close' },
     ],
   },
 }

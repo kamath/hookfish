@@ -1,0 +1,189 @@
+import assert from 'node:assert/strict'
+import type { JsonValue, ProtocolTraceEntry } from '../client-types'
+import { groupProtocolTrace, rpcAccent, rpcFrameView } from './trace'
+
+function entry(
+  partial: Pick<ProtocolTraceEntry, 'direction' | 'kind' | 'summary'> &
+    Partial<Pick<ProtocolTraceEntry, 'atMs' | 'detail'>>,
+): ProtocolTraceEntry {
+  return {
+    atMs: partial.atMs ?? 0,
+    detail: partial.detail,
+    direction: partial.direction,
+    kind: partial.kind,
+    summary: partial.summary,
+  }
+}
+
+function rpc(id: number, method: string): JsonValue {
+  return { jsonrpc: '2.0', id, method }
+}
+
+function rpcResult(id: number): JsonValue {
+  return { jsonrpc: '2.0', id, result: {} }
+}
+
+const sequential = groupProtocolTrace([
+  entry({
+    atMs: 1,
+    direction: 'out',
+    kind: 'jsonrpc',
+    summary: 'initialize',
+    detail: rpc(1, 'initialize'),
+  }),
+  entry({ atMs: 2, direction: 'in', kind: 'http', summary: '200 OK' }),
+  entry({
+    atMs: 3,
+    direction: 'in',
+    kind: 'jsonrpc',
+    summary: 'RPC response 1',
+    detail: rpcResult(1),
+  }),
+  entry({
+    atMs: 4,
+    direction: 'out',
+    kind: 'jsonrpc',
+    summary: 'tools/list',
+    detail: rpc(2, 'tools/list'),
+  }),
+  entry({
+    atMs: 5,
+    direction: 'in',
+    kind: 'jsonrpc',
+    summary: 'RPC response 2',
+    detail: rpcResult(2),
+  }),
+  entry({
+    atMs: 6,
+    direction: 'in',
+    kind: 'notification',
+    summary: 'notifications/tools/list_changed',
+    detail: { jsonrpc: '2.0', method: 'notifications/tools/list_changed' },
+  }),
+])
+
+assert.equal(sequential.length, 3)
+assert.equal(sequential[0]?.summary, 'initialize')
+assert.equal(sequential[0]?.frames.length, 3)
+assert.equal(sequential[1]?.summary, 'tools/list')
+assert.equal(sequential[1]?.frames.length, 2)
+assert.equal(sequential[2]?.summary, 'notifications/tools/list_changed')
+assert.equal(sequential[2]?.frames.length, 1)
+assert.equal(sequential[2]?.direction, 'in')
+
+const parallel = groupProtocolTrace([
+  entry({
+    atMs: 1,
+    direction: 'out',
+    kind: 'jsonrpc',
+    summary: 'tools/list',
+    detail: rpc(0, 'tools/list'),
+  }),
+  entry({
+    atMs: 2,
+    direction: 'out',
+    kind: 'jsonrpc',
+    summary: 'resources/list',
+    detail: rpc(1, 'resources/list'),
+  }),
+  entry({ atMs: 3, direction: 'in', kind: 'http', summary: '200 OK' }),
+  entry({ atMs: 4, direction: 'in', kind: 'http', summary: '200 OK' }),
+  entry({
+    atMs: 5,
+    direction: 'in',
+    kind: 'jsonrpc',
+    summary: 'RPC response 1',
+    detail: rpcResult(1),
+  }),
+  entry({
+    atMs: 6,
+    direction: 'in',
+    kind: 'jsonrpc',
+    summary: 'RPC response 0',
+    detail: rpcResult(0),
+  }),
+])
+
+assert.equal(parallel.length, 2)
+assert.equal(parallel[0]?.summary, 'tools/list')
+assert.deepEqual(
+  parallel[0]?.frames.map((frame) => frame.summary),
+  ['tools/list', '200 OK', 'RPC response 0'],
+)
+assert.equal(parallel[1]?.summary, 'resources/list')
+assert.deepEqual(
+  parallel[1]?.frames.map((frame) => frame.summary),
+  ['resources/list', '200 OK', 'RPC response 1'],
+)
+
+assert.deepEqual(groupProtocolTrace([]), [])
+assert.equal(rpcAccent('tools/call'), 'var(--accent-mcp-tool)')
+assert.equal(rpcAccent('resources/list'), 'var(--accent-mcp-resource)')
+assert.equal(rpcAccent('prompts/get'), 'var(--accent-mcp-prompt)')
+assert.equal(rpcAccent('notifications/initialized'), 'var(--signal)')
+assert.equal(rpcAccent('server/discover'), 'var(--signal)')
+
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'out',
+      kind: 'jsonrpc',
+      summary: 'tools/list',
+      detail: { jsonrpc: '2.0', id: 2, method: 'tools/list', params: { cursor: 'a' } },
+    }),
+  ),
+  { label: 'request', value: { id: 2, params: { cursor: 'a' } } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'jsonrpc',
+      summary: 'RPC response 2',
+      detail: {
+        jsonrpc: '2.0',
+        id: 2,
+        result: { tools: [{ name: 'echo' }] },
+      },
+    }),
+  ),
+  { label: 'result', value: { tools: [{ name: 'echo' }] } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'jsonrpc',
+      summary: 'RPC error -32601',
+      detail: {
+        jsonrpc: '2.0',
+        id: 3,
+        error: { code: -32601, message: 'Method not found' },
+      },
+    }),
+  ),
+  { label: 'error', value: { code: -32601, message: 'Method not found' } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'http',
+      summary: '200 OK',
+      detail: { contentType: 'application/json', sessionId: null },
+    }),
+  ),
+  { label: '200 OK', value: { contentType: 'application/json' } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'notification',
+      summary: 'notifications/initialized',
+      detail: { jsonrpc: '2.0', method: 'notifications/initialized' },
+    }),
+  ),
+  { label: 'notify' },
+)
+console.log('protocol trace grouping ok')

@@ -225,13 +225,6 @@ export function ExecutableClient({
     parent: () => showInput(false),
   })
 
-  const preview = adapter.preview({
-    source: api,
-    executable: operation,
-    target,
-    formData,
-  })
-
   function updateFormData(next: unknown) {
     formDataRef.current = next
     writeOperationFormData(api.id, operation.id, next)
@@ -434,7 +427,9 @@ export function ExecutableClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <p className="break-all font-mono text-xs text-mute">{preview}</p>
+              <KeyHints className="inline-flex items-center gap-1 text-sm text-ink">
+                <Kbd hotkey="Mod+Enter" /> to run
+              </KeyHints>
               {error ? (
                 <p className="text-xs text-error" role="alert">
                   {error}
