@@ -220,7 +220,7 @@ export function ProtocolTrace({
               )
             })}
           </ol>
-        )}
+        ) : null}
       </div>
     </section>
   )
