@@ -158,23 +158,11 @@ function AppToolbar() {
         {source?.onBack ? (
           <button
             type="button"
-            className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink"
+            className="oc-chrome-back oc-bar-action inline-flex shrink-0 items-center justify-center text-sm leading-4 text-mute hover:text-ink"
             aria-label={source.backLabel}
             onClick={source.onBack}
           >
-            {source.closeTraces ? (
-              <>
-                <span className="oc-bar-action-icon" aria-hidden="true">
-                  <BackCaret />
-                </span>
-                <span className="min-w-0 truncate leading-4">Close traces</span>
-              </>
-            ) : (
-              <>
-                <BackCaret />
-                <span className="leading-4">{source.backLabel}</span>
-              </>
-            )}
+            <BackCaret />
             <Kbd hotkey="Escape" />
           </button>
         ) : null}

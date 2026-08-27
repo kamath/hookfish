@@ -7,7 +7,6 @@ export type SourceToolbar = {
   authPending?: boolean
   backLabel?: string
   onBack?: () => void
-  closeTraces?: boolean
 }
 
 export const sourceToolbarAtom = atom<SourceToolbar | null>(null)
@@ -22,14 +21,12 @@ export function useSourceToolbar(toolbar: SourceToolbar) {
   const authPending = Boolean(toolbar.authPending)
   const backLabel = toolbar.backLabel
   const hasBack = Boolean(toolbar.onBack)
-  const closeTraces = Boolean(toolbar.closeTraces)
 
   useLayoutEffect(() => {
     setToolbar({
       title,
       authPending,
       backLabel,
-      closeTraces,
       onClearAuth: canClear
         ? () => {
             void latest.current.onClearAuth?.()
@@ -42,7 +39,7 @@ export function useSourceToolbar(toolbar: SourceToolbar) {
         : undefined,
     })
     return () => setToolbar(null)
-  }, [title, canClear, authPending, backLabel, hasBack, closeTraces, setToolbar])
+  }, [title, canClear, authPending, backLabel, hasBack, setToolbar])
 }
 
 export function useSourceToolbarValue() {

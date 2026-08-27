@@ -717,7 +717,6 @@ function ApiWorkbench({
     authPending,
     backLabel,
     onBack: stepBack,
-    closeTraces: routePane === 'trace',
   })
 
   return (
