@@ -303,22 +303,23 @@ function Home() {
 
   return (
     <main id="main" className="relative flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
-      <div className="mx-auto my-auto w-full max-w-3xl py-10">
-        <div className={compactLauncher ? 'mx-auto mb-6 w-full max-w-xl' : 'mb-6'}>
-          <Brand />
+      <div className="mx-auto my-auto flex w-full max-w-3xl flex-col gap-6 py-10">
+        <div className={compactLauncher ? 'mx-auto' : undefined}>
+          <Brand hero />
         </div>
-        <form
-          ref={formRef}
-          data-oc-enter-submit="true"
-          onSubmit={(event) => {
-            event.preventDefault()
-          }}
-          className={
-            compactLauncher
-              ? 'mx-auto w-full max-w-xl'
-              : 'flex w-full flex-col gap-3 sm:flex-row sm:items-start'
-          }
-        >
+        <div>
+          <form
+            ref={formRef}
+            data-oc-enter-submit="true"
+            onSubmit={(event) => {
+              event.preventDefault()
+            }}
+            className={
+              compactLauncher
+                ? 'mx-auto w-full max-w-xl'
+                : 'flex w-full flex-col gap-3 sm:flex-row sm:items-start'
+            }
+          >
           <label htmlFor="url" className="sr-only">
             MCP endpoint or OpenAPI document URL
           </label>
@@ -380,8 +381,9 @@ function Home() {
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>
         ) : null}
+        </div>
 
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {apisQuery.isPending ? (
             <QueryMessage label="Loading sources…" />
           ) : apisQuery.isError ? (
