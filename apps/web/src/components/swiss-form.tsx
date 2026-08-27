@@ -539,16 +539,19 @@ function FieldTemplate(props: FieldTemplateProps) {
           >
             <span data-oc-insert-hint className="items-center gap-1">
               <Kbd hotkey="I" />
-              <span>to insert text</span>
+              <span>insert</span>
             </span>
             <span data-oc-tab-hint className="items-center gap-1">
               <Kbd hotkey="Tab" label="Tab" />
-              <span>to go to next input</span>
+              <span>next</span>
             </span>
           </span>
         ) : null}
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}
+          >
             <span className="shrink-0">
               {label}
               {required ? (

@@ -142,6 +142,10 @@ html[data-oc-mode='edit'] .oc-key-hints {
   display: inline-flex;
 }
 
+[data-oc-nav='field']:is([data-oc-current='true'], [data-oc-tab-target='true']) > label {
+  padding-inline-end: 5rem;
+}
+
 [data-oc-mode='insert'] [data-oc-current='true'] {
   background-color: transparent;
 }
