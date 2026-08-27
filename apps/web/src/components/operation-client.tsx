@@ -419,7 +419,7 @@ export function ExecutableClient({
                 className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
                 onClick={showResponse}
               >
-                View output
+                <span>View output</span>
                 <Kbd hotkey="O" />
               </button>
             ) : null}
@@ -433,7 +433,7 @@ export function ExecutableClient({
               }`}
               onClick={toggleInspect}
             >
-              {inspecting ? 'Call' : 'Inspect'}
+              <span>{inspecting ? 'Call' : 'Inspect'}</span>
               <KeyHints>
                 <Kbd hotkey="V" />
               </KeyHints>
@@ -449,7 +449,7 @@ export function ExecutableClient({
                   void copyExport()
                 }}
               >
-                {copied ? 'Copied' : api.labels.export}
+                <span>{copied ? 'Copied' : api.labels.export}</span>
                 <KeyHints>
                   <Kbd hotkey="Y" />
                 </KeyHints>
@@ -473,7 +473,7 @@ export function ExecutableClient({
                     <Kbd hotkey="Mod" />
                     <Kbd hotkey="Enter" />
                   </KeyHints>
-                  {showAuth ? 'Continue' : api.labels.execute}
+                  <span>{showAuth ? 'Continue' : api.labels.execute}</span>
                 </>
               )}
             </button>
