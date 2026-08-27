@@ -391,7 +391,7 @@ function Home() {
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="Enter" /> to open
+                      <Kbd hotkey="Enter" /> open
                     </span>
                     {apis.length > 1 ? (
                       <>
