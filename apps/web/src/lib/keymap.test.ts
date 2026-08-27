@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { hotkeysFor, paneConfig } from './keymap.ts'
+import { dialogAllowsBinding, hotkeysFor, paneConfig } from './keymap.ts'
 
 assert.deepEqual(hotkeysFor({ id: 'next', hotkey: 'J', label: 'next' }), ['J'])
 assert.deepEqual(
@@ -49,6 +49,43 @@ assert.ok(
 assert.ok(
   submitBindings.some((binding) => binding.hotkey === 'Mod+Enter'),
   'specs submit includes Mod+Enter',
+)
+
+const specsRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'remove')
+assert.equal(specsRemove?.hotkey, 'D', 'specs remove is D')
+assert.equal(specsRemove?.flag, 'hasSpecs', 'specs remove requires sources')
+const confirmRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'confirmRemove')
+const cancelRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'cancelRemove')
+assert.equal(confirmRemove?.hotkey, 'Enter', 'confirm remove is Enter')
+assert.equal(cancelRemove?.hotkey, 'Escape', 'cancel remove is Escape')
+assert.ok(
+  dialogAllowsBinding({ id: 'confirmRemove', hotkey: 'Enter', label: 'remove' }, { hasRemoveConfirm: true }),
+  'remove confirm allows Enter',
+)
+assert.ok(
+  dialogAllowsBinding({ id: 'cancelRemove', hotkey: 'Escape', label: 'cancel' }, { hasRemoveConfirm: true }),
+  'remove confirm allows Escape',
+)
+assert.equal(
+  dialogAllowsBinding({ id: 'open', hotkey: 'Enter', label: 'open' }, { hasRemoveConfirm: true }),
+  false,
+  'remove confirm blocks open',
+)
+assert.ok(
+  dialogAllowsBinding({ id: 'open', hotkey: 'Enter', label: 'open' }, {}),
+  'open is allowed without a dialog',
+)
+assert.equal(
+  dialogAllowsBinding({ id: 'open', hotkey: 'Enter', label: 'open' }, { hasAuthRedirect: true }),
+  false,
+  'auth redirect blocks open',
+)
+assert.ok(
+  dialogAllowsBinding(
+    { id: 'continueAuth', hotkey: 'Enter', label: 'go now' },
+    { hasAuthRedirect: true },
+  ),
+  'auth redirect allows go now',
 )
 
 console.log('keymap step and tab bindings ok')
