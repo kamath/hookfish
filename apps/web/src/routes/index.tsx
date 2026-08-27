@@ -283,11 +283,11 @@ function Home() {
                 api.kind === entry.kind &&
                 sourceUrlKey(api.sourceUrl) === sourceUrlKey(catalogSourceUrl(entry)),
             )
-            const hotkey = (
+            const hotkey = showKeybindings ? (
               <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
-                {showKeybindings ? <Kbd hotkey={entry.hotkey} /> : null}
+                <Kbd hotkey={entry.hotkey} />
               </span>
-            )
+            ) : null
             return (
               <li key={entry.id}>
                 {pendingAuth?.entryId === entry.id ? (
