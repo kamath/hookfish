@@ -49,6 +49,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'open', hotkey: 'Enter', label: 'open' },
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
+      { id: 'remove', hotkey: 'D', label: 'remove', flag: 'hasSpecs' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
       { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
@@ -69,6 +70,20 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         hotkey: 'Escape',
         label: 'cancel',
         flag: 'hasAuthRedirect',
+        modes: ['command', 'edit'],
+      },
+      {
+        id: 'confirmRemove',
+        hotkey: 'Enter',
+        label: 'remove',
+        flag: 'hasRemoveConfirm',
+        modes: ['command', 'edit'],
+      },
+      {
+        id: 'cancelRemove',
+        hotkey: 'Escape',
+        label: 'cancel',
+        flag: 'hasRemoveConfirm',
         modes: ['command', 'edit'],
       },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
@@ -207,6 +222,20 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   },
 }
 
+const dialogBindings: Record<string, ReadonlySet<string>> = {
+  hasAuthRedirect: new Set(['continueAuth', 'cancelAuth']),
+  hasRemoveConfirm: new Set(['confirmRemove', 'cancelRemove']),
+}
+
+export function dialogAllowsBinding(binding: PaneBinding, flags: Record<string, boolean>) {
+  for (const [flag, allowed] of Object.entries(dialogBindings)) {
+    if (flags[flag]) {
+      return allowed.has(binding.id)
+    }
+  }
+  return true
+}
+
 const registeredPaneBindings = (Object.entries(paneConfig) as Array<[Pane, PaneConfig]>).flatMap(
   ([pane, config]) =>
     config.bindings.flatMap((binding) =>
@@ -236,12 +265,10 @@ export const activeKeybindingsAtom = atom((get) => {
   }
   return paneConfig[chrome.pane].bindings.filter((binding) => {
     const modes = binding.modes ?? ['command']
-    const authLocked = Boolean(flags.hasAuthRedirect)
-    const allowedWhileAuth = binding.id === 'continueAuth' || binding.id === 'cancelAuth'
     return (
       modes.includes(chrome.mode) &&
       (!binding.flag || Boolean(flags[binding.flag])) &&
-      (!authLocked || allowedWhileAuth)
+      dialogAllowsBinding(binding, flags)
     )
   })
 })
@@ -333,8 +360,6 @@ export function useGlobalKeybindings() {
       const action = actions[binding.id]
       const modes = binding.modes ?? ['command']
       const flagOn = !binding.flag || Boolean(flags[binding.flag])
-      const authLocked = Boolean(flags.hasAuthRedirect)
-      const allowedWhileAuth = binding.id === 'continueAuth' || binding.id === 'cancelAuth'
       return {
         hotkey,
         callback: action?.callback ?? noopKeybinding,
@@ -345,7 +370,7 @@ export function useGlobalKeybindings() {
             action?.enabled !== false &&
             flagOn &&
             modes.includes(chrome.mode) &&
-            (!authLocked || allowedWhileAuth),
+            dialogAllowsBinding(binding, flags),
           ignoreInputs: action?.ignoreInputs ?? !modes.includes('edit'),
         },
       }

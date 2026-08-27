@@ -59,6 +59,7 @@ function Home() {
       ? { href: pending.url, sourceId: pending.sourceId }
       : undefined
   })
+  const [pendingRemove, setPendingRemove] = useState<{ id: string; title: string }>()
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
   const showKeybindings = useShowKeybindings()
@@ -108,7 +109,15 @@ function Home() {
     mutationFn: async (id: string) => {
       removeApi(id)
     },
-    onSuccess: async () => {
+    onSuccess: async (_, id) => {
+      setSelected((index) => {
+        const removedIndex = apis.findIndex((api) => api.id === id)
+        const last = Math.max(apis.length - 2, 0)
+        if (removedIndex >= 0 && removedIndex < index) {
+          return Math.min(index - 1, last)
+        }
+        return Math.min(index, last)
+      })
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
@@ -147,7 +156,7 @@ function Home() {
   }
 
   function submit(kind: string) {
-    if (openSource.isPending || !formRef.current?.reportValidity()) {
+    if (openSource.isPending || pendingRemove || !formRef.current?.reportValidity()) {
       return
     }
     if (pendingAuth) {
@@ -157,7 +166,7 @@ function Home() {
   }
 
   function launch(entry: CatalogEntry) {
-    if (openSource.isPending) {
+    if (openSource.isPending || pendingRemove) {
       return
     }
     if (pendingAuth) {
@@ -166,16 +175,39 @@ function Home() {
     openSource.mutate({ url: entry.url, kind: entry.kind, entryId: entry.id })
   }
 
+  function askRemove(id: string, title: string) {
+    if (pendingAuth || remove.isPending) {
+      return
+    }
+    setPendingRemove({ id, title })
+  }
+
+  function confirmRemove() {
+    if (!pendingRemove) {
+      return
+    }
+    const { id } = pendingRemove
+    setPendingRemove(undefined)
+    remove.mutate(id)
+  }
+
+  function cancelRemove() {
+    setPendingRemove(undefined)
+  }
+
+  const dialogOpen = Boolean(pendingAuth || pendingRemove)
+
   usePaneFlags('specs', {
     hasSpecs: apis.length > 0,
     hasAuthRedirect: Boolean(pendingAuth),
+    hasRemoveConfirm: Boolean(pendingRemove),
   })
-  useStepKeys('specs', move, apis.length > 0 && !pendingAuth)
+  useStepKeys('specs', move, apis.length > 0 && !dialogOpen)
   usePaneActions('specs', {
     ...Object.fromEntries(
       CATALOG.map((entry) => [
         catalogActionId(entry),
-        { callback: () => launch(entry), enabled: !pendingAuth },
+        { callback: () => launch(entry), enabled: !dialogOpen },
       ]),
     ),
     open: {
@@ -188,8 +220,19 @@ function Home() {
           })
         }
       },
-      enabled: !pendingAuth && apis.length > 0,
+      enabled: !dialogOpen && apis.length > 0,
     },
+    remove: {
+      callback: () => {
+        const api = apis[selected]
+        if (api) {
+          askRemove(api.id, api.title)
+        }
+      },
+      enabled: !dialogOpen && apis.length > 0,
+    },
+    confirmRemove,
+    cancelRemove,
     continueAuth: continueAuthorization,
     cancelAuth: cancelAuthorization,
     insert: {
@@ -197,12 +240,12 @@ function Home() {
         activate('specs', 'edit')
         urlRef.current?.focus()
       },
-      enabled: !pendingAuth,
+      enabled: !dialogOpen,
     },
     ...Object.fromEntries(
       sourceOptions.map((option) => [
         sourceSubmitActionId(option.kind),
-        { callback: () => submit(option.kind), enabled: !pendingAuth, ignoreInputs: false },
+        { callback: () => submit(option.kind), enabled: !dialogOpen, ignoreInputs: false },
       ]),
     ),
     command: () => {
@@ -210,13 +253,6 @@ function Home() {
       blurActive()
     },
   })
-
-  function onRemove(id: string, title: string) {
-    if (!window.confirm(`Remove ${title}?`)) {
-      return
-    }
-    remove.mutate(id)
-  }
 
   function entryStatus(entry: CatalogEntry) {
     if (openSource.variables?.entryId === entry.id) {
@@ -269,7 +305,7 @@ function Home() {
                         ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
                         : 'hover:bg-ink/10 focus-visible:bg-ink/10'
                     }`}
-                    disabled={openSource.isPending || Boolean(pendingAuth)}
+                    disabled={openSource.isPending || dialogOpen}
                     onClick={() => launch(entry)}
                   >
                     <span className="min-w-0 flex-1">
@@ -328,7 +364,7 @@ function Home() {
               autoComplete="off"
               spellCheck={false}
               required
-              disabled={openSource.isPending || Boolean(pendingAuth)}
+              disabled={openSource.isPending || dialogOpen}
               className={`${softInputClass} ${showKeybindings ? 'pl-10' : ''}`}
               placeholder="MCP URL or link to OpenAPI JSON/YAML"
               value={url}
@@ -355,7 +391,7 @@ function Home() {
                     key={option.kind}
                     type="button"
                     className={index === 0 ? primaryButtonClass : softButtonClass}
-                    disabled={openSource.isPending || Boolean(pendingAuth)}
+                    disabled={openSource.isPending || dialogOpen}
                     onClick={() => submit(option.kind)}
                   >
                     {pending ? 'Reading…' : option.label}
@@ -391,11 +427,15 @@ function Home() {
             <section>
               <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
                 <h2>Recent</h2>
-                {pendingAuth || !showKeybindings ? null : (
+                {dialogOpen || !showKeybindings ? null : (
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <Kbd hotkey="Enter" /> open
+                    </span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="D" /> remove
                     </span>
                     {canStepDown ? (
                       <>
@@ -444,11 +484,12 @@ function Home() {
                       </Link>
                       <button
                         type="button"
-                        className="min-h-11 px-2 text-sm text-mute hover:text-signal"
-                        onClick={() => onRemove(api.id, api.title)}
-                        disabled={remove.isPending}
+                        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-mute outline-none hover:text-signal focus-visible:text-signal disabled:opacity-40"
+                        aria-label={`Remove ${api.title}`}
+                        onClick={() => askRemove(api.id, api.title)}
+                        disabled={remove.isPending || dialogOpen}
                       >
-                        Remove
+                        <TrashIcon />
                       </button>
                     </li>
                   )
@@ -479,7 +520,61 @@ function Home() {
             onCancel={cancelAuthorization}
           />
         </div>
+      ) : pendingRemove ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
+          <RemoveConfirm
+            title={pendingRemove.title}
+            onConfirm={confirmRemove}
+            onCancel={cancelRemove}
+          />
+        </div>
       ) : null}
     </main>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M6 7l1 14h10l1-14" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  )
+}
+
+function RemoveConfirm({
+  title,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex w-full flex-col items-center px-4 text-center">
+      <p className="max-w-xl text-sm text-ink">Remove {title}?</p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <button type="button" className={primaryButtonClass} onClick={onConfirm}>
+          Remove
+          <Kbd hotkey="Enter" persistent />
+        </button>
+        <button type="button" className={softButtonClass} onClick={onCancel}>
+          Cancel
+          <Kbd hotkey="Escape" persistent />
+        </button>
+      </div>
+    </div>
   )
 }
