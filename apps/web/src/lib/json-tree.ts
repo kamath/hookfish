@@ -135,6 +135,26 @@ export function selectedJsonText(root: JsonNode, row: JsonNode) {
   )
 }
 
+export function expandedIds(node: JsonNode | undefined, depth: number): Set<string> {
+  const ids = new Set<string>()
+  function visit(current: JsonNode, remaining: number) {
+    if (!current.collection || remaining < 0) {
+      return
+    }
+    ids.add(current.id)
+    if (remaining === 0) {
+      return
+    }
+    for (const child of current.children ?? []) {
+      visit(child, remaining - 1)
+    }
+  }
+  if (node) {
+    visit(node, depth)
+  }
+  return ids
+}
+
 export function lineNodes(lines: string[]): JsonNode[] {
   return lines.map((value, index): JsonNode => ({
     id: `line.${index}`,

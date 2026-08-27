@@ -21,7 +21,7 @@ import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, enterCommand, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
-import { routeInspectValue, setRouteView, useRouteView } from '../lib/route-view'
+import { setRouteView, useRouteView } from '../lib/route-view'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { JsonView } from './json-view'
 import { Kbd, KeyHints } from './hints'
@@ -476,9 +476,7 @@ export function ExecutableClient({
         </div>
 
         {inspecting ? (
-          <div className="px-3 py-3 md:px-4">
-            <JsonView value={routeInspectValue(operation)} pane="input" enabled={pane === 'input'} />
-          </div>
+          <RouteInspect operation={operation} active={pane === 'input'} />
         ) : (
         <div className="px-3 py-3 md:px-4">
           <SwissForm
@@ -524,6 +522,49 @@ export function ExecutableClient({
         </div>
         )}
       </section>
+    </div>
+  )
+}
+
+function bindingLabel(binding: Executable['binding']) {
+  if (binding.type === 'http' && 'method' in binding && 'path' in binding) {
+    return `${String(binding.method).toUpperCase()} ${String(binding.path)}`
+  }
+  if (binding.type === 'mcp' && 'method' in binding && 'name' in binding) {
+    return `${String(binding.method)} · ${String(binding.name)}`
+  }
+  return undefined
+}
+
+function RouteInspect({
+  operation,
+  active,
+}: {
+  operation: Executable
+  active: boolean
+}) {
+  const title = operation.summary
+  const description =
+    operation.description && operation.description !== title ? operation.description : undefined
+  const fallback = description ? undefined : (operation.description || operation.summary)
+  const binding = bindingLabel(operation.binding)
+  return (
+    <div className="flex flex-col gap-3 px-3 py-3 md:px-4">
+      {title && description ? <p className="text-sm text-ink">{title}</p> : null}
+      {description || fallback ? (
+        <p className="whitespace-pre-wrap text-sm text-mute">{description ?? fallback}</p>
+      ) : null}
+      {binding ? <p className="font-mono text-xs text-faint">{binding}</p> : null}
+      {operation.outputSchema ? (
+        <JsonView
+          value={operation.outputSchema}
+          pane="input"
+          enabled={active}
+          expandDepth={2}
+        />
+      ) : (
+        <p className="text-sm text-faint">This route does not advertise an output schema.</p>
+      )}
     </div>
   )
 }
