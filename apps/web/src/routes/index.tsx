@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { Kbd, KeyHints } from '../components/hints'
@@ -303,54 +303,33 @@ function SourceListHints({ selected, count }: { selected: number; count: number 
   const canOpen = count > 0
   const canGoDown = selected < count - 1
   const canGoUp = selected > 0
-  const parts: ReactNode[] = []
 
-  if (canOpen) {
-    parts.push(
-      <span key="open" className="inline-flex items-center gap-1">
-        <Kbd hotkey="Enter" />
-        to open
-      </span>,
-    )
-  }
-
-  if (canGoDown && canGoUp) {
-    parts.push(
-      <span key="move" className="inline-flex items-center gap-1">
-        <span className="inline-flex items-center">
-          <Kbd hotkey="J" />
-          /
-          <Kbd hotkey="K" />
-        </span>
-        to go down/up
-      </span>,
-    )
-  } else if (canGoDown) {
-    parts.push(
-      <span key="down" className="inline-flex items-center gap-1">
-        <Kbd hotkey="J" />
-        to go down
-      </span>,
-    )
-  } else if (canGoUp) {
-    parts.push(
-      <span key="up" className="inline-flex items-center gap-1">
-        <Kbd hotkey="K" />
-        to go up
-      </span>,
-    )
-  }
-
-  if (parts.length === 0) {
+  if (!canOpen && !canGoDown && !canGoUp) {
     return null
   }
 
   return (
     <p className="mt-3 px-3 text-sm text-mute md:px-4">
-      <KeyHints className="inline-flex flex-wrap items-center gap-x-1">
-        {parts.flatMap((part, index) =>
-          index === 0 ? [part] : [<span key={`sep-${index}`}>,</span>, part],
-        )}
+      <KeyHints>
+        {canOpen ? (
+          <>
+            <Kbd key="enter" hotkey="Enter" /> to open
+          </>
+        ) : null}
+        {canOpen && (canGoDown || canGoUp) ? ', ' : null}
+        {canGoDown && canGoUp ? (
+          <>
+            <Kbd key="j" hotkey="J" />/<Kbd key="k" hotkey="K" /> to go down/up
+          </>
+        ) : canGoDown ? (
+          <>
+            <Kbd key="j" hotkey="J" /> to go down
+          </>
+        ) : canGoUp ? (
+          <>
+            <Kbd key="k" hotkey="K" /> to go up
+          </>
+        ) : null}
       </KeyHints>
     </p>
   )
