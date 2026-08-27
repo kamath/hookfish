@@ -569,15 +569,7 @@ function ApiWorkbench({
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (
-            <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Previous ${api.labels.target}`}
-                onClick={() => cycleServer(-1)}
-              >
-                <Kbd hotkey="[" />
-              </button>
+            <div className="flex min-w-0 max-w-xl flex-1 items-center">
               <label htmlFor="server-url" className="sr-only">
                 {api.labels.target}
               </label>
@@ -595,14 +587,6 @@ function ApiWorkbench({
                 }}
                 onChange={(event) => setServerUrl(event.target.value)}
               />
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Next ${api.labels.target}`}
-                onClick={() => cycleServer(1)}
-              >
-                <Kbd hotkey="]" />
-              </button>
             </div>
           ) : null}
           <div className="ml-auto flex items-center gap-3">
