@@ -155,7 +155,7 @@ function CloudProxyToggle() {
         title={
           cloudProxy
             ? 'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
-            : 'Local mode. Click to use the cloud proxy.'
+            : 'Requests originate from this browser. Click to use the cloud proxy.'
         }
         onClick={() => setCloudProxy(!cloudProxy)}
       >
@@ -167,7 +167,8 @@ function CloudProxyToggle() {
           'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
         ) : (
           <>
-            This computer. Remote hosts may block the browser (
+            Requests originate from this browser, so you can safely access
+            localhost/internal URLs. You&apos;ll likely get blocked by{' '}
             <a
               href="https://www.google.com/search?q=what+is+cors"
               target="_blank"
@@ -176,7 +177,7 @@ function CloudProxyToggle() {
             >
               CORS
             </a>
-            ).
+            .
           </>
         )}
       </p>
