@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { Kbd } from '../components/hints'
+import { Kbd, KeyHints } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { blurActive } from '../lib/focus'
@@ -250,13 +250,6 @@ function Home() {
           <ul className="mt-8">
             {apis.map((api, index) => {
               const active = index === selected
-              const navigationHint = active
-                ? 'Enter'
-                : index === selected - 1
-                  ? 'K'
-                  : index === selected + 1
-                    ? 'J'
-                    : undefined
               return (
                 <li
                   key={api.id}
@@ -272,9 +265,6 @@ function Home() {
                     className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
                     onFocus={() => setSelected(index)}
                   >
-                    <span className="inline-flex w-8 shrink-0 justify-end">
-                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{api.title}</span>
                       <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -295,6 +285,7 @@ function Home() {
               )
             })}
           </ul>
+          <SourceListHints selected={selected} count={apis.length} />
         )}
         {remove.isError ? (
           <p className="mt-3 text-sm text-signal" role="alert">
@@ -303,5 +294,62 @@ function Home() {
         ) : null}
       </div>
     </main>
+  )
+}
+
+function SourceListHints({ selected, count }: { selected: number; count: number }) {
+  const canOpen = count > 0
+  const canGoDown = selected < count - 1
+  const canGoUp = selected > 0
+  const parts: ReactNode[] = []
+
+  if (canOpen) {
+    parts.push(
+      <span key="open" className="inline-flex items-center gap-1">
+        <Kbd hotkey="Enter" />
+        to open
+      </span>,
+    )
+  }
+
+  if (canGoDown && canGoUp) {
+    parts.push(
+      <span key="move" className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center">
+          <Kbd hotkey="J" />
+          /
+          <Kbd hotkey="K" />
+        </span>
+        to go down/up
+      </span>,
+    )
+  } else if (canGoDown) {
+    parts.push(
+      <span key="down" className="inline-flex items-center gap-1">
+        <Kbd hotkey="J" />
+        to go down
+      </span>,
+    )
+  } else if (canGoUp) {
+    parts.push(
+      <span key="up" className="inline-flex items-center gap-1">
+        <Kbd hotkey="K" />
+        to go up
+      </span>,
+    )
+  }
+
+  if (parts.length === 0) {
+    return null
+  }
+
+  return (
+    <p className="mt-3 px-3 text-sm text-mute md:px-4">
+      <KeyHints className="inline-flex flex-wrap items-center gap-x-1">
+        {parts.flatMap((part, index) =>
+          index === 0 ? [part] : [<span key={`sep-${index}`}>,</span>, part],
+        )}
+      </KeyHints>
+    </p>
   )
 }
