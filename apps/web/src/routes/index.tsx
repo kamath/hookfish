@@ -223,7 +223,7 @@ function Home() {
               spellCheck={false}
               required
               className={`${softInputClass} pl-10`}
-              placeholder="Paste an MCP endpoint or OpenAPI document URL"
+              placeholder="MCP URL, or link to OpenAPI JSON/YAML"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onFocus={() => {
