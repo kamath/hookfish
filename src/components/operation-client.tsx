@@ -12,6 +12,7 @@ import type {
 } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord } from '../lib/build-request'
+import { copyText } from '../lib/clipboard'
 import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
@@ -63,24 +64,6 @@ function withAuthUiSchema(uiSchema: FormUiSchema, authUiSchema?: FormUiSchema): 
         nest: true,
       },
     },
-  }
-}
-
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.position = 'fixed'
-    area.style.left = '-9999px'
-    document.body.appendChild(area)
-    area.select()
-    const ok = document.execCommand('copy')
-    area.remove()
-    return ok
   }
 }
 
