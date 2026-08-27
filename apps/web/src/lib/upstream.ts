@@ -18,7 +18,7 @@ export async function localUpstreamFetch(
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(
-        'This request may be blocked by CORS. Turn off local mode and try again.',
+        'Possible CORS error. Turn off local mode.',
         { cause: error },
       )
     }

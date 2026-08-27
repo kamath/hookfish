@@ -57,7 +57,7 @@ await assert.rejects(
     localUpstreamFetch('https://cross-origin.test', undefined, async () => {
       throw new TypeError('Failed to fetch')
     }),
-  /may be blocked by CORS\. Turn off local mode/,
+  /Possible CORS error\. Turn off local mode\./,
 )
 
 await assert.rejects(
