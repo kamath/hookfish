@@ -347,7 +347,7 @@ function Home() {
             className={
               compactLauncher
                 ? 'mx-auto w-full max-w-xl'
-                : 'flex w-full flex-col gap-3 sm:flex-row sm:items-start'
+                : 'flex w-full min-w-0 flex-row items-stretch gap-2'
             }
           >
           <label htmlFor="url" className="sr-only">
@@ -379,7 +379,9 @@ function Home() {
             ) : null}
           </div>
           {compactLauncher ? null : (
-            <div className="flex shrink-0 gap-2">
+            <div
+              className={`flex shrink-0 gap-2 ${url.trim() ? '' : 'max-md:hidden'}`}
+            >
               {sourceOptions.map((option, index) => {
                 const pending =
                   openSource.isPending &&
@@ -389,7 +391,7 @@ function Home() {
                   <button
                     key={option.kind}
                     type="button"
-                    className={index === 0 ? primaryButtonClass : softButtonClass}
+                    className={`${index === 0 ? primaryButtonClass : softButtonClass} whitespace-nowrap max-md:px-3`}
                     disabled={openSource.isPending || dialogOpen}
                     onClick={() => submit(option.kind)}
                   >
