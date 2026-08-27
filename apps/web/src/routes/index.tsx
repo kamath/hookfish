@@ -247,45 +247,47 @@ function Home() {
         ) : apis.length === 0 ? (
           <p className="mt-8 text-sm text-mute">Add a source URL to list its executables.</p>
         ) : (
-          <ul className="mt-8">
-            {apis.map((api, index) => {
-              const active = index === selected
-              return (
-                <li
-                  key={api.id}
-                  className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
-                >
-                  <Link
-                    to="/apis/$apiId/$pane/{-$operationId}"
-                    params={{
-                      apiId: api.id,
-                      pane: 'routes',
-                      operationId: undefined,
-                    }}
-                    className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
-                    onFocus={() => setSelected(index)}
+          <>
+            <ul className="mt-8">
+              {apis.map((api, index) => {
+                const active = index === selected
+                return (
+                  <li
+                    key={api.id}
+                    className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                   >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">{api.title}</span>
-                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                        {api.kind} · {api.executableCount} executables
-                        {api.version ? ` · ${api.version}` : ''}
+                    <Link
+                      to="/apis/$apiId/$pane/{-$operationId}"
+                      params={{
+                        apiId: api.id,
+                        pane: 'routes',
+                        operationId: undefined,
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
+                      onFocus={() => setSelected(index)}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{api.title}</span>
+                        <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                          {api.kind} · {api.executableCount} executables
+                          {api.version ? ` · ${api.version}` : ''}
+                        </span>
                       </span>
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    className="min-h-11 px-2 text-sm text-mute hover:text-signal"
-                    onClick={() => onRemove(api.id, api.title)}
-                    disabled={remove.isPending}
-                  >
-                    Remove
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-          <SourceListHints selected={selected} count={apis.length} />
+                    </Link>
+                    <button
+                      type="button"
+                      className="min-h-11 px-2 text-sm text-mute hover:text-signal"
+                      onClick={() => onRemove(api.id, api.title)}
+                      disabled={remove.isPending}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <SourceListHints selected={selected} count={apis.length} />
+          </>
         )}
         {remove.isError ? (
           <p className="mt-3 text-sm text-signal" role="alert">
