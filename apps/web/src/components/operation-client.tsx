@@ -82,7 +82,7 @@ function mergeAuth(
 }
 
 const stepButtonClass =
-  'inline-flex min-h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40 md:flex-none lg:hidden'
 
 export function ExecutableClient({
   api,
@@ -362,9 +362,9 @@ export function ExecutableClient({
             <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
             {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
             {onPrevious || onNext ? (
-              <div className="flex shrink-0 items-center gap-2 lg:hidden">
+              <>
                 <button
                   type="button"
                   className={stepButtonClass}
@@ -383,9 +383,8 @@ export function ExecutableClient({
                   Next
                   {canNext ? <Kbd hotkey="L" /> : null}
                 </button>
-              </div>
+              </>
             ) : null}
-            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
             {result ? (
               <button
                 type="button"
@@ -434,7 +433,6 @@ export function ExecutableClient({
                 </>
               )}
             </button>
-            </div>
           </div>
         </div>
 
