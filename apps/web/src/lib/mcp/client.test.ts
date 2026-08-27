@@ -233,6 +233,15 @@ globalThis.fetch = async (input, init) => {
           required: ['text'],
         },
       },
+      {
+        name: 'inspect',
+        description: 'Documented tool',
+        inputSchema: { type: 'object', properties: {} },
+        outputSchema: {
+          type: 'object',
+          properties: { text: { type: 'string' } },
+        },
+      },
     ])
   }
   if (rpcMethod === 'resources/list') {
@@ -293,13 +302,19 @@ globalThis.fetch = async (input, init) => {
 
 const modern = await loadMcpSource('https://mcp.test/modern', 'modern', {})
 assert.equal(modern.title, 'modern-test')
-assert.equal(modern.executables.length, 4)
+assert.equal(modern.executables.length, 5)
 assert.equal(
   (modern.adapterData as { era: string }).era,
   'modern',
 )
 const tool = modern.executables.find((item) => item.id === 'tool:echo')
 assert.ok(tool)
+const documented = modern.executables.find((item) => item.id === 'tool:inspect')
+assert.equal(documented?.description, 'Documented tool')
+assert.deepEqual(documented?.outputSchema, {
+  type: 'object',
+  properties: { text: { type: 'string' } },
+})
 const invocation = mcpExecutableAdapter.buildInvocation({
   source: modern,
   executable: tool,

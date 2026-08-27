@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { atom, useAtom } from 'jotai'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import type { IChangeEvent } from '@rjsf/core'
@@ -16,9 +17,9 @@ import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { validatorForSchema } from '../lib/form-validator'
-import { submitForm } from '../lib/focus'
+import { blurActive, submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
-import { activate, usePane } from '../lib/mode'
+import { activate, enterCommand, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
@@ -28,6 +29,7 @@ import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
 const AUTH_NOTICE = 'This execution requires credentials.'
+const inspectRouteAtom = atom(false)
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
@@ -129,6 +131,7 @@ export function ExecutableClient({
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const pane = usePane()
+  const [inspecting, setInspecting] = useAtom(inspectRouteAtom)
   const navigate = useNavigate()
   const adapter = executableAdapterFor(api)
   const invoke = useMutation({
@@ -161,11 +164,18 @@ export function ExecutableClient({
   useEffect(() => {
     setAskingAuth(false)
     setCopied(false)
+    if (inspecting) {
+      return
+    }
     const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     return () => window.clearTimeout(timer)
-  }, [operation.id])
+  }, [inspecting, operation.id])
 
-  useEffect(() => bindFormTabSync('call-form'), [operation.id])
+  useEffect(() => {
+    if (!inspecting) {
+      return bindFormTabSync('call-form')
+    }
+  }, [inspecting, operation.id])
 
   useEffect(() => {
     if (!showAuth) {
@@ -220,16 +230,17 @@ export function ExecutableClient({
 
   usePaneFlags('input', {
     hasResult: Boolean(result),
-    hasExport: Boolean(adapter.exportSnippet && api.labels.export),
+    hasExport: !inspecting && Boolean(adapter.exportSnippet && api.labels.export),
   })
   usePaneActions('input', {
     send: {
       callback: () => {
-        if (pending || authPending) {
+        if (inspecting || pending || authPending) {
           return
         }
         submitForm('call-form')
       },
+      enabled: !inspecting,
       ignoreInputs: false,
     },
     output: () => showResponse(),
@@ -405,7 +416,7 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
-            {adapter.exportSnippet && api.labels.export ? (
+            {inspecting ? null : adapter.exportSnippet && api.labels.export ? (
               <button
                 type="button"
                 data-oc-nav="action"
@@ -422,6 +433,23 @@ export function ExecutableClient({
                 </KeyHints>
               </button>
             ) : null}
+            <button
+              type="button"
+              aria-pressed={inspecting}
+              className={`inline-flex min-h-8 flex-1 items-center justify-center px-3 py-1 text-xs font-medium outline-none md:flex-none ${
+                inspecting
+                  ? 'bg-ink/15 text-ink'
+                  : 'bg-ink/10 text-mute hover:bg-ink/15 hover:text-ink'
+              }`}
+              onClick={() => {
+                blurActive()
+                enterCommand()
+                setInspecting((current) => !current)
+              }}
+            >
+              Inspect
+            </button>
+            {inspecting ? null : (
             <button
               type="button"
               data-oc-nav="action"
@@ -443,9 +471,26 @@ export function ExecutableClient({
                 </>
               )}
             </button>
+            )}
           </div>
         </div>
 
+        {inspecting ? (
+          <ResponsePane
+            result={{
+              body: operation.outputSchema ? JSON.stringify(operation.outputSchema) : '',
+              elapsedMs: 0,
+            }}
+            pending={false}
+            error={null}
+            pane="input"
+            inspection={{
+              summary: operation.summary,
+              description: operation.description,
+              hasOutputSchema: Boolean(operation.outputSchema),
+            }}
+          />
+        ) : (
         <div className="px-3 py-3 md:px-4">
           <SwissForm
             id="call-form"
@@ -488,6 +533,7 @@ export function ExecutableClient({
             </div>
           </SwissForm>
         </div>
+        )}
       </section>
     </div>
   )
