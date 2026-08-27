@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { UnauthorizedError } from '@modelcontextprotocol/client'
+import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
 import { setCloudProxy } from '../cloud'
 import { closeMcpConnection, getMcpTrace } from './client'
 import { mcpExecutableAdapter } from './executable'
@@ -52,6 +52,8 @@ type SeenRequest = {
 }
 
 const seen: SeenRequest[] = []
+const initializeCounts = new Map<string, number>()
+const invalidSessions = new Map<string, number>()
 
 function result(id: unknown, value: Record<string, unknown>, headers?: HeadersInit) {
   return Response.json(
@@ -146,9 +148,27 @@ globalThis.fetch = async (input, init) => {
 
   const id = message.id
   const rpcMethod = String(message.method)
-  const legacy = endpoint.includes('/legacy')
+  const legacy = endpoint.includes('/legacy') || endpoint.includes('/denied-discover')
+  const sessionId = headers.get('mcp-session-id')
+  const invalidSessionStatus = sessionId
+    ? invalidSessions.get(sessionId)
+    : undefined
+  if (
+    invalidSessionStatus &&
+    rpcMethod !== 'initialize' &&
+    rpcMethod !== 'server/discover'
+  ) {
+    invalidSessions.delete(sessionId as string)
+    return new Response('Invalid session ID', { status: invalidSessionStatus })
+  }
   if (rpcMethod === 'server/discover') {
+    if (endpoint.includes('/denied-all')) {
+      return new Response('Forbidden', { status: 403, statusText: 'Forbidden' })
+    }
     if (legacy) {
+      if (endpoint.includes('/denied-discover')) {
+        return new Response('Forbidden', { status: 403, statusText: 'Forbidden' })
+      }
       return Response.json(
         {
           jsonrpc: '2.0',
@@ -178,6 +198,10 @@ globalThis.fetch = async (input, init) => {
     })
   }
   if (rpcMethod === 'initialize') {
+    if (endpoint.includes('/denied-all')) {
+      return new Response('Forbidden', { status: 403, statusText: 'Forbidden' })
+    }
+    initializeCounts.set(endpoint, (initializeCounts.get(endpoint) ?? 0) + 1)
     return result(
       id,
       {
@@ -231,6 +255,13 @@ globalThis.fetch = async (input, init) => {
   }
   if (rpcMethod === 'tools/call') {
     const params = message.params as Record<string, unknown>
+    const args = params.arguments as Record<string, unknown> | undefined
+    if (args?.text === 'recover') {
+      return result(id, {
+        resultType: 'complete',
+        content: [{ type: 'text', text: 'recovered' }],
+      })
+    }
     if (!params.inputResponses) {
       return result(id, {
         resultType: 'input_required',
@@ -330,6 +361,56 @@ assert.ok(
       request.headers.get('mcp-session-id') === 'legacy-session',
   ),
 )
+invalidSessions.set('legacy-session', 404)
+const recoveredLegacy = await loadMcpSource(
+  'https://mcp.test/legacy',
+  'legacy',
+  {},
+)
+assert.equal(recoveredLegacy.title, 'legacy-test')
+assert.equal(initializeCounts.get('https://mcp.test/legacy'), 2)
+
+const legacyTool = recoveredLegacy.executables.find(
+  (item) => item.id === 'tool:echo',
+)
+assert.ok(legacyTool)
+const legacyInvocation = mcpExecutableAdapter.buildInvocation({
+  source: recoveredLegacy,
+  executable: legacyTool,
+  target: recoveredLegacy.targets[0] ?? '',
+  formData: { text: 'recover' },
+  credentials: {},
+})
+invalidSessions.set('legacy-session', 400)
+const recoveredExecution =
+  await mcpExecutableAdapter.execute(legacyInvocation)
+assert.match(recoveredExecution.body, /recovered/)
+assert.equal(initializeCounts.get('https://mcp.test/legacy'), 3)
+
+const deniedDiscover = await loadMcpSource(
+  'https://mcp.test/denied-discover',
+  'denied-discover',
+  {},
+)
+assert.equal(deniedDiscover.title, 'legacy-test')
+assert.equal((deniedDiscover.adapterData as { era: string }).era, 'legacy')
+assert.ok(
+  seen.some(
+    (request) =>
+      request.endpoint.includes('/denied-discover') &&
+      request.message?.method === 'initialize',
+  ),
+)
+
+await assert.rejects(
+  loadMcpSource('https://mcp.test/denied-all', 'denied-all', {}),
+  (error) =>
+    SdkHttpError.isInstance(error) &&
+    error.status === 403 &&
+    /Version negotiation failed: the server denied access \(HTTP 403\)/.test(
+      error.message,
+    ),
+)
 
 await assert.rejects(
   loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {}),
@@ -399,6 +480,8 @@ assert.equal(hasMcpOAuthTokens('oauth-source'), false)
 await closeMcpConnection('modern')
 assert.deepEqual(getMcpTrace('modern'), [])
 await closeMcpConnection('legacy')
+await closeMcpConnection('denied-discover')
+await closeMcpConnection('denied-all')
 await closeMcpConnection('oauth-flow')
 clearMcpOAuth('oauth-flow')
 

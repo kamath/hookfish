@@ -135,8 +135,12 @@ function hasAuthFields(schema: JsonSchema | undefined) {
 
 function ApiClientPage() {
   const { apiId } = Route.useParams()
+  const navigate = useNavigate()
   const apiQuery = useQuery(apiQueryOptions(apiId))
   const queryClient = useQueryClient()
+  const goHome = () => {
+    void navigate({ to: '/' })
+  }
 
   const saveAuth = useMutation({
     mutationFn: async (value: Record<string, unknown>) => {
@@ -167,7 +171,7 @@ function ApiClientPage() {
     return isMcpOAuthCallback() ? (
       <AuthCallback />
     ) : (
-      <QueryStatus label="Reading the source…" />
+      <QueryStatus label="Reading the source…" onBack={goHome} />
     )
   }
 
@@ -201,6 +205,7 @@ function ApiClientPage() {
           setAuthDismissed(false)
           void apiQuery.refetch()
         }}
+        onBack={goHome}
       />
     )
   }
