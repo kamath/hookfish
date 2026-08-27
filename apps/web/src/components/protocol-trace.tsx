@@ -322,8 +322,8 @@ export function ProtocolTrace({
                     <span className="inline-block w-4 shrink-0 text-faint">
                       {isExpanded ? '▾' : '▸'}
                     </span>
-                    <span className="w-14 shrink-0 text-right tabular-nums text-mute">
-                      {group.atMs} ms
+                    <span className="w-16 shrink-0 whitespace-nowrap text-right tabular-nums text-mute">
+                      {group.atMs}ms
                     </span>
                     <span className="w-5 shrink-0 text-mute">
                       {group.direction === 'out' ? '→' : '←'}
