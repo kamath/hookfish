@@ -284,7 +284,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
-        className={formInputClass}
+        className={`${formInputClass} ${invalid ? 'border-error' : ''}`}
         readOnly={readonly}
         disabled={disabled}
         autoFocus={autofocus}
@@ -324,7 +324,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
-      className={`${formInputClass} max-w-xl min-h-20 resize-y`}
+      className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-error' : ''}`}
       value={value || ''}
       placeholder={placeholder}
       required={required}
@@ -339,7 +339,6 @@ function TextareaWidget(props: WidgetProps) {
       }
       onBlur={(event) => onBlur(id, event.target.value)}
       onFocus={(event) => onFocus(id, event.target.value)}
-      aria-invalid={Boolean(rawErrors?.length)}
       aria-describedby={ariaDescribedByIds(id)}
     />
   )
@@ -379,7 +378,7 @@ function SelectWidget(props: WidgetProps) {
       id={id}
       name={htmlName || id}
       multiple={multiple}
-      className={`${formInputClass} appearance-none`}
+      className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-error' : ''}`}
       value={selectValue}
       required={required}
       disabled={disabled || readonly}
@@ -414,7 +413,6 @@ function SelectWidget(props: WidgetProps) {
           ),
         )
       }
-      aria-invalid={Boolean(rawErrors?.length)}
       aria-describedby={ariaDescribedByIds(id)}
     >
       {!multiple && schema.default === undefined ? (

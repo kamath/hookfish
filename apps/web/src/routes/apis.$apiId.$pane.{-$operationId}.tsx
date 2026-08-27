@@ -565,7 +565,7 @@ function ApiWorkbench({
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
-      <div className="shrink-0 border-b border-rule">
+      <div className="oc-bar shrink-0">
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (

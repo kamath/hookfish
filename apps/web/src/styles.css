@@ -21,8 +21,8 @@
   --accent-mcp-template: #8a6d1d;
   --accent-mcp-prompt: #166b68;
   --exec-color: var(--signal);
-  /* Background a control is drawn against; a wash overrides it for its subtree. */
-  --oc-surface: var(--paper);
+  /* Opaque, so a sticky bar stays readable over content scrolling beneath it. */
+  --bar: color-mix(in srgb, var(--ink) 5%, var(--paper));
   color-scheme: light;
 }
 
@@ -80,10 +80,6 @@ body {
   margin: 0;
 }
 
-.oc-wash {
-  --oc-surface: color-mix(in srgb, var(--ink) 5%, var(--paper));
-}
-
 .oc-wash [data-oc-nav='field'] {
   max-width: none;
 }
@@ -96,30 +92,17 @@ body {
   --oc-gutter: 0.75rem;
   margin-block: 0.25rem;
   padding-inline-start: var(--oc-gutter);
+  border-inline-start: 1px solid var(--rule);
 }
 
 .oc-nest .oc-nest .oc-nest .oc-nest {
   padding-inline-start: 0;
+  border-inline-start: none;
 }
 
-/* Controls read as a filled region rather than an outlined box. The fill is mixed
-   against --oc-surface so a control stays legible on a washed background too, and
-   it drops back to the bare surface while the field behind it is highlighted. */
-.oc-control {
-  background-color: color-mix(in srgb, var(--ink) 8%, var(--oc-surface));
-}
-
-[data-oc-current='true'] .oc-control {
-  background-color: var(--oc-surface);
-}
-
-[data-oc-mode='insert'] [data-oc-current='true'] .oc-control {
-  background-color: color-mix(in srgb, var(--ink) 8%, var(--oc-surface));
-}
-
-.oc-control[aria-invalid='true'],
-[data-oc-current='true'] .oc-control[aria-invalid='true'] {
-  background-color: color-mix(in srgb, var(--error) 14%, var(--oc-surface));
+/* Stands in for a horizontal rule: a bar separates itself with its own surface. */
+.oc-bar {
+  background-color: var(--bar);
 }
 
 /* Descriptions stay on one line until their field or group is hovered or focused. */
@@ -191,10 +174,25 @@ html[data-oc-mode='edit'] .oc-key-hints {
 }
 
 .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
-  width: calc(100% + var(--oc-gutter));
-  max-width: calc(28rem + var(--oc-gutter));
-  margin-inline-start: calc(-1 * var(--oc-gutter));
-  padding-inline-start: calc(0.5rem + var(--oc-gutter));
+  width: calc(100% + var(--oc-gutter) + 1px);
+  max-width: calc(28rem + var(--oc-gutter) + 1px);
+  margin-inline-start: calc(-1 * var(--oc-gutter) - 1px);
+  padding-inline-start: calc(0.5rem + var(--oc-gutter) + 1px);
+  border-inline-start: 1px solid var(--signal);
+}
+
+.oc-nest .oc-fold[data-oc-current='true'] {
+  position: relative;
+}
+
+.oc-nest .oc-fold[data-oc-current='true']::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(-1 * (var(--oc-gutter) + 0.5rem + 1px));
+  width: 1px;
+  background: var(--signal);
+  pointer-events: none;
 }
 
 .oc-fold[data-oc-current='true'],
@@ -226,6 +224,14 @@ button[type='submit'][data-oc-current='true'] {
 
 .exec-ink {
   color: var(--exec-color);
+}
+
+.exec-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
+  border-inline-start-color: var(--exec-color);
+}
+
+.exec-context .oc-nest .oc-fold[data-oc-current='true']::before {
+  background: var(--exec-color);
 }
 
 .exec-context button[type='submit'][data-oc-current='true'] {

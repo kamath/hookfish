@@ -246,7 +246,7 @@ export function ResponsePane({
 
   return (
     <section id="response-pane" className="flex h-full min-h-0 min-w-0 flex-col" aria-live="polite">
-      <div className="flex flex-wrap items-center gap-3 border-b border-rule px-3 py-2 md:px-4">
+      <div className="oc-bar flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
         {result.status ? (
           <p className="font-mono text-xs tabular-nums text-ink">
             {result.status.code !== undefined ? `${result.status.code} ` : ''}
@@ -285,7 +285,7 @@ export function ResponsePane({
       </div>
 
       {error ? (
-        <p className="border-b border-rule px-3 py-2 text-xs text-signal md:px-4" role="alert">
+        <p className="oc-bar px-3 py-2 text-xs text-signal md:px-4" role="alert">
           {error}
         </p>
       ) : null}
