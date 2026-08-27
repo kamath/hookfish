@@ -262,7 +262,11 @@ function Home() {
                 ) : (
                   <button
                     type="button"
-                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                    className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
+                      added
+                        ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
+                        : 'hover:bg-ink/10 focus-visible:bg-ink/10'
+                    }`}
                     disabled={openSource.isPending || Boolean(pendingAuth)}
                     onClick={() => launch(entry)}
                   >
@@ -282,9 +286,7 @@ function Home() {
                         </span>
                       ) : null}
                     </span>
-                    {added ? (
-                      <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
-                    ) : null}
+                    {added ? <span className="sr-only">added</span> : null}
                     {hotkey}
                   </button>
                 )}
