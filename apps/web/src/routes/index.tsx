@@ -205,16 +205,16 @@ function Home() {
   function entryStatus(entry: CatalogEntry) {
     if (openSource.variables?.entryId === entry.id) {
       if (openSource.isPending) {
-        return { text: 'Opening…', failed: false }
+        return { message: 'Opening…', failed: false }
       }
       if (openSource.isError) {
         return {
-          text: queryErrorMessage(openSource.error, 'Could not open that source.'),
+          message: queryErrorMessage(openSource.error, 'Could not open that source.'),
           failed: true,
         }
       }
     }
-    return { text: entry.detail, failed: false }
+    return { message: undefined, failed: false }
   }
 
   function renderCatalog(title: string, entries: readonly CatalogEntry[]) {
@@ -254,14 +254,19 @@ function Home() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{entry.title}</span>
-                      <span
-                        title={status.failed ? status.text : undefined}
-                        className={`mt-0.5 block truncate font-mono text-xs ${
-                          status.failed ? 'text-error' : 'text-faint'
-                        }`}
-                      >
-                        {status.text}
+                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                        {entry.detail}
                       </span>
+                      {status.message ? (
+                        <span
+                          role={status.failed ? 'alert' : undefined}
+                          className={`mt-1 block truncate font-mono text-xs ${
+                            status.failed ? 'text-error' : 'text-mute'
+                          }`}
+                        >
+                          {status.message}
+                        </span>
+                      ) : null}
                     </span>
                     {added ? (
                       <span className="shrink-0 font-mono text-[11px] text-faint">added</span>

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
+import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 
@@ -7,37 +8,69 @@ type ResponseNode = {
   id: string
   label?: string
   value?: unknown
+  decoded?: unknown
   depth: number
   raw?: boolean
   toggleId?: string
   children?: ResponseNode[]
   collection?: 'array' | 'object'
+  property?: boolean
 }
 
-function buildNode(value: unknown, id = 'root', depth = 0, label?: string): ResponseNode {
-  if (Array.isArray(value)) {
+function decodeJsonString(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return undefined
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return parsed !== null && typeof parsed === 'object' ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function buildNode(
+  value: unknown,
+  id = 'root',
+  depth = 0,
+  label?: string,
+  property = false,
+): ResponseNode {
+  const decoded = decodeJsonString(value)
+  const structure = decoded ?? value
+  if (Array.isArray(structure)) {
     return {
       id,
       label,
+      value,
+      decoded,
       depth,
       collection: 'array',
-      children: value.map((item, index) =>
+      children: structure.map((item, index) =>
         buildNode(item, `${id}.${index}`, depth + 1, `[${index}]`),
       ),
+      property,
     }
   }
-  if (value !== null && typeof value === 'object') {
+  if (structure !== null && typeof structure === 'object') {
     return {
       id,
       label,
+      value,
+      decoded,
       depth,
       collection: 'object',
-      children: Object.entries(value).map(([key, item], index) =>
-        buildNode(item, `${id}.${index}`, depth + 1, key),
+      children: Object.entries(structure).map(([key, item], index) =>
+        buildNode(item, `${id}.${index}`, depth + 1, key, true),
       ),
+      property,
     }
   }
-  return { id, label, value, depth }
+  return { id, label, value, depth, property }
 }
 
 function parseBody(body: string): { root?: ResponseNode; lines?: string[] } {
@@ -90,9 +123,25 @@ function collectionMark(node: ResponseNode, expanded: boolean) {
   return expanded ? open : `${open}…${close}`
 }
 
+const rowActionClass =
+  'inline-flex items-center gap-1.5 bg-ink/10 px-2 py-0.5 text-xs font-medium text-ink hover:bg-ink/15'
+
 function scalarText(value: unknown) {
   const encoded = JSON.stringify(value)
   return encoded === undefined ? String(value) : encoded
+}
+
+function selectedJsonText(root: ResponseNode, row: ResponseNode) {
+  const node = findNode(root, row.toggleId ?? row.id)
+  if (!node) {
+    return
+  }
+  const value = node.decoded ?? node.value
+  return JSON.stringify(
+    node.property && node.label !== undefined ? { [node.label]: value } : value,
+    null,
+    2,
+  )
 }
 
 export function ResponsePane({
@@ -130,6 +179,11 @@ export function ResponsePane({
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
   const [selected, setSelected] = useState(() => (body.root?.children?.length ? 1 : 0))
+  const [copiedId, setCopiedId] = useState<string>()
+  const [wrapped, setWrapped] = useState<Set<string>>(new Set())
+  const [clipped, setClipped] = useState(false)
+  const treeRef = useRef<HTMLDivElement>(null)
+  const selectedTextRef = useRef<HTMLSpanElement>(null)
   const rows = useMemo(
     () =>
       body.root
@@ -157,22 +211,43 @@ export function ResponsePane({
     )
     setExpanded(body.root?.collection ? new Set([body.root.id]) : new Set())
     setSelected(body.root?.children?.length ? 1 : 0)
+    setWrapped(new Set())
   }, [body, result])
 
   useEffect(() => {
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
   }, [rows.length])
 
+  const measureSelected = useCallback(() => {
+    const text = selectedTextRef.current
+    setClipped(text ? text.scrollWidth > text.clientWidth + 1 : false)
+  }, [])
+
+  useLayoutEffect(measureSelected)
+
+  useEffect(() => {
+    const tree = treeRef.current
+    if (!tree || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(measureSelected)
+    observer.observe(tree)
+    return () => observer.disconnect()
+  }, [measureSelected])
+
+  useEffect(() => {
+    if (!copiedId) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopiedId(undefined), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copiedId])
+
   function move(delta: number) {
     setSelected((current) => Math.min(Math.max(current + delta, 0), Math.max(rows.length - 1, 0)))
   }
 
-  function toggleSelected() {
-    const node = rows[selected]
-    const id = node?.toggleId ?? (node?.collection ? node.id : undefined)
-    if (!id) {
-      return
-    }
+  function toggleNode(id: string) {
     setExpanded((current) => {
       const next = new Set(current)
       if (next.has(id)) {
@@ -182,6 +257,53 @@ export function ResponsePane({
       }
       return next
     })
+  }
+
+  function canUnclip(node: ResponseNode) {
+    if (node.collection || node.toggleId) {
+      return false
+    }
+    return wrapped.has(node.id) || (rows[selected]?.id === node.id && clipped)
+  }
+
+  function toggleWrap(id: string) {
+    setWrapped((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleSelected() {
+    const node = rows[selected]
+    if (!node) {
+      return
+    }
+    const id = node.toggleId ?? (node.collection ? node.id : undefined)
+    if (id) {
+      toggleNode(id)
+      return
+    }
+    if (canUnclip(node)) {
+      toggleWrap(node.id)
+    }
+  }
+
+  async function copyRow(row: ResponseNode | undefined) {
+    if (!body.root || !row) {
+      return
+    }
+    const text = selectedJsonText(body.root, row)
+    if (text === undefined) {
+      return
+    }
+    if (await copyText(text)) {
+      setCopiedId(row.id)
+    }
   }
 
   function toggleSelectedChildren() {
@@ -224,14 +346,17 @@ export function ResponsePane({
   usePaneFlags('response', {
     canToggleChildren,
     hasDetails: Boolean(result.details?.items.length),
+    hasJson: Boolean(body.root),
   })
   useStepKeys('response', move)
   usePaneActions('response', {
     expand: (event) => {
       event.preventDefault()
-      if (rows[selected]?.collection || rows[selected]?.toggleId) {
-        toggleSelected()
-      }
+      toggleSelected()
+    },
+    copy: (event) => {
+      event.preventDefault()
+      void copyRow(rows[selected])
     },
     resend: (event) => {
       event.preventDefault()
@@ -289,7 +414,7 @@ export function ResponsePane({
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 md:px-4">
         {result.inputRequired && onContinue ? (
           <section className="mb-3 bg-ink/5 px-3 py-3">
             <p className="text-sm text-ink">The server needs additional client input.</p>
@@ -358,48 +483,41 @@ export function ResponsePane({
           </div>
         ) : null}
 
-        <div className="w-max min-w-full font-mono text-sm leading-relaxed" role="tree">
+        <div
+          ref={treeRef}
+          className="w-full min-w-0 overflow-hidden font-mono text-sm leading-relaxed"
+          role="tree"
+        >
           {rows.map((node, index) => {
             const isExpanded = expanded.has(node.id)
+            const isSelected = index === selected
+            const isWrapped = wrapped.has(node.id)
             const navigationHint =
-              index === selected && (node.collection || node.toggleId)
-                ? 'Enter'
-                : index === selected - 1
-                  ? 'K'
-                  : index === selected + 1
-                    ? 'J'
-                    : undefined
+              index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
             const childrenHint = node.id === firstActiveChildId ? 'A' : undefined
+            const showEncoded = Boolean(node.decoded) && !isExpanded
+            const expandable = node.collection ? true : canUnclip(node)
+            const showsAll = node.collection ? isExpanded : isWrapped
             return (
-              <button
+              <div
                 key={node.id}
-                type="button"
                 role="treeitem"
-                aria-current={index === selected ? 'true' : undefined}
-                aria-expanded={node.collection ? isExpanded : undefined}
-                data-oc-current={index === selected ? 'true' : undefined}
-                className={`flex min-h-6 w-full items-center whitespace-pre pr-3 text-left outline-none ${
-                  index === selected ? 'exec-active' : ''
-                }`}
+                aria-selected={isSelected}
+                aria-expanded={expandable ? showsAll : undefined}
+                data-oc-current={isSelected ? 'true' : undefined}
+                className={`flex min-h-6 w-full min-w-0 overflow-hidden whitespace-nowrap pr-3 text-left ${
+                  isWrapped ? 'items-start' : 'items-center'
+                } ${isSelected ? 'exec-active' : ''}`}
                 style={{ paddingInlineStart: '0.25rem' }}
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
-                    setExpanded((current) => {
-                      const next = new Set(current)
-                      if (next.has(node.id)) {
-                        next.delete(node.id)
-                      } else {
-                        next.add(node.id)
-                      }
-                      return next
-                    })
+                    toggleNode(node.id)
+                  } else if (canUnclip(node)) {
+                    toggleWrap(node.id)
                   }
                 }}
               >
-                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
-                  {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                </span>
                 <span
                   className="inline-flex items-center"
                   style={{ marginInlineStart: `${node.depth * 1.25}rem` }}
@@ -413,17 +531,71 @@ export function ResponsePane({
                     </span>
                   ) : null}
                 </span>
-                {node.label !== undefined ? (
-                  <span className="text-mute">{node.label}: </span>
-                ) : null}
-                <span className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}>
-                  {node.collection
-                    ? collectionMark(node, isExpanded)
-                    : node.raw
-                      ? String(node.value)
-                      : scalarText(node.value)}
+                <span
+                  ref={isSelected ? selectedTextRef : undefined}
+                  className={`min-w-0 flex-1 ${
+                    isWrapped ? 'whitespace-pre-wrap break-words' : 'truncate'
+                  }`}
+                >
+                  {node.label !== undefined ? (
+                    <span className="text-mute">{node.label}: </span>
+                  ) : null}
+                  <span
+                    className={
+                      (node.collection && !showEncoded) || node.toggleId
+                        ? 'text-faint'
+                        : 'text-ink'
+                    }
+                  >
+                    {node.collection && !showEncoded
+                      ? collectionMark(node, isExpanded)
+                      : node.raw
+                        ? String(node.value)
+                        : scalarText(node.value)}
+                  </span>
                 </span>
-              </button>
+                <span className="ml-3 flex shrink-0 items-center gap-2">
+                  {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                  {isSelected ? (
+                    <>
+                      {expandable ? (
+                        <button
+                          type="button"
+                          className={rowActionClass}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            if (node.collection) {
+                              toggleNode(node.id)
+                            } else {
+                              toggleWrap(node.id)
+                            }
+                          }}
+                        >
+                          {showsAll ? 'Collapse' : 'Expand'}
+                          <KeyHints>
+                            <Kbd hotkey="Enter" />
+                          </KeyHints>
+                        </button>
+                      ) : null}
+                      {body.root ? (
+                        <button
+                          type="button"
+                          className={rowActionClass}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void copyRow(node)
+                          }}
+                        >
+                          {copiedId === node.id ? 'Copied' : 'Copy'}
+                          <KeyHints>
+                            <Kbd hotkey="Y" />
+                          </KeyHints>
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </span>
+              </div>
             )
           })}
         </div>

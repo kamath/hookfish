@@ -75,6 +75,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'filter', hotkey: '/', label: 'filter' },
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous' },
+      { id: 'nextTab', hotkey: 'Tab', label: 'next' },
+      { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous' },
       { id: 'input', hotkey: 'Enter', label: 'input' },
       { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       {
@@ -161,6 +163,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next line' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous line' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      { id: 'copy', hotkey: 'Y', label: 'copy JSON', flag: 'hasJson' },
       {
         id: 'resend',
         hotkey: 'Mod+Enter',
@@ -348,6 +351,8 @@ export function usePaneStep(pane: Pane, step: (delta: number) => void, enabled =
   usePaneActions(pane, {
     next: { callback: () => step(1), enabled },
     previous: { callback: () => step(-1), enabled },
+    nextTab: { callback: () => step(1), enabled, ignoreInputs: false },
+    previousTab: { callback: () => step(-1), enabled, ignoreInputs: false },
   })
 }
 

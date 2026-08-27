@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
+import { setCloudProxy } from '../cloud'
 import { closeMcpConnection, getMcpTrace } from './client'
 import { mcpExecutableAdapter } from './executable'
 import {
@@ -73,7 +74,7 @@ function listResult(id: unknown, key: string, value: unknown[]) {
 
 globalThis.fetch = async (input, init) => {
   const proxyUrl = new URL(input instanceof Request ? input.url : String(input))
-  const endpoint = proxyUrl.searchParams.get('url') ?? ''
+  const endpoint = proxyUrl.searchParams.get('url') ?? proxyUrl.toString()
   const method = init?.method ?? 'GET'
   const headers = new Headers(init?.headers)
   let message: Record<string, unknown> | undefined
@@ -399,4 +400,19 @@ assert.deepEqual(getMcpTrace('modern'), [])
 await closeMcpConnection('legacy')
 await closeMcpConnection('oauth-flow')
 clearMcpOAuth('oauth-flow')
-console.log('mcp modern, legacy SHTTP, and browser OAuth storage ok')
+
+setCloudProxy(false)
+const directStart = seen.length
+await loadMcpSource('http://localhost:8787/modern', 'direct', {})
+assert.ok(
+  seen.slice(directStart).some((request) => request.endpoint.includes('localhost:8787/modern')),
+)
+assert.ok(
+  seen
+    .slice(directStart)
+    .every((request) => !request.endpoint.includes('/api/mcp-proxy')),
+)
+await closeMcpConnection('direct')
+setCloudProxy(true)
+
+console.log('mcp modern, legacy SHTTP, OAuth, and direct-browser transport ok')

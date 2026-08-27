@@ -23,11 +23,11 @@ import type {
   JsonSchema,
 } from '../lib/client-types'
 import { apiQueryOptions } from '../lib/queries'
-import { blurActive } from '../lib/focus'
+import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
 import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
-import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
+import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
@@ -370,10 +370,11 @@ function ApiWorkbench({
     if (orderedOperations.length === 0) {
       return
     }
-    if (getPane() !== 'routes') {
-      blurActive()
-      activate('routes', 'command')
+    if (isInsertMode() && isEditing()) {
+      return
     }
+    blurActive()
+    activate('routes', 'command')
     const currentId = heldOpRef.current ?? selected?.id
     const current = currentId ? (operationIndexById.get(currentId) ?? -1) : -1
     const start = current === -1 ? 0 : current
@@ -650,6 +651,11 @@ function ApiWorkbench({
           onClick={() => {
             holdOp(operation.id)
             activate('input', 'command')
+          }}
+          onFocus={() => {
+            if (heldOpRef.current !== operation.id) {
+              holdOp(operation.id)
+            }
           }}
           onPointerEnter={() => {
             if (!consumePointerIntent()) {
