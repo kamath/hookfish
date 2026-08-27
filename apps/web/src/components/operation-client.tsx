@@ -423,6 +423,21 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
+            <button
+              type="button"
+              aria-pressed={inspecting}
+              className={`inline-flex min-h-8 flex-1 items-center justify-center gap-2 px-3 py-1 text-xs font-medium outline-none md:flex-none ${
+                inspecting
+                  ? 'exec-solid'
+                  : 'bg-ink/10 text-mute hover:bg-ink/15 hover:text-ink'
+              }`}
+              onClick={toggleInspect}
+            >
+              {inspecting ? 'Call' : 'Inspect'}
+              <KeyHints>
+                <Kbd hotkey="V" />
+              </KeyHints>
+            </button>
             {inspecting ? null : adapter.exportSnippet && api.labels.export ? (
               <button
                 type="button"
@@ -440,21 +455,6 @@ export function ExecutableClient({
                 </KeyHints>
               </button>
             ) : null}
-            <button
-              type="button"
-              aria-pressed={inspecting}
-              className={`inline-flex min-h-8 flex-1 items-center justify-center px-3 py-1 text-xs font-medium outline-none md:flex-none ${
-                inspecting
-                  ? 'bg-ink/15 text-ink'
-                  : 'bg-ink/10 text-mute hover:bg-ink/15 hover:text-ink'
-              }`}
-              onClick={toggleInspect}
-            >
-              Inspect
-              <KeyHints>
-                <Kbd hotkey="V" />
-              </KeyHints>
-            </button>
             {inspecting ? null : (
             <button
               type="button"
