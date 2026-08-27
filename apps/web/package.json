@@ -10,7 +10,7 @@
     "build:node": "vite build --mode node",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "test": "tsx src/lib/api.test.ts && tsx src/lib/catalog.test.ts && tsx src/lib/cloud.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/queries.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/mcp/trace.test.ts && tsx src/lib/keymap.test.ts && tsx src/components/auth-status.test.ts",
+    "test": "tsx src/lib/api.test.ts && tsx src/lib/catalog.test.ts && tsx src/lib/cloud.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/theme.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/queries.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/mcp/trace.test.ts && tsx src/lib/keymap.test.ts && tsx src/components/auth-status.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
