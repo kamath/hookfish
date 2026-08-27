@@ -165,8 +165,12 @@ function markItem(root: HTMLElement, item: HTMLElement) {
   if (currentIndex === -1 || items.length === 0) {
     return
   }
-  const next = items[(currentIndex + 1) % items.length]
+  const next = steppedFormItem(items, currentIndex, 1)
   next?.closest<HTMLElement>('[data-oc-nav="field"]')?.setAttribute('data-oc-tab-target', 'true')
+}
+
+function steppedFormItem(items: HTMLElement[], currentIndex: number, delta: number) {
+  return items[(currentIndex + delta + items.length) % items.length]
 }
 
 function indexOfItem(items: HTMLElement[], target: Element | null): number {
@@ -332,8 +336,7 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   }
 
   const current = indexOfCurrent(root, items, delta)
-  const index = (current + delta + items.length) % items.length
-  const next = items[index]
+  const next = steppedFormItem(items, current, delta)
   if (!next) {
     return false
   }
