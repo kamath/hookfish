@@ -9,12 +9,29 @@ type ResponseNode = {
   id: string
   label?: string
   value?: unknown
+  decoded?: unknown
   depth: number
   raw?: boolean
   toggleId?: string
   children?: ResponseNode[]
   collection?: 'array' | 'object'
   property?: boolean
+}
+
+function decodeJsonString(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return undefined
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return parsed !== null && typeof parsed === 'object' ? parsed : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function buildNode(
@@ -24,27 +41,31 @@ function buildNode(
   label?: string,
   property = false,
 ): ResponseNode {
-  if (Array.isArray(value)) {
+  const decoded = decodeJsonString(value)
+  const structure = decoded ?? value
+  if (Array.isArray(structure)) {
     return {
       id,
       label,
       value,
+      decoded,
       depth,
       collection: 'array',
-      children: value.map((item, index) =>
+      children: structure.map((item, index) =>
         buildNode(item, `${id}.${index}`, depth + 1, `[${index}]`),
       ),
       property,
     }
   }
-  if (value !== null && typeof value === 'object') {
+  if (structure !== null && typeof structure === 'object') {
     return {
       id,
       label,
       value,
+      decoded,
       depth,
       collection: 'object',
-      children: Object.entries(value).map(([key, item], index) =>
+      children: Object.entries(structure).map(([key, item], index) =>
         buildNode(item, `${id}.${index}`, depth + 1, key, true),
       ),
       property,
@@ -103,6 +124,9 @@ function collectionMark(node: ResponseNode, expanded: boolean) {
   return expanded ? open : `${open}…${close}`
 }
 
+const rowActionClass =
+  'inline-flex items-center gap-1.5 bg-ink/10 px-2 py-0.5 text-xs font-medium text-ink hover:bg-ink/15'
+
 function scalarText(value: unknown) {
   const encoded = JSON.stringify(value)
   return encoded === undefined ? String(value) : encoded
@@ -113,9 +137,12 @@ function selectedJsonText(root: ResponseNode, row: ResponseNode) {
   if (!node) {
     return
   }
-  const value =
-    node.property && node.label !== undefined ? { [node.label]: node.value } : node.value
-  return JSON.stringify(value, null, 2)
+  const value = node.decoded ?? node.value
+  return JSON.stringify(
+    node.property && node.label !== undefined ? { [node.label]: value } : value,
+    null,
+    2,
+  )
 }
 
 export function ResponsePane({
@@ -153,6 +180,7 @@ export function ResponsePane({
     body.root?.collection ? new Set([body.root.id]) : new Set(),
   )
   const [selected, setSelected] = useState(() => (body.root?.children?.length ? 1 : 0))
+  const [copiedId, setCopiedId] = useState<string>()
   const rows = useMemo(
     () =>
       body.root
@@ -186,16 +214,19 @@ export function ResponsePane({
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
   }, [rows.length])
 
+  useEffect(() => {
+    if (!copiedId) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopiedId(undefined), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copiedId])
+
   function move(delta: number) {
     setSelected((current) => Math.min(Math.max(current + delta, 0), Math.max(rows.length - 1, 0)))
   }
 
-  function toggleSelected() {
-    const node = rows[selected]
-    const id = node?.toggleId ?? (node?.collection ? node.id : undefined)
-    if (!id) {
-      return
-    }
+  function toggleNode(id: string) {
     setExpanded((current) => {
       const next = new Set(current)
       if (next.has(id)) {
@@ -205,6 +236,27 @@ export function ResponsePane({
       }
       return next
     })
+  }
+
+  function toggleSelected() {
+    const node = rows[selected]
+    const id = node?.toggleId ?? (node?.collection ? node.id : undefined)
+    if (id) {
+      toggleNode(id)
+    }
+  }
+
+  async function copyRow(row: ResponseNode | undefined) {
+    if (!body.root || !row) {
+      return
+    }
+    const text = selectedJsonText(body.root, row)
+    if (text === undefined) {
+      return
+    }
+    if (await copyText(text)) {
+      setCopiedId(row.id)
+    }
   }
 
   function toggleSelectedChildren() {
@@ -259,14 +311,7 @@ export function ResponsePane({
     },
     copy: (event) => {
       event.preventDefault()
-      const row = rows[selected]
-      if (!body.root || !row) {
-        return
-      }
-      const text = selectedJsonText(body.root, row)
-      if (text !== undefined) {
-        void copyText(text)
-      }
+      void copyRow(rows[selected])
     },
     resend: (event) => {
       event.preventDefault()
@@ -398,46 +443,31 @@ export function ResponsePane({
         <div className="w-full min-w-0 overflow-hidden font-mono text-sm leading-relaxed" role="tree">
           {rows.map((node, index) => {
             const isExpanded = expanded.has(node.id)
+            const isSelected = index === selected
             const navigationHint =
-              index === selected && node.collection
-                ? 'Enter'
-                : index === selected - 1
-                  ? 'K'
-                  : index === selected + 1
-                    ? 'J'
-                    : undefined
-            const copyHint = body.root && index === selected ? 'Y' : undefined
+              index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
             const childrenHint = node.id === firstActiveChildId ? 'A' : undefined
+            const showEncoded = Boolean(node.decoded) && !isExpanded
             return (
-              <button
+              <div
                 key={node.id}
-                type="button"
                 role="treeitem"
-                aria-current={index === selected ? 'true' : undefined}
+                aria-selected={isSelected}
                 aria-expanded={node.collection ? isExpanded : undefined}
-                data-oc-current={index === selected ? 'true' : undefined}
-                className={`flex min-h-6 w-full min-w-0 items-center overflow-hidden whitespace-nowrap pr-3 text-left outline-none ${
-                  index === selected ? 'exec-active' : ''
+                data-oc-current={isSelected ? 'true' : undefined}
+                className={`flex min-h-6 w-full min-w-0 items-center overflow-hidden whitespace-nowrap pr-3 text-left ${
+                  isSelected ? 'exec-active' : ''
                 }`}
                 style={{ paddingInlineStart: '0.25rem' }}
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
-                    setExpanded((current) => {
-                      const next = new Set(current)
-                      if (next.has(node.id)) {
-                        next.delete(node.id)
-                      } else {
-                        next.add(node.id)
-                      }
-                      return next
-                    })
+                    toggleNode(node.id)
                   }
                 }}
               >
-                <span className="inline-flex w-16 shrink-0 justify-end gap-1 pr-2">
+                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
                   {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                  {copyHint ? <Kbd hotkey={copyHint} /> : null}
                 </span>
                 <span
                   className="inline-flex items-center"
@@ -452,19 +482,59 @@ export function ResponsePane({
                     </span>
                   ) : null}
                 </span>
-                <span className="min-w-0 truncate">
+                <span className="min-w-0 flex-1 truncate">
                   {node.label !== undefined ? (
                     <span className="text-mute">{node.label}: </span>
                   ) : null}
-                  <span className={node.collection || node.toggleId ? 'text-faint' : 'text-ink'}>
-                    {node.collection
+                  <span
+                    className={
+                      (node.collection && !showEncoded) || node.toggleId
+                        ? 'text-faint'
+                        : 'text-ink'
+                    }
+                  >
+                    {node.collection && !showEncoded
                       ? collectionMark(node, isExpanded)
                       : node.raw
                         ? String(node.value)
                         : scalarText(node.value)}
                   </span>
                 </span>
-              </button>
+                {isSelected ? (
+                  <span className="ml-3 flex shrink-0 items-center gap-2">
+                    {node.collection ? (
+                      <button
+                        type="button"
+                        className={rowActionClass}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggleNode(node.id)
+                        }}
+                      >
+                        {isExpanded ? 'Collapse' : 'Expand'}
+                        <KeyHints>
+                          <Kbd hotkey="Enter" />
+                        </KeyHints>
+                      </button>
+                    ) : null}
+                    {body.root ? (
+                      <button
+                        type="button"
+                        className={rowActionClass}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void copyRow(node)
+                        }}
+                      >
+                        {copiedId === node.id ? 'Copied' : 'Copy'}
+                        <KeyHints>
+                          <Kbd hotkey="Y" />
+                        </KeyHints>
+                      </button>
+                    ) : null}
+                  </span>
+                ) : null}
+              </div>
             )
           })}
         </div>
