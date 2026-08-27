@@ -390,7 +390,7 @@ export function ExecutableClient({
               {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
+          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto md:shrink-0 md:gap-3 [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
             {onPrevious || onNext ? (
               <>
                 <button
@@ -459,7 +459,7 @@ export function ExecutableClient({
             <button
               type="button"
               data-oc-nav="action"
-              className={`${formPrimaryButtonClass} exec-solid flex-1 whitespace-nowrap md:flex-none`}
+              className={`${formPrimaryButtonClass} exec-solid flex-1 gap-2 whitespace-nowrap md:flex-none`}
               disabled={pending || authPending}
               onClick={() => submitForm('call-form')}
             >
@@ -469,7 +469,7 @@ export function ExecutableClient({
                 'Saving…'
               ) : (
                 <>
-                  <KeyHints className="mr-2 inline-flex gap-1">
+                  <KeyHints className="inline-flex gap-1">
                     <Kbd hotkey="Mod" />
                     <Kbd hotkey="Enter" />
                   </KeyHints>
