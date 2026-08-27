@@ -4,7 +4,7 @@ import { Kbd, KeyHints } from './hints'
 
 export function BackCaret() {
   return (
-    <span aria-hidden="true" className="text-base leading-none">
+    <span aria-hidden="true" className="inline-flex size-4 items-center justify-center text-sm leading-none">
       ‹
     </span>
   )
@@ -32,7 +32,7 @@ export function PaneBackButton({
       {children ?? (
         <>
           <BackCaret />
-          {label}
+          <span className="leading-none">{label}</span>
         </>
       )}
       <KeyHints>

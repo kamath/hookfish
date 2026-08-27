@@ -754,10 +754,10 @@ function ApiWorkbench({
               </button>
             </div>
           ) : null}
-          <div className="flex w-full items-center gap-1 md:ml-auto md:w-auto md:gap-3">
+          <div className="flex w-full items-center justify-center gap-1 md:ml-auto md:w-auto md:justify-end md:gap-3">
             <button
               type="button"
-              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm text-mute hover:text-ink"
+              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm leading-none text-mute hover:text-ink"
               aria-label={backLabel}
               onClick={stepBack}
             >
@@ -766,12 +766,12 @@ function ApiWorkbench({
                   <span className="oc-bar-action-icon" aria-hidden="true">
                     <BackCaret />
                   </span>
-                  <span className="min-w-0 truncate">Close traces</span>
+                  <span className="min-w-0 truncate leading-none">Close traces</span>
                 </>
               ) : (
                 <>
                   <BackCaret />
-                  {parentTitle}
+                  <span className="leading-none">{parentTitle}</span>
                 </>
               )}
               <Kbd hotkey="Escape" />
@@ -779,7 +779,7 @@ function ApiWorkbench({
             {onClearAuth ? (
               <button
                 type="button"
-                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
+                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm leading-none text-mute hover:text-ink disabled:opacity-40"
                 aria-label="Clear credentials"
                 disabled={authPending}
                 onClick={() => {
