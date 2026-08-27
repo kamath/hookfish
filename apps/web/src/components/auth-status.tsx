@@ -5,6 +5,33 @@ import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
 const COUNTDOWN_START = 3
 
+function Spinner() {
+  return (
+    <svg
+      className="size-4 shrink-0 animate-spin text-mute"
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.2"
+        strokeWidth="2"
+      />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function AuthRedirect({
   href,
   onCancel,
@@ -17,30 +44,32 @@ export function AuthRedirect({
   onCancelRef.current = onCancel
 
   useEffect(() => {
-    if (remaining <= 1) {
+    if (remaining === 0) {
+      window.location.assign(href)
       return
     }
     const timer = window.setTimeout(() => {
       setRemaining((value) => value - 1)
     }, 1000)
     return () => window.clearTimeout(timer)
-  }, [remaining])
+  }, [href, remaining])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        return
-      }
       if (event.key === 'Escape') {
         event.preventDefault()
+        event.stopPropagation()
         event.stopImmediatePropagation()
         onCancelRef.current()
         return
       }
       if (event.key === 'Enter') {
         event.preventDefault()
+        event.stopPropagation()
         event.stopImmediatePropagation()
-        window.location.assign(href)
+        if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+          window.location.assign(href)
+        }
       }
     }
     document.addEventListener('keydown', onKeyDown, true)
@@ -49,18 +78,16 @@ export function AuthRedirect({
 
   return (
     <div>
-      <p className="text-sm text-mute">
-        Redirecting in{' '}
-        <span className="font-mono">
-          {[3, 2, 1].map((value, index) => (
-            <span
-              key={value}
-              className={value === remaining ? 'text-ink' : 'text-faint'}
-            >
-              {index > 0 ? ' ' : ''}
-              {value}
-            </span>
-          ))}
+      <p className="flex items-center gap-2 text-sm text-mute">
+        <Spinner />
+        <span>
+          Redirecting
+          {remaining > 0 ? (
+            <>
+              {' '}
+              in <span className="font-mono text-ink">{remaining}</span>
+            </>
+          ) : null}
         </span>
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

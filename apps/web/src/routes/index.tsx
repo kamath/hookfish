@@ -160,17 +160,16 @@ function Home() {
     hasSpecs: apis.length > 0,
     hasAuthRedirect: Boolean(pendingAuth),
   })
-  useStepKeys('specs', move, apis.length > 0)
+  useStepKeys('specs', move, apis.length > 0 && !pendingAuth)
   usePaneActions('specs', {
     ...Object.fromEntries(
-      CATALOG.map((entry) => [catalogActionId(entry), { callback: () => launch(entry) }]),
+      CATALOG.map((entry) => [
+        catalogActionId(entry),
+        { callback: () => launch(entry), enabled: !pendingAuth },
+      ]),
     ),
     open: {
       callback: () => {
-        if (pendingAuth) {
-          continueAuthorization()
-          return
-        }
         const api = apis[selected]
         if (api) {
           void router.navigate({
@@ -179,12 +178,16 @@ function Home() {
           })
         }
       },
-      enabled: Boolean(pendingAuth) || apis.length > 0,
+      enabled: !pendingAuth && apis.length > 0,
     },
+    continueAuth: continueAuthorization,
     cancelAuth: cancelAuthorization,
-    insert: () => {
-      activate('specs', 'edit')
-      urlRef.current?.focus()
+    insert: {
+      callback: () => {
+        activate('specs', 'edit')
+        urlRef.current?.focus()
+      },
+      enabled: !pendingAuth,
     },
     command: () => {
       enterCommand()
@@ -246,7 +249,7 @@ function Home() {
                   <button
                     type="button"
                     className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
-                    disabled={openSource.isPending}
+                    disabled={openSource.isPending || Boolean(pendingAuth)}
                     onClick={() => launch(entry)}
                   >
                     <span className="inline-flex w-4 shrink-0 justify-center">
@@ -300,6 +303,7 @@ function Home() {
               autoComplete="off"
               spellCheck={false}
               required
+              disabled={openSource.isPending || Boolean(pendingAuth)}
               className={`${softInputClass} pl-10`}
               placeholder="MCP URL or link to OpenAPI JSON/YAML"
               value={url}
@@ -308,7 +312,7 @@ function Home() {
                 activate('specs', 'edit')
               }}
               onKeyDown={(event) => {
-                if (event.key !== 'Enter') {
+                if (pendingAuth || event.key !== 'Enter') {
                   return
                 }
                 event.preventDefault()
@@ -333,7 +337,7 @@ function Home() {
                   key={option.kind}
                   type="button"
                   className={index === 0 ? primaryButtonClass : softButtonClass}
-                  disabled={openSource.isPending}
+                  disabled={openSource.isPending || Boolean(pendingAuth)}
                   onClick={() => submit(option.kind)}
                 >
                   {pending ? 'Reading…' : option.label}
@@ -367,12 +371,14 @@ function Home() {
             <section>
               <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
                 <h2>Recent</h2>
-                <KeyHints className="flex items-center gap-2 text-faint">
-                  <span>·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Kbd hotkey="Enter" /> to open
-                  </span>
-                </KeyHints>
+                {pendingAuth ? null : (
+                  <KeyHints className="flex items-center gap-2 text-faint">
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="Enter" /> to open
+                    </span>
+                  </KeyHints>
+                )}
               </div>
               <ul>
                 {apis.map((api, index) => {

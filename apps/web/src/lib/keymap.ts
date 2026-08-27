@@ -40,6 +40,13 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         label: entry.title,
       })),
       {
+        id: 'continueAuth',
+        hotkey: 'Enter',
+        label: 'continue',
+        flag: 'hasAuthRedirect',
+        modes: ['command', 'edit'],
+      },
+      {
         id: 'cancelAuth',
         hotkey: 'Escape',
         label: 'cancel',
@@ -184,7 +191,13 @@ export const activeKeybindingsAtom = atom((get) => {
   }
   return paneConfig[chrome.pane].bindings.filter((binding) => {
     const modes = binding.modes ?? ['command']
-    return modes.includes(chrome.mode) && (!binding.flag || Boolean(flags[binding.flag]))
+    const authLocked = Boolean(flags.hasAuthRedirect)
+    const allowedWhileAuth = binding.id === 'continueAuth' || binding.id === 'cancelAuth'
+    return (
+      modes.includes(chrome.mode) &&
+      (!binding.flag || Boolean(flags[binding.flag])) &&
+      (!authLocked || allowedWhileAuth)
+    )
   })
 })
 
@@ -275,6 +288,8 @@ export function useGlobalKeybindings() {
       const action = actions[binding.id]
       const modes = binding.modes ?? ['command']
       const flagOn = !binding.flag || Boolean(flags[binding.flag])
+      const authLocked = Boolean(flags.hasAuthRedirect)
+      const allowedWhileAuth = binding.id === 'continueAuth' || binding.id === 'cancelAuth'
       return {
         hotkey: binding.hotkey,
         callback: action?.callback ?? noopKeybinding,
@@ -284,7 +299,8 @@ export function useGlobalKeybindings() {
             Boolean(action) &&
             action?.enabled !== false &&
             flagOn &&
-            modes.includes(chrome.mode),
+            modes.includes(chrome.mode) &&
+            (!authLocked || allowedWhileAuth),
           ignoreInputs: action?.ignoreInputs ?? !modes.includes('edit'),
         },
       }
