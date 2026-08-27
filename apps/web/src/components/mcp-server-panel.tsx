@@ -3,6 +3,12 @@ import { asRecord } from '../lib/build-request'
 import { useMcpTrace } from '../lib/mcp/trace'
 import { Kbd } from './hints'
 
+export function mcpTransportLabel(era: unknown, sessionId: unknown) {
+  const protocol = era === 'modern' ? 'modern' : 'legacy SHTTP'
+  const session = typeof sessionId === 'string' ? 'stateful' : 'stateless'
+  return `${protocol}/${session}`
+}
+
 export function McpServerPanel({
   source,
   traceOpen,
@@ -63,8 +69,11 @@ function McpServerChrome({
         <span className="font-mono text-ink">
           MCP {typeof data.protocolVersion === 'string' ? data.protocolVersion : 'unknown'}
         </span>
-        <span className="text-mute">
-          {data.era === 'modern' ? 'modern' : 'legacy SHTTP'}
+        <span
+          className="text-mute"
+          title={typeof data.sessionId === 'string' ? data.sessionId : undefined}
+        >
+          {mcpTransportLabel(data.era, data.sessionId)}
         </span>
         {data.oauthAuthorized === true ? (
           <span className="bg-paper px-1.5 py-0.5 font-mono text-mute">OAuth</span>
@@ -112,13 +121,6 @@ function McpServerChrome({
               {capability}
             </span>
           ))}
-        {typeof data.sessionId === 'string' ? (
-          <span className="ml-auto font-mono text-faint" title={data.sessionId}>
-            session {data.sessionId.slice(0, 8)}…
-          </span>
-        ) : (
-          <span className="ml-auto text-faint">sessionless</span>
-        )}
       </div>
     </section>
   )
