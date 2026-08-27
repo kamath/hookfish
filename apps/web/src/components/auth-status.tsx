@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
+import { Kbd } from './hints'
 import { QueryStatus } from './query-status'
+import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
 const COUNTDOWN_START = 3
 
-export function AuthRedirect({ href }: { href: string }) {
+export function AuthRedirect({
+  href,
+  onCancel,
+}: {
+  href: string
+  onCancel: () => void
+}) {
   const [remaining, setRemaining] = useState(COUNTDOWN_START)
-  const linkRef = useRef<HTMLAnchorElement>(null)
-
-  useEffect(() => {
-    linkRef.current?.focus()
-  }, [])
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
 
   useEffect(() => {
     if (remaining <= 1) {
@@ -21,8 +26,29 @@ export function AuthRedirect({ href }: { href: string }) {
     return () => window.clearTimeout(timer)
   }, [remaining])
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        onCancelRef.current()
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        window.location.assign(href)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [href])
+
   return (
-    <main id="main" className="px-4 py-10">
+    <div>
       <p className="text-sm text-mute">
         Redirecting in{' '}
         <span className="font-mono">
@@ -37,14 +63,23 @@ export function AuthRedirect({ href }: { href: string }) {
           ))}
         </span>
       </p>
-      <a
-        ref={linkRef}
-        href={href}
-        className="mt-4 inline-flex min-h-11 items-center text-sm text-signal"
-      >
-        Continue automatically
-      </a>
-    </main>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={primaryButtonClass}
+          onClick={() => {
+            window.location.assign(href)
+          }}
+        >
+          Continue
+          <Kbd hotkey="Enter" persistent />
+        </button>
+        <button type="button" className={softButtonClass} onClick={onCancel}>
+          Cancel
+          <Kbd hotkey="Escape" persistent />
+        </button>
+      </div>
+    </div>
   )
 }
 

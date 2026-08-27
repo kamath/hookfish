@@ -39,6 +39,13 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         hotkey: entry.hotkey,
         label: entry.title,
       })),
+      {
+        id: 'cancelAuth',
+        hotkey: 'Escape',
+        label: 'cancel',
+        flag: 'hasAuthRedirect',
+        modes: ['command', 'edit'],
+      },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },

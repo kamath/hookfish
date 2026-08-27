@@ -18,7 +18,7 @@ import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
-import { pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
 import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
@@ -26,6 +26,12 @@ export const Route = createFileRoute('/')({
   ssr: false,
   component: Home,
 })
+
+type PendingAuth = {
+  href: string
+  sourceId: string
+  entryId?: string
+}
 
 type OpenSource = {
   url: string
@@ -41,7 +47,12 @@ function Home() {
   const urlRef = useRef<HTMLInputElement>(null)
   const [url, setUrl] = useState('')
   const [selected, setSelected] = useState(0)
-  const [authorizationUrl, setAuthorizationUrl] = useState(pendingMcpAuthorizationUrl)
+  const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
+    const pending = pendingMcpAuthorization()
+    return pending
+      ? { href: pending.url, sourceId: pending.sourceId }
+      : undefined
+  })
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
 
@@ -65,9 +76,15 @@ function Home() {
     },
     onError: (error, variables) => {
       if (UnauthorizedError.isInstance(error)) {
-        const nextUrl = pendingMcpAuthorizationUrl()
-        if (nextUrl) {
-          setAuthorizationUrl(nextUrl)
+        const next = pendingMcpAuthorization()
+        if (next) {
+          enterCommand()
+          blurActive()
+          setPendingAuth({
+            href: next.url,
+            sourceId: next.sourceId,
+            entryId: variables.entryId,
+          })
           return
         }
       }
@@ -99,9 +116,32 @@ function Home() {
     })
   }
 
+  function continueAuthorization() {
+    if (!pendingAuth) {
+      return
+    }
+    window.location.assign(pendingAuth.href)
+  }
+
+  function cancelAuthorization() {
+    const sourceId = pendingAuth?.sourceId
+    setPendingAuth(undefined)
+    openSource.reset()
+    clearPendingMcpAuthorization()
+    if (sourceId) {
+      removeApi(sourceId)
+      void queryClient.invalidateQueries({
+        queryKey: apisQueryOptions.queryKey,
+      })
+    }
+  }
+
   function submit(kind: string) {
     if (openSource.isPending || !formRef.current?.reportValidity()) {
       return
+    }
+    if (pendingAuth) {
+      cancelAuthorization()
     }
     openSource.mutate({ url: url.trim(), kind })
   }
@@ -110,10 +150,16 @@ function Home() {
     if (openSource.isPending) {
       return
     }
+    if (pendingAuth) {
+      cancelAuthorization()
+    }
     openSource.mutate({ url: entry.url, kind: entry.kind, entryId: entry.id })
   }
 
-  usePaneFlags('specs', { hasSpecs: apis.length > 0 })
+  usePaneFlags('specs', {
+    hasSpecs: apis.length > 0,
+    hasAuthRedirect: Boolean(pendingAuth),
+  })
   useStepKeys('specs', move, apis.length > 0)
   usePaneActions('specs', {
     ...Object.fromEntries(
@@ -121,6 +167,10 @@ function Home() {
     ),
     open: {
       callback: () => {
+        if (pendingAuth) {
+          continueAuthorization()
+          return
+        }
         const api = apis[selected]
         if (api) {
           void router.navigate({
@@ -129,8 +179,9 @@ function Home() {
           })
         }
       },
-      enabled: apis.length > 0,
+      enabled: Boolean(pendingAuth) || apis.length > 0,
     },
+    cancelAuth: cancelAuthorization,
     insert: () => {
       activate('specs', 'edit')
       urlRef.current?.focus()
@@ -177,40 +228,52 @@ function Home() {
             )
             return (
               <li key={entry.id}>
-                <button
-                  type="button"
-                  className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
-                  disabled={openSource.isPending}
-                  onClick={() => launch(entry)}
-                >
-                  <span className="inline-flex w-4 shrink-0 justify-center">
-                    <Kbd hotkey={entry.hotkey} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink">{entry.title}</span>
-                    <span
-                      title={status.failed ? status.text : undefined}
-                      className={`mt-0.5 block truncate font-mono text-xs ${
-                        status.failed ? 'text-error' : 'text-faint'
-                      }`}
-                    >
-                      {status.text}
+                {pendingAuth?.entryId === entry.id ? (
+                  <div className="bg-signal/10 px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex w-4 shrink-0 justify-center">
+                        <Kbd hotkey={entry.hotkey} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{entry.title}</span>
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                    disabled={openSource.isPending}
+                    onClick={() => launch(entry)}
+                  >
+                    <span className="inline-flex w-4 shrink-0 justify-center">
+                      <Kbd hotkey={entry.hotkey} />
                     </span>
-                  </span>
-                  {added ? (
-                    <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
-                  ) : null}
-                </button>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink">{entry.title}</span>
+                      <span
+                        title={status.failed ? status.text : undefined}
+                        className={`mt-0.5 block truncate font-mono text-xs ${
+                          status.failed ? 'text-error' : 'text-faint'
+                        }`}
+                      >
+                        {status.text}
+                      </span>
+                    </span>
+                    {added ? (
+                      <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
+                    ) : null}
+                  </button>
+                )}
               </li>
             )
           })}
         </ul>
       </section>
     )
-  }
-
-  if (authorizationUrl) {
-    return <AuthRedirect href={authorizationUrl} />
   }
 
   return (
@@ -280,7 +343,11 @@ function Home() {
             })}
           </div>
         </form>
-        {openSource.isError && !openSource.variables?.entryId ? (
+        {pendingAuth && !pendingAuth.entryId ? (
+          <div className="mt-3 bg-signal/10 px-3 py-3">
+            <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+          </div>
+        ) : openSource.isError && !openSource.variables?.entryId ? (
           <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>

@@ -30,7 +30,7 @@ import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
-import { clearMcpOAuth, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
 
 type Search = {
   q?: string
@@ -149,6 +149,7 @@ function ApiClientPage() {
       })
     },
   })
+  const [authDismissed, setAuthDismissed] = useState(false)
 
   if (apiQuery.isPending) {
     return isMcpOAuthCallback() ? (
@@ -163,13 +164,28 @@ function ApiClientPage() {
       throw notFound()
     }
     const authorizationUrl = pendingMcpAuthorizationUrl()
-    if (UnauthorizedError.isInstance(apiQuery.error) && authorizationUrl) {
-      return <AuthRedirect href={authorizationUrl} />
+    if (
+      !authDismissed &&
+      UnauthorizedError.isInstance(apiQuery.error) &&
+      authorizationUrl
+    ) {
+      return (
+        <main id="main" className="px-4 py-10">
+          <AuthRedirect
+            href={authorizationUrl}
+            onCancel={() => {
+              clearPendingMcpAuthorization()
+              setAuthDismissed(true)
+            }}
+          />
+        </main>
+      )
     }
     return (
       <QueryStatus
         error={apiQuery.error}
         onRetry={() => {
+          setAuthDismissed(false)
           void apiQuery.refetch()
         }}
       />
