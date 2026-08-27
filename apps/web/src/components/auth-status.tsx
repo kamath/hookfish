@@ -77,8 +77,8 @@ export function AuthRedirect({
   }, [href])
 
   return (
-    <div>
-      <p className="flex items-center gap-2 text-sm text-mute">
+    <div className="flex flex-col items-center text-center">
+      <p className="flex items-center justify-center gap-2 text-sm text-mute">
         <Spinner />
         <span>
           Redirecting
@@ -90,7 +90,7 @@ export function AuthRedirect({
           ) : null}
         </span>
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
         <button
           type="button"
           className={primaryButtonClass}
@@ -98,7 +98,7 @@ export function AuthRedirect({
             window.location.assign(href)
           }}
         >
-          Continue
+          Go now
           <Kbd hotkey="Enter" persistent />
         </button>
         <button type="button" className={softButtonClass} onClick={onCancel}>

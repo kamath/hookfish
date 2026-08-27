@@ -42,7 +42,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       {
         id: 'continueAuth',
         hotkey: 'Enter',
-        label: 'continue',
+        label: 'go now',
         flag: 'hasAuthRedirect',
         modes: ['command', 'edit'],
       },
