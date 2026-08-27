@@ -391,16 +391,26 @@ function Home() {
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="Enter" /> to open
+                      <Kbd hotkey="Enter" /> open
                     </span>
+                    {apis.length > 1 ? (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Kbd hotkey="J" /> down
+                        </span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Kbd hotkey="K" /> up
+                        </span>
+                      </>
+                    ) : null}
                   </KeyHints>
                 )}
               </div>
               <ul>
                 {apis.map((api, index) => {
                   const active = index === selected
-                  const navigationHint =
-                    index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
                   return (
                     <li
                       key={api.id}
@@ -416,11 +426,6 @@ function Home() {
                         className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
                         onFocus={() => setSelected(index)}
                       >
-                        {showKeybindings && navigationHint ? (
-                          <span className="inline-flex w-4 shrink-0 justify-center">
-                            <Kbd hotkey={navigationHint} />
-                          </span>
-                        ) : null}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm text-ink">{api.title}</span>
                           <span className="mt-0.5 block truncate font-mono text-xs text-faint">
