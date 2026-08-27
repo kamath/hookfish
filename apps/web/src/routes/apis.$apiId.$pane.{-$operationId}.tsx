@@ -28,7 +28,13 @@ import { apiQueryOptions } from '../lib/queries'
 import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
-import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import {
+  consumePointerIntent,
+  useKeybindingsEnabled,
+  usePaneActions,
+  usePaneFlags,
+  useStepKeys,
+} from '../lib/keys'
 import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
@@ -248,6 +254,7 @@ function ApiWorkbench({
   const home = useNavigate()
   const queryClient = useQueryClient()
   const activePane = usePane()
+  const keybindings = useKeybindingsEnabled()
   const [serverUrl, setServerUrl] = useState(api.targets[0] ?? '')
   const [filterValue, setFilterValue] = useState(search.q ?? '')
   const deferredFilterValue = useDeferredValue(filterValue)
@@ -708,7 +715,7 @@ function ApiWorkbench({
                 aria-label={`Previous ${api.labels.target}`}
                 onClick={() => cycleServer(-1)}
               >
-                <Kbd hotkey="[" />
+                <Kbd hotkey="[" fallback="‹" />
               </button>
               <label htmlFor="server-url" className="sr-only">
                 {api.labels.target}
@@ -733,7 +740,7 @@ function ApiWorkbench({
                 aria-label={`Next ${api.labels.target}`}
                 onClick={() => cycleServer(1)}
               >
-                <Kbd hotkey="]" />
+                <Kbd hotkey="]" fallback="›" />
               </button>
             </div>
           ) : null}
@@ -825,7 +832,7 @@ function ApiWorkbench({
                   autoComplete="off"
                   spellCheck={false}
                   className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                    filterValue ? 'pr-16' : 'pr-9'
+                    filterValue ? (keybindings ? 'pr-16' : 'pr-9') : keybindings ? 'pr-9' : ''
                   }`}
                   value={filterValue}
                   onFocus={() => {
@@ -838,7 +845,9 @@ function ApiWorkbench({
                   <button
                     type="button"
                     aria-label={`Clear ${api.labels.executable} filter`}
-                    className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                    className={`absolute inset-y-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink ${
+                      keybindings ? 'right-8' : 'right-0'
+                    }`}
                     onClick={() => {
                       setFilterValue('')
                       document.getElementById('operation-filter')?.focus()
@@ -856,9 +865,11 @@ function ApiWorkbench({
                     </svg>
                   </button>
                 ) : null}
-                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                  <Kbd hotkey="/" />
-                </span>
+                {keybindings ? (
+                  <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                    <Kbd hotkey="/" />
+                  </span>
+                ) : null}
               </div>
             )}
           </div>
