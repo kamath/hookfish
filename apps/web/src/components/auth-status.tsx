@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
-import { keybindingsEnabled } from '../lib/keys'
+import { isEscapeLike, keybindingsEnabled } from '../lib/keys'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 import { StatusPane } from './query-status'
 
@@ -93,7 +93,7 @@ export function AuthRedirect({
         return
       }
       const waiting = remainingRef.current > 0
-      if (event.key === 'Escape') {
+      if (isEscapeLike(event)) {
         event.preventDefault()
         event.stopPropagation()
         event.stopImmediatePropagation()

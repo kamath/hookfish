@@ -5,6 +5,7 @@ export { consumePointerIntent } from './keymap'
 export {
   KEYBINDINGS_MEDIA,
   activeKeybindingsAtom,
+  isEscapeLike,
   keybindingsEnabled,
   paneConfig,
   sourceSubmitActionId,
