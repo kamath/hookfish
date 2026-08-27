@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "vite build --mode cloudflare && wrangler deploy",
+    "deploy": "vite build --mode cloudflare && wrangler deploy --config ../../wrangler.jsonc",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/mcp/client.test.ts",

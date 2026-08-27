@@ -26,7 +26,12 @@ const config = defineConfig(({ command, mode }) => {
     plugins: [
       devtools(),
       ...(isCloudflareBuild
-        ? [cloudflare({ viteEnvironment: { name: 'ssr' } })]
+        ? [
+            cloudflare({
+              configPath: '../../wrangler.jsonc',
+              viteEnvironment: { name: 'ssr' },
+            }),
+          ]
         : []),
       tailwindcss(),
       tanstackStart(),
