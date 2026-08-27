@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { AuthRedirect } from '../components/auth-status'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -16,6 +18,7 @@ import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
+import { pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
 import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
@@ -38,6 +41,7 @@ function Home() {
   const urlRef = useRef<HTMLInputElement>(null)
   const [url, setUrl] = useState('')
   const [selected, setSelected] = useState(0)
+  const [authorizationUrl, setAuthorizationUrl] = useState(pendingMcpAuthorizationUrl)
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
 
@@ -59,7 +63,14 @@ function Home() {
         params: { apiId: id, pane: 'routes', operationId: undefined },
       })
     },
-    onError: (_error, variables) => {
+    onError: (error, variables) => {
+      if (UnauthorizedError.isInstance(error)) {
+        const nextUrl = pendingMcpAuthorizationUrl()
+        if (nextUrl) {
+          setAuthorizationUrl(nextUrl)
+          return
+        }
+      }
       if (!variables.entryId) {
         urlRef.current?.focus()
       }
@@ -196,6 +207,10 @@ function Home() {
         </ul>
       </section>
     )
+  }
+
+  if (authorizationUrl) {
+    return <AuthRedirect href={authorizationUrl} />
   }
 
   return (
