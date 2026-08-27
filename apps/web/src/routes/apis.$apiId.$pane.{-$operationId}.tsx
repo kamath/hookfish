@@ -536,8 +536,7 @@ function ApiWorkbench({
               return
             }
             if (activePane !== 'routes') {
-              blurActive()
-              activate('routes', 'command')
+              return
             }
             if (heldOpRef.current !== operation.id) {
               holdOp(operation.id)
