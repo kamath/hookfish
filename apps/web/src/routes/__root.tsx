@@ -8,11 +8,13 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from '../components/brand'
+import { ThemeToggle } from '../components/theme-toggle'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
+import { THEME_COLORS, THEME_INIT_SCRIPT, bindTheme } from '../lib/theme'
 import appCss from '../styles.css?url'
 
 const hotkeyDefaults = {
@@ -29,8 +31,8 @@ export const Route = createRootRouteWithContext<{
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
-      { name: 'color-scheme', content: 'light' },
-      { name: 'theme-color', content: '#f7f6f3' },
+      { name: 'color-scheme', content: 'light dark' },
+      { name: 'theme-color', content: THEME_COLORS.light },
       { title: 'Hookfish' },
       {
         name: 'description',
@@ -60,9 +62,10 @@ export const Route = createRootRouteWithContext<{
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         {children}
@@ -84,6 +87,8 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
+  useLayoutEffect(() => bindTheme(), [])
+
   useEffect(() => {
     hydrateCloudProxy()
     const unbindFocus = bindModeFromFocus()
@@ -135,7 +140,7 @@ function CloudProxyToggle() {
   const [cloudProxy, setCloudProxy] = useCloudProxy()
   return (
     <div
-      className={`flex shrink-0 items-center gap-3 px-3 py-2 text-xs md:px-4 ${
+      className={`flex shrink-0 flex-wrap items-center gap-3 px-3 py-2 text-xs md:px-4 ${
         cloudProxy ? 'bg-ink/5 text-mute' : 'bg-signal/10 text-ink'
       }`}
     >
@@ -181,6 +186,7 @@ function CloudProxyToggle() {
           </>
         )}
       </p>
+      <ThemeToggle />
     </div>
   )
 }
