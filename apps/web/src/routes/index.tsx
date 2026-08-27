@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { AuthRedirect } from '../components/auth-status'
+import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
@@ -137,13 +137,6 @@ function Home() {
     })
   }
 
-  function continueAuthorization() {
-    if (!pendingAuth) {
-      return
-    }
-    window.location.assign(pendingAuth.href)
-  }
-
   function cancelAuthorization() {
     const sourceId = pendingAuth?.sourceId
     setPendingAuth(undefined)
@@ -235,7 +228,7 @@ function Home() {
     },
     confirmRemove,
     cancelRemove,
-    continueAuth: continueAuthorization,
+    continueAuth: finishPendingAuthRedirect,
     cancelAuth: cancelAuthorization,
     insert: {
       callback: () => {
@@ -283,11 +276,11 @@ function Home() {
                 api.kind === entry.kind &&
                 sourceUrlKey(api.sourceUrl) === sourceUrlKey(catalogSourceUrl(entry)),
             )
-            const hotkey = (
+            const hotkey = showKeybindings ? (
               <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
-                {showKeybindings ? <Kbd hotkey={entry.hotkey} /> : null}
+                <Kbd hotkey={entry.hotkey} />
               </span>
-            )
+            ) : null
             return (
               <li key={entry.id}>
                 {pendingAuth?.entryId === entry.id ? (
