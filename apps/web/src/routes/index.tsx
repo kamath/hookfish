@@ -243,19 +243,20 @@ function Home() {
                 api.kind === entry.kind &&
                 sourceUrlKey(api.sourceUrl) === sourceUrlKey(entry.url),
             )
+            const hotkey = (
+              <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
+                {showKeybindings ? <Kbd hotkey={entry.hotkey} /> : null}
+              </span>
+            )
             return (
               <li key={entry.id}>
                 {pendingAuth?.entryId === entry.id ? (
                   <div className="bg-signal/10 px-3 py-2">
                     <div className="flex items-center gap-3">
-                      {showKeybindings ? (
-                        <span className="inline-flex w-4 shrink-0 justify-center">
-                          <Kbd hotkey={entry.hotkey} />
-                        </span>
-                      ) : null}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-ink">{entry.title}</span>
                       </span>
+                      {hotkey}
                     </div>
                   </div>
                 ) : (
@@ -265,11 +266,6 @@ function Home() {
                     disabled={openSource.isPending || Boolean(pendingAuth)}
                     onClick={() => launch(entry)}
                   >
-                    {showKeybindings ? (
-                      <span className="inline-flex w-4 shrink-0 justify-center">
-                        <Kbd hotkey={entry.hotkey} />
-                      </span>
-                    ) : null}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{entry.title}</span>
                       <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -289,6 +285,7 @@ function Home() {
                     {added ? (
                       <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
                     ) : null}
+                    {hotkey}
                   </button>
                 )}
               </li>
