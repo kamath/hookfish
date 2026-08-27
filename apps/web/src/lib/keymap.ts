@@ -174,7 +174,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canClear',
         modes: ['command', 'edit'],
       },
-      { id: 'parent', hotkey: 'Escape', label: 'back' },
+      { id: 'parent', hotkey: 'Escape', label: 'close' },
     ],
   },
 }

@@ -708,7 +708,7 @@ function ApiWorkbench({
               onClick={stepBack}
             >
               {routePane === 'trace'
-                ? 'Close trace'
+                ? 'Close traces'
                 : activePane === 'response'
                   ? 'Input'
                   : activePane === 'input'

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
-import { groupProtocolTrace, rpcAccent } from './trace'
+import { groupProtocolTrace, rpcAccent, rpcFrameView } from './trace'
 
 function entry(
   partial: Pick<ProtocolTraceEntry, 'direction' | 'kind' | 'summary'> &
@@ -122,4 +122,68 @@ assert.equal(rpcAccent('resources/list'), 'var(--accent-mcp-resource)')
 assert.equal(rpcAccent('prompts/get'), 'var(--accent-mcp-prompt)')
 assert.equal(rpcAccent('notifications/initialized'), 'var(--signal)')
 assert.equal(rpcAccent('server/discover'), 'var(--signal)')
+
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'out',
+      kind: 'jsonrpc',
+      summary: 'tools/list',
+      detail: { jsonrpc: '2.0', id: 2, method: 'tools/list', params: { cursor: 'a' } },
+    }),
+  ),
+  { label: 'request', value: { id: 2, params: { cursor: 'a' } } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'jsonrpc',
+      summary: 'RPC response 2',
+      detail: {
+        jsonrpc: '2.0',
+        id: 2,
+        result: { tools: [{ name: 'echo' }] },
+      },
+    }),
+  ),
+  { label: 'result', value: { tools: [{ name: 'echo' }] } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'jsonrpc',
+      summary: 'RPC error -32601',
+      detail: {
+        jsonrpc: '2.0',
+        id: 3,
+        error: { code: -32601, message: 'Method not found' },
+      },
+    }),
+  ),
+  { label: 'error', value: { code: -32601, message: 'Method not found' } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'http',
+      summary: '200 OK',
+      detail: { contentType: 'application/json', sessionId: null },
+    }),
+  ),
+  { label: '200 OK', value: { contentType: 'application/json' } },
+)
+assert.deepEqual(
+  rpcFrameView(
+    entry({
+      direction: 'in',
+      kind: 'notification',
+      summary: 'notifications/initialized',
+      detail: { jsonrpc: '2.0', method: 'notifications/initialized' },
+    }),
+  ),
+  { label: 'notify' },
+)
 console.log('protocol trace grouping ok')

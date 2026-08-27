@@ -75,6 +75,60 @@ export function groupProtocolTrace(entries: ProtocolTraceEntry[]): ProtocolRpc[]
   return groups
 }
 
+function asObject(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  return value as Record<string, unknown>
+}
+
+function compact(value: Record<string, unknown>) {
+  const entries = Object.entries(value).filter(
+    ([, item]) => item !== undefined && item !== null && item !== '',
+  )
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+export function rpcFrameView(frame: ProtocolTraceEntry): {
+  label: string
+  value?: unknown
+} {
+  const object = asObject(frame.detail)
+
+  if (frame.kind === 'http') {
+    return {
+      label: frame.summary,
+      value: object ? compact(object) : frame.detail,
+    }
+  }
+
+  if (!object) {
+    return { label: frame.summary, value: frame.detail }
+  }
+
+  if (object.error !== undefined) {
+    return { label: 'error', value: object.error }
+  }
+
+  if (object.result !== undefined) {
+    return { label: 'result', value: object.result }
+  }
+
+  const notify =
+    frame.kind === 'notification' ||
+    (typeof object.method === 'string' && object.id === undefined)
+  const fields = compact({
+    id: object.id,
+    params: object.params,
+  })
+  return fields
+    ? {
+        label: notify ? 'notify' : 'request',
+        value: fields,
+      }
+    : { label: notify ? 'notify' : 'request' }
+}
+
 export function rpcAccent(summary: string): string {
   const method = summary.toLowerCase()
   if (method.includes('tool')) {
