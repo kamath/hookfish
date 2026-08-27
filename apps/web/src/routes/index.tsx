@@ -16,10 +16,16 @@ import {
 } from '../lib/catalog'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import {
+  sourceSubmitActionId,
+  usePaneActions,
+  usePaneFlags,
+  useShowKeybindings,
+  useStepKeys,
+} from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
-import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
+import { sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 export const Route = createFileRoute('/')({
@@ -55,6 +61,7 @@ function Home() {
   })
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
+  const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
     mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
@@ -189,6 +196,12 @@ function Home() {
       },
       enabled: !pendingAuth,
     },
+    ...Object.fromEntries(
+      sourceOptions.map((option) => [
+        sourceSubmitActionId(option.kind),
+        { callback: () => submit(option.kind), enabled: !pendingAuth, ignoreInputs: false },
+      ]),
+    ),
     command: () => {
       enterCommand()
       blurActive()
@@ -234,9 +247,11 @@ function Home() {
                 {pendingAuth?.entryId === entry.id ? (
                   <div className="bg-signal/10 px-3 py-2">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex w-4 shrink-0 justify-center">
-                        <Kbd hotkey={entry.hotkey} />
-                      </span>
+                      {showKeybindings ? (
+                        <span className="inline-flex w-4 shrink-0 justify-center">
+                          <Kbd hotkey={entry.hotkey} />
+                        </span>
+                      ) : null}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-ink">{entry.title}</span>
                       </span>
@@ -249,9 +264,11 @@ function Home() {
                     disabled={openSource.isPending || Boolean(pendingAuth)}
                     onClick={() => launch(entry)}
                   >
-                    <span className="inline-flex w-4 shrink-0 justify-center">
-                      <Kbd hotkey={entry.hotkey} />
-                    </span>
+                    {showKeybindings ? (
+                      <span className="inline-flex w-4 shrink-0 justify-center">
+                        <Kbd hotkey={entry.hotkey} />
+                      </span>
+                    ) : null}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{entry.title}</span>
                       <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -306,29 +323,19 @@ function Home() {
               spellCheck={false}
               required
               disabled={openSource.isPending || Boolean(pendingAuth)}
-              className={`${softInputClass} pl-10`}
+              className={`${softInputClass} ${showKeybindings ? 'pl-10' : ''}`}
               placeholder="MCP URL or link to OpenAPI JSON/YAML"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onFocus={() => {
                 activate('specs', 'edit')
               }}
-              onKeyDown={(event) => {
-                if (pendingAuth || event.key !== 'Enter') {
-                  return
-                }
-                event.preventDefault()
-                const adapter = sourceAdapterForSubmit(
-                  event.metaKey || event.ctrlKey ? 'Mod+Enter' : 'Enter',
-                )
-                if (adapter) {
-                  submit(adapter.kind)
-                }
-              }}
             />
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Kbd hotkey="I" />
-            </span>
+            {showKeybindings ? (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <Kbd hotkey="I" />
+              </span>
+            ) : null}
           </div>
           <div className="flex shrink-0 gap-2">
             {sourceOptions.map((option, index) => {
@@ -343,7 +350,7 @@ function Home() {
                   onClick={() => submit(option.kind)}
                 >
                   {pending ? 'Reading…' : option.label}
-                  <Kbd hotkey={option.submitHotkey} persistent />
+                  {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
                 </button>
               )
             })}
@@ -369,7 +376,7 @@ function Home() {
             <section>
               <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
                 <h2>Recent</h2>
-                {pendingAuth ? null : (
+                {pendingAuth || !showKeybindings ? null : (
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
@@ -398,7 +405,7 @@ function Home() {
                         className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
                         onFocus={() => setSelected(index)}
                       >
-                        {navigationHint ? (
+                        {showKeybindings && navigationHint ? (
                           <span className="inline-flex w-4 shrink-0 justify-center">
                             <Kbd hotkey={navigationHint} />
                           </span>
