@@ -12,17 +12,19 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`. Try:
-
-`https://petstore3.swagger.io/api/v3/openapi.json`
+Open `http://localhost:3000`. The launcher opens ten curated sources from command mode:
+`1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
+bar and press `Enter` to connect to it as an MCP server or `Cmd`/`Ctrl`+`Enter` to read it as
+an OpenAPI document.
 
 ## Adding a source type
 
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
 `apps/web/src/lib/client-types.ts`. Register source discovery/loading in
-`apps/web/src/lib/source-adapters.ts`;
-the source selector is populated from that registry. A source parser supplies executable
-names, badges, accent colors, JSON Schema inputs, targets, credentials, and UI labels.
+`apps/web/src/lib/source-adapters.ts`; the launcher's submit buttons and their shortcuts come
+from that registry. A source parser supplies executable names, badges, accent colors, JSON
+Schema inputs, targets, credentials, and UI labels. Curated entries and their number keys live
+in `apps/web/src/lib/catalog.ts`; adding a row there also registers its keybinding.
 
 Register execution behavior with `registerExecutableAdapter()` in
 `apps/web/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
@@ -34,8 +36,8 @@ changes.
 
 ## MCP inspector
 
-Choose **MCP** on the source screen and enter a Streamable HTTP endpoint. Hookfish uses the
-official MCP TypeScript client with automatic protocol negotiation:
+Pick an MCP server from the launcher or enter a Streamable HTTP endpoint and press `Enter`.
+Hookfish uses the official MCP TypeScript client with automatic protocol negotiation:
 
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions
 - legacy Streamable HTTP `2025-03-26` through `2025-11-25`, including initialization,

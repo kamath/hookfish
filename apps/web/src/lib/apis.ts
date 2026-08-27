@@ -7,11 +7,10 @@ import {
   readApiAuth,
   saveApiAuth,
 } from './auth'
-import { DEFAULTS_VERSION, mergeDefaultSpecs } from './defaults'
 import { sourceAdapterFor } from './source-adapters'
 import { closeMcpConnection } from './mcp/client'
 import { clearMcpOAuth, hasMcpOAuthTokens } from './mcp/oauth'
-import { readApisJson, readDefaultsVersion, writeApisJson, writeDefaultsVersion } from './storage'
+import { readApisJson, writeApisJson } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
   if (!value || typeof value !== 'object') {
@@ -53,15 +52,9 @@ function sourceSummary(value: unknown): ApiSummary | undefined {
 
 function loadApis(): ApiSummary[] {
   const raw = readApisJson()
-  const stored = Array.isArray(raw)
+  return Array.isArray(raw)
     ? raw.map(sourceSummary).filter((value): value is ApiSummary => Boolean(value))
     : []
-  const { apis, persist } = mergeDefaultSpecs(stored, readDefaultsVersion())
-  if (persist) {
-    saveApis(apis)
-    writeDefaultsVersion(DEFAULTS_VERSION)
-  }
-  return apis
 }
 
 function saveApis(apis: ApiSummary[]) {

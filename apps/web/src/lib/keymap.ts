@@ -11,6 +11,7 @@ import {
   type Mode,
   type Pane,
 } from './chrome'
+import { CATALOG, catalogActionId } from './catalog'
 import { blurActive, isEditing } from './focus'
 
 export type PaneBinding = {
@@ -40,13 +41,12 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'open', hotkey: 'Enter', label: 'open' },
       { id: 'next', hotkey: 'J', label: 'next source', flag: 'hasSpecs' },
       { id: 'previous', hotkey: 'K', label: 'previous source', flag: 'hasSpecs' },
-      {
-        id: 'sourceType',
-        hotkey: 'Mod+/',
-        label: 'source type',
-        modes: ['command', 'edit'],
-      },
       { id: 'insert', hotkey: 'I', label: 'insert' },
+      ...CATALOG.map((entry) => ({
+        id: catalogActionId(entry),
+        hotkey: entry.hotkey,
+        label: entry.title,
+      })),
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },

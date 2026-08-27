@@ -101,16 +101,6 @@ function AppShell() {
         >
           Skip to content
         </a>
-        <header className="oc-bar shrink-0">
-          <div className="flex h-12 items-center px-3 md:px-4">
-            <Link
-              to="/"
-              className="font-mono text-sm text-ink hover:text-signal focus-visible:border-signal"
-            >
-              client
-            </Link>
-          </div>
-        </header>
         <div className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </div>
