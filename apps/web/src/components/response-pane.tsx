@@ -466,9 +466,6 @@ export function ResponsePane({
                   }
                 }}
               >
-                <span className="inline-flex w-8 shrink-0 justify-end pr-2">
-                  {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                </span>
                 <span
                   className="inline-flex items-center"
                   style={{ marginInlineStart: `${node.depth * 1.25}rem` }}
@@ -500,40 +497,43 @@ export function ResponsePane({
                         : scalarText(node.value)}
                   </span>
                 </span>
-                {isSelected ? (
-                  <span className="ml-3 flex shrink-0 items-center gap-2">
-                    {node.collection ? (
-                      <button
-                        type="button"
-                        className={rowActionClass}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          toggleNode(node.id)
-                        }}
-                      >
-                        {isExpanded ? 'Collapse' : 'Expand'}
-                        <KeyHints>
-                          <Kbd hotkey="Enter" />
-                        </KeyHints>
-                      </button>
-                    ) : null}
-                    {body.root ? (
-                      <button
-                        type="button"
-                        className={rowActionClass}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          void copyRow(node)
-                        }}
-                      >
-                        {copiedId === node.id ? 'Copied' : 'Copy'}
-                        <KeyHints>
-                          <Kbd hotkey="Y" />
-                        </KeyHints>
-                      </button>
-                    ) : null}
-                  </span>
-                ) : null}
+                <span className="ml-3 flex shrink-0 items-center gap-2">
+                  {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                  {isSelected ? (
+                    <>
+                      {node.collection ? (
+                        <button
+                          type="button"
+                          className={rowActionClass}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            toggleNode(node.id)
+                          }}
+                        >
+                          {isExpanded ? 'Collapse' : 'Expand'}
+                          <KeyHints>
+                            <Kbd hotkey="Enter" />
+                          </KeyHints>
+                        </button>
+                      ) : null}
+                      {body.root ? (
+                        <button
+                          type="button"
+                          className={rowActionClass}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void copyRow(node)
+                          }}
+                        >
+                          {copiedId === node.id ? 'Copied' : 'Copy'}
+                          <KeyHints>
+                            <Kbd hotkey="Y" />
+                          </KeyHints>
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </span>
               </div>
             )
           })}
