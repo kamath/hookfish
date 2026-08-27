@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api'
+import { getConfiguredApiBaseUrl } from './api'
 
 export type CatalogHotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0'
 
@@ -68,8 +68,12 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     kind: 'openapi',
     hotkey: '7',
     title: 'Hookfish API',
-    detail: `${API_BASE_URL}/openapi.json`,
-    url: `${API_BASE_URL}/openapi.json`,
+    get detail() {
+      return `${getConfiguredApiBaseUrl()}/openapi.json`
+    },
+    get url() {
+      return `${getConfiguredApiBaseUrl()}/openapi.json`
+    },
   },
   {
     id: 'petstore',

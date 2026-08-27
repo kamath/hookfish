@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { API_BASE_URL } from './api'
+import { DEFAULT_API_BASE_URL, configureApiBaseUrl } from './api'
 import { OPENAPI_CATALOG, catalogSourceUrl } from './catalog'
 
 assert.deepEqual(
@@ -16,10 +16,13 @@ assert.equal(
   OPENAPI_CATALOG.some((entry) => entry.id === 'openrouter'),
   false,
 )
-assert.equal(OPENAPI_CATALOG[1]?.url, `${API_BASE_URL}/openapi.json`)
+assert.equal(OPENAPI_CATALOG[1]?.url, `${DEFAULT_API_BASE_URL}/openapi.json`)
 assert.equal(
   catalogSourceUrl(OPENAPI_CATALOG[1]!),
   'http://localhost/api/openapi.json',
 )
+
+configureApiBaseUrl('/backend')
+assert.equal(OPENAPI_CATALOG[1]?.url, '/backend/openapi.json')
 
 console.log('openapi catalog order ok')

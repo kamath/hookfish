@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { Link, createRoute, useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
 import { KeyHints, Kbd } from '../components/hints'
@@ -29,9 +29,11 @@ import { activate, enterCommand } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
 import { sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
+import { rootRoute } from './root'
 
-export const Route = createFileRoute('/')({
-  ssr: false,
+export const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
   component: Home,
 })
 
