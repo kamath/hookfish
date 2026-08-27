@@ -3,6 +3,7 @@ import {
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
+import { BrowserMcpOAuthProvider } from './oauth'
 
 const CLIENT_INFO = {
   name: 'hookfish-inspector',
@@ -119,7 +120,9 @@ export async function getMcpConnection(
     trace: [] as ProtocolTraceEntry[],
     startedAt: Date.now(),
   }
+  const authProvider = new BrowserMcpOAuthProvider(sourceId)
   const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
+    authProvider,
     fetch: proxyFetch(pending),
   })
   const client = new Client(CLIENT_INFO, {
@@ -150,6 +153,15 @@ export async function getMcpConnection(
       stopReason: 'endTurn',
     }) as never,
   )
+  const callbackParameters = authProvider.callbackParameters()
+  if (callbackParameters) {
+    try {
+      await transport.finishAuth(callbackParameters)
+    } finally {
+      authProvider.finishCallback()
+      authProvider.cleanCallbackUrl()
+    }
+  }
   await client.connect(transport)
   const connection: McpConnection = {
     client,

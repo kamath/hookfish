@@ -37,6 +37,9 @@ export function McpServerPanel({ source }: { source: ExecutableSource }) {
         <span className="text-mute">
           {data.era === 'modern' ? 'modern' : 'legacy SHTTP'}
         </span>
+        {data.oauthAuthorized === true ? (
+          <span className="bg-paper px-1.5 py-0.5 font-mono text-mute">OAuth</span>
+        ) : null}
         {typeof serverInfo.version === 'string' ? (
           <span className="text-faint">server {serverInfo.version}</span>
         ) : null}

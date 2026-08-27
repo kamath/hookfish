@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiMcpOauthClientRouteImport } from './routes/api.mcp-oauth-client'
 import { Route as ApiMcpProxyRouteImport } from './routes/api.mcp-proxy'
 import { Route as ApisApiIdPaneChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.$pane.{-$operationId}'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpOauthClientRoute = ApiMcpOauthClientRouteImport.update({
+  id: '/api/mcp-oauth-client',
+  path: '/api/mcp-oauth-client',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpProxyRoute = ApiMcpProxyRouteImport.update({
@@ -32,30 +38,47 @@ const ApisApiIdPaneChar123OperationIdChar125Route =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
   '/api/mcp-proxy': typeof ApiMcpProxyRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
   '/api/mcp-proxy': typeof ApiMcpProxyRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
   '/api/mcp-proxy': typeof ApiMcpProxyRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/mcp-proxy' | '/apis/$apiId/$pane/{-$operationId}'
+  fullPaths:
+    | '/'
+    | '/api/mcp-oauth-client'
+    | '/api/mcp-proxy'
+    | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/mcp-proxy' | '/apis/$apiId/$pane/{-$operationId}'
-  id: '__root__' | '/' | '/api/mcp-proxy' | '/apis/$apiId/$pane/{-$operationId}'
+  to:
+    | '/'
+    | '/api/mcp-oauth-client'
+    | '/api/mcp-proxy'
+    | '/apis/$apiId/$pane/{-$operationId}'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/mcp-oauth-client'
+    | '/api/mcp-proxy'
+    | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiMcpOauthClientRoute: typeof ApiMcpOauthClientRoute
   ApiMcpProxyRoute: typeof ApiMcpProxyRoute
   ApisApiIdPaneChar123OperationIdChar125Route: typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
@@ -67,6 +90,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp-oauth-client': {
+      id: '/api/mcp-oauth-client'
+      path: '/api/mcp-oauth-client'
+      fullPath: '/api/mcp-oauth-client'
+      preLoaderRoute: typeof ApiMcpOauthClientRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/mcp-proxy': {
@@ -88,6 +118,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiMcpOauthClientRoute: ApiMcpOauthClientRoute,
   ApiMcpProxyRoute: ApiMcpProxyRoute,
   ApisApiIdPaneChar123OperationIdChar125Route:
     ApisApiIdPaneChar123OperationIdChar125Route,

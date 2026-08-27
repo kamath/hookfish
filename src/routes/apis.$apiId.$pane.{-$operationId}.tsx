@@ -27,7 +27,8 @@ import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from 
 import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
-import { subscribeMcpChanges } from '../lib/mcp/client'
+import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
+import { clearMcpOAuth } from '../lib/mcp/oauth'
 
 type Search = {
   q?: string
@@ -137,6 +138,8 @@ function ApiClientPage() {
   const clearAuth = useMutation({
     mutationFn: async () => {
       clearApiAuth(apiId)
+      clearMcpOAuth(apiId)
+      await closeMcpConnection(apiId)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -164,7 +167,8 @@ function ApiClientPage() {
   }
 
   const api = apiQuery.data
-  const canAuth = hasAuthFields(api.credentialSchema)
+  const canAuth =
+    hasAuthFields(api.credentialSchema) || (api.kind === 'mcp' && Boolean(api.credentialsStored))
   const needsAuth = Boolean(
     canAuth && api.credentialsRequired !== false && !api.credentialsStored,
   )

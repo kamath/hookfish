@@ -10,7 +10,7 @@
     "generate-routes": "tsr generate",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/mcp/client.test.ts",
+    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/mcp/client.test.ts",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types"
@@ -27,6 +27,7 @@
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-start": "latest",
+    "ajv": "^8.20.0",
     "jotai": "^2.20.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

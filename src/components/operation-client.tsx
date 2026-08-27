@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import validator from '@rjsf/validator-ajv8'
 import type { IChangeEvent } from '@rjsf/core'
 import type {
   Executable,
@@ -15,6 +14,7 @@ import { asRecord } from '../lib/build-request'
 import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
+import { validatorForSchema } from '../lib/form-validator'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, usePane } from '../lib/mode'
@@ -397,6 +397,44 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
+            {adapter.exportSnippet && api.labels.export ? (
+              <button
+                type="button"
+                data-oc-nav="action"
+                className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                aria-live="polite"
+                aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
+                onClick={() => {
+                  void copyExport()
+                }}
+              >
+                {copied ? 'Copied' : api.labels.export}
+                <KeyHints>
+                  <Kbd hotkey="Y" />
+                </KeyHints>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              data-oc-nav="action"
+              className={`${formPrimaryButtonClass} exec-solid`}
+              disabled={pending || authPending}
+              onClick={() => submitForm('call-form')}
+            >
+              {pending ? (
+                api.labels.executing
+              ) : authPending ? (
+                'Saving…'
+              ) : (
+                <>
+                  <KeyHints className="mr-2 inline-flex gap-1">
+                    <Kbd hotkey="Mod" />
+                    <Kbd hotkey="Enter" />
+                  </KeyHints>
+                  {showAuth ? 'Continue' : api.labels.execute}
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -413,7 +451,11 @@ export function ExecutableClient({
                 ? withAuthUiSchema(operation.inputUiSchema, authUiSchema)
                 : operation.inputUiSchema) as never
             }
-            validator={validator}
+            validator={validatorForSchema(
+              showAuth && authSchema
+                ? withAuthSchema(operation.inputSchema, authSchema)
+                : operation.inputSchema,
+            )}
             formData={formData}
             onChange={(event: IChangeEvent) => setFormData(event.formData)}
             onSubmit={onSubmit}
@@ -433,45 +475,6 @@ export function ExecutableClient({
                   {queryErrorMessage(authError, 'Could not save those keys.')}
                 </p>
               ) : null}
-              <div className="flex flex-wrap items-center gap-2">
-                {adapter.exportSnippet && api.labels.export ? (
-                  <button
-                    type="button"
-                    data-oc-nav="action"
-                    className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
-                    aria-live="polite"
-                    aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
-                    onClick={() => {
-                      void copyExport()
-                    }}
-                  >
-                    {copied ? 'Copied' : api.labels.export}
-                    <KeyHints>
-                      <Kbd hotkey="Y" />
-                    </KeyHints>
-                  </button>
-                ) : null}
-                <button
-                  type="submit"
-                  data-oc-nav="action"
-                  className={`${formPrimaryButtonClass} exec-solid`}
-                  disabled={pending || authPending}
-                >
-                  {pending ? (
-                    api.labels.executing
-                  ) : authPending ? (
-                    'Saving…'
-                  ) : (
-                    <>
-                      <KeyHints className="mr-2 inline-flex gap-1">
-                        <Kbd hotkey="Mod" />
-                        <Kbd hotkey="Enter" />
-                      </KeyHints>
-                      {showAuth ? 'Continue' : api.labels.execute}
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           </SwissForm>
         </div>
