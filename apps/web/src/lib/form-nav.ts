@@ -118,6 +118,20 @@ function scrollMark(element: HTMLElement) {
   field.scrollIntoView({ block: 'nearest' })
 }
 
+const PICKER_INPUT_TYPES = ['color', 'date', 'datetime-local', 'file', 'month', 'time', 'week']
+
+function pickerFor(target: HTMLElement) {
+  if (target instanceof HTMLSelectElement) {
+    return target
+  }
+  if (!(target instanceof HTMLInputElement)) {
+    return undefined
+  }
+  // A datalist turns an otherwise plain text input into a picker too.
+  const picker = PICKER_INPUT_TYPES.includes(target.type.toLowerCase()) || Boolean(target.list)
+  return picker ? target : undefined
+}
+
 function focusInsertTarget(element: HTMLElement) {
   const target = editableIn(element) ?? element
   target.focus({ preventScroll: true })
@@ -132,6 +146,11 @@ function focusInsertTarget(element: HTMLElement) {
     } catch {
       // Some input types reject a selection range.
     }
+  }
+  try {
+    pickerFor(target)?.showPicker?.()
+  } catch {
+    // showPicker needs transient user activation and is not universally supported.
   }
 }
 

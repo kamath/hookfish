@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
-import { withTheme } from '@rjsf/core'
+import { SchemaExamples, withTheme } from '@rjsf/core'
 import type { ThemeProps } from '@rjsf/core'
 import {
   ADDITIONAL_PROPERTY_FLAG,
@@ -299,6 +299,7 @@ function BaseInputTemplate(props: WidgetProps) {
         aria-describedby={ariaDescribedByIds(id, !!schema.examples)}
         {...inputProps}
       />
+      <SchemaExamples id={id} schema={schema} />
     </>
   )
 }
@@ -528,20 +529,15 @@ function FieldTemplate(props: FieldTemplateProps) {
   return (
     <WrapIfAdditionalTemplate {...props}>
       <div
-        className={`relative mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
+        className={`mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
         data-oc-nav={nest ? undefined : 'field'}
         data-oc-required={required && !nest ? 'true' : undefined}
       >
-        {!nest ? (
-          <span
-            data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
-          >
-            <Kbd hotkey="I" />
-          </span>
-        ) : null}
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 flex-wrap items-baseline gap-2 overflow-hidden`}
+          >
             <span className="shrink-0">
               {label}
               {required ? (
@@ -558,6 +554,18 @@ function FieldTemplate(props: FieldTemplateProps) {
         {children}
         {errors}
         {help}
+        {!nest ? (
+          <>
+            <span data-oc-hint="insert" className="items-center gap-1.5 text-xs text-faint">
+              <Kbd hotkey="I" />
+              to focus input
+            </span>
+            <span data-oc-hint="escape" className="items-center gap-1.5 text-xs text-faint">
+              <Kbd hotkey="Escape" />
+              to activate keybindings
+            </span>
+          </>
+        ) : null}
       </div>
     </WrapIfAdditionalTemplate>
   )
@@ -590,10 +598,7 @@ function DescriptionFieldTemplate(props: DescriptionFieldProps) {
   }
 
   return (
-    <span
-      id={id}
-      className="m-0 min-w-0 flex-1 truncate text-xs text-faint"
-    >
+    <span id={id} data-oc-desc className="m-0 min-w-0 flex-1 text-xs text-faint">
       {description}
     </span>
   )
@@ -813,7 +818,7 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
         uiSchema={uiSchema}
         registry={registry}
       />
-      <div className="flex flex-col">{items}</div>
+      <div className="flex flex-col gap-1">{items}</div>
       {canAdd ? (
         <AddButton
           id={buttonId(fieldPathId, 'add')}
@@ -885,7 +890,7 @@ function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
 
   const body = (
     <div
-      className={`${className ?? ''} flex min-w-0 flex-col gap-2 border-t border-rule py-2 md:flex-row md:items-start`}
+      className={`${className ?? ''} flex min-w-0 flex-col gap-2 py-1 md:flex-row md:items-start`}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {hasToolbar ? (

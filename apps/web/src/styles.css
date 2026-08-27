@@ -21,6 +21,8 @@
   --accent-mcp-template: #8a6d1d;
   --accent-mcp-prompt: #166b68;
   --exec-color: var(--signal);
+  /* Opaque, so a sticky bar stays readable over content scrolling beneath it. */
+  --bar: color-mix(in srgb, var(--ink) 5%, var(--paper));
   color-scheme: light;
 }
 
@@ -98,6 +100,37 @@ body {
   border-inline-start: none;
 }
 
+/* Stands in for a horizontal rule: a bar separates itself with its own surface. */
+.oc-bar {
+  background-color: var(--bar);
+}
+
+/* Descriptions stay on one line until their field or group is hovered or focused. */
+[data-oc-desc] {
+  display: block;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+[data-oc-desc]:hover,
+label:hover > [data-oc-desc],
+[data-oc-nav='field']:is(:hover, :focus-within) [data-oc-desc],
+[data-oc-current='true'] [data-oc-desc],
+[data-oc-nav='group']:has(> legend :is(:hover, :focus-within, [data-oc-current='true']))
+  > .oc-nest
+  > *
+  > [data-oc-desc] {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  /* In a label row this is the width the text wants on one line, so the flex line
+     breaks and the description drops to its own full-width row only when the
+     expanded text would not have fit beside the name. */
+  flex-basis: max-content;
+}
+
 kbd {
   display: inline-flex;
   align-items: center;
@@ -132,11 +165,25 @@ html[data-oc-mode='edit'] .oc-key-hints {
   background-color: var(--paper);
 }
 
-[data-oc-insert-hint] {
+[data-oc-hint] {
   display: none;
 }
 
-[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='insert'] {
+  display: flex;
+}
+
+/* Once the field is being typed in, the prompt flips to the way back out of it. */
+html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='insert'] {
+  display: none;
+}
+
+html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='escape'] {
+  display: flex;
+}
+
+/* Edit mode hides key chips everywhere else, but this hint is only shown there. */
+html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   display: inline-flex;
 }
 

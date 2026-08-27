@@ -367,7 +367,7 @@ export function ExecutableClient({
       style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
-        <div className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-rule bg-paper px-3 py-2 md:px-4">
+        <div className="oc-bar sticky top-0 z-10 flex items-baseline gap-3 px-3 py-2 md:px-4">
           <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
             {operation.badge}
           </span>

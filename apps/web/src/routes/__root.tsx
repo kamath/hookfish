@@ -101,7 +101,7 @@ function AppShell() {
         >
           Skip to content
         </a>
-        <header className="shrink-0 border-b border-rule bg-paper">
+        <header className="oc-bar shrink-0">
           <div className="flex h-12 items-center px-3 md:px-4">
             <Link
               to="/"
