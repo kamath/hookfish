@@ -146,9 +146,27 @@ function scheduleInsertFocus(element: HTMLElement) {
   }, 0)
 }
 
+function openSelectPicker(element: HTMLElement) {
+  const target = editableIn(element) ?? element
+  if (!(target instanceof HTMLSelectElement)) {
+    return false
+  }
+
+  focusInsertTarget(target)
+  try {
+    target.showPicker()
+  } catch {
+    target.click()
+  }
+  return true
+}
+
 function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
+  }
+  for (const element of root.querySelectorAll('[data-oc-tab-target]')) {
+    element.removeAttribute('data-oc-tab-target')
   }
 }
 
@@ -156,6 +174,18 @@ function markItem(root: HTMLElement, item: HTMLElement) {
   clearCurrent(root)
   const field = item.closest<HTMLElement>('[data-oc-nav="field"]')
   ;(field ?? item).dataset.ocCurrent = 'true'
+
+  const items = cachedFormInputs(root)
+  const currentIndex = indexOfItem(items, item)
+  if (currentIndex === -1 || items.length === 0) {
+    return
+  }
+  const next = steppedFormItem(items, currentIndex, 1)
+  next?.closest<HTMLElement>('[data-oc-nav="field"]')?.setAttribute('data-oc-tab-target', 'true')
+}
+
+function steppedFormItem(items: HTMLElement[], currentIndex: number, delta: number) {
+  return items[(currentIndex + delta + items.length) % items.length]
 }
 
 function indexOfItem(items: HTMLElement[], target: Element | null): number {
@@ -321,8 +351,7 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   }
 
   const current = indexOfCurrent(root, items, delta)
-  const index = (current + delta + items.length) % items.length
-  const next = items[index]
+  const next = steppedFormItem(items, current, delta)
   if (!next) {
     return false
   }
@@ -519,7 +548,9 @@ export function insertCurrentInput(rootId: string): boolean {
   syncMode(root)
   scrollMark(target)
   blurActive()
-  scheduleInsertFocus(target)
+  if (!openSelectPicker(target)) {
+    scheduleInsertFocus(target)
+  }
   return true
 }
 

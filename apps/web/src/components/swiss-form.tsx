@@ -534,14 +534,24 @@ function FieldTemplate(props: FieldTemplateProps) {
       >
         {!nest ? (
           <span
-            data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
+            data-oc-field-hints
+            className="oc-key-hints pointer-events-none absolute right-2 top-2 z-[1] inline-flex items-center gap-2 whitespace-nowrap text-[11px] text-mute"
           >
-            <Kbd hotkey="I" />
+            <span data-oc-insert-hint className="items-center gap-1">
+              <Kbd hotkey="I" />
+              <span>insert</span>
+            </span>
+            <span data-oc-tab-hint className="items-center gap-1">
+              <Kbd hotkey="Tab" label="Tab" />
+              <span>next</span>
+            </span>
           </span>
         ) : null}
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}
+          >
             <span className="shrink-0">
               {label}
               {required ? (

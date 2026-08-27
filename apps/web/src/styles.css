@@ -132,12 +132,18 @@ html[data-oc-mode='edit'] .oc-key-hints {
   background-color: var(--paper);
 }
 
-[data-oc-insert-hint] {
+[data-oc-insert-hint],
+[data-oc-tab-hint] {
   display: none;
 }
 
-[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-field-hints] > [data-oc-insert-hint],
+[data-oc-nav='field'][data-oc-tab-target='true'] > [data-oc-field-hints] > [data-oc-tab-hint] {
   display: inline-flex;
+}
+
+[data-oc-nav='field']:is([data-oc-current='true'], [data-oc-tab-target='true']) > label {
+  padding-inline-end: 5rem;
 }
 
 [data-oc-mode='insert'] [data-oc-current='true'] {

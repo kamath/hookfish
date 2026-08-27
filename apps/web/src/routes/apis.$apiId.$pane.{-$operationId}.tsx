@@ -569,15 +569,7 @@ function ApiWorkbench({
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (
-            <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Previous ${api.labels.target}`}
-                onClick={() => cycleServer(-1)}
-              >
-                <Kbd hotkey="[" />
-              </button>
+            <div className="flex min-w-0 max-w-xl flex-1 items-center">
               <label htmlFor="server-url" className="sr-only">
                 {api.labels.target}
               </label>
@@ -595,14 +587,6 @@ function ApiWorkbench({
                 }}
                 onChange={(event) => setServerUrl(event.target.value)}
               />
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Next ${api.labels.target}`}
-                onClick={() => cycleServer(1)}
-              >
-                <Kbd hotkey="]" />
-              </button>
             </div>
           ) : null}
           <div className="ml-auto flex items-center gap-3">
@@ -651,52 +635,79 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div className="relative w-full max-w-[26rem]">
-              <label htmlFor="operation-filter" className="sr-only">
-                Filter {api.labels.executablePlural}
-              </label>
-              <input
-                id="operation-filter"
-                name="operation-filter"
-                type="search"
-                autoComplete="off"
-                spellCheck={false}
-                className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                  filterValue ? 'pr-16' : 'pr-9'
-                }`}
-                value={filterValue}
-                onFocus={() => {
-                  activate('routes', 'edit')
-                }}
-                onChange={(event) => setFilterValue(event.target.value)}
-                placeholder={`Filter ${api.labels.executablePlural}`}
-              />
-              {filterValue ? (
+            {activePane === 'input' ? (
+              <div className="grid min-h-9 grid-cols-2 gap-2">
                 <button
                   type="button"
-                aria-label={`Clear ${api.labels.executable} filter`}
-                  className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
-                  onClick={() => {
-                    setFilterValue('')
-                    document.getElementById('operation-filter')?.focus()
-                  }}
+                  className="inline-flex items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => navigateOperation(-1)}
                 >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M3 3l10 10M13 3L3 13" />
-                  </svg>
+                  Previous
+                  {selectedIndex > 0 ? <Kbd hotkey="H" /> : null}
                 </button>
-              ) : null}
-              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                <Kbd hotkey="/" />
-              </span>
-            </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={
+                    selectedIndex < 0 || selectedIndex >= orderedOperations.length - 1
+                  }
+                  onClick={() => navigateOperation(1)}
+                >
+                  Next
+                  {selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1 ? (
+                    <Kbd hotkey="L" />
+                  ) : null}
+                </button>
+              </div>
+            ) : (
+              <div className="relative w-full max-w-[26rem]">
+                <label htmlFor="operation-filter" className="sr-only">
+                  Filter {api.labels.executablePlural}
+                </label>
+                <input
+                  id="operation-filter"
+                  name="operation-filter"
+                  type="search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                    filterValue ? 'pr-16' : 'pr-9'
+                  }`}
+                  value={filterValue}
+                  onFocus={() => {
+                    activate('routes', 'edit')
+                  }}
+                  onChange={(event) => setFilterValue(event.target.value)}
+                  placeholder={`Filter ${api.labels.executablePlural}`}
+                />
+                {filterValue ? (
+                  <button
+                    type="button"
+                    aria-label={`Clear ${api.labels.executable} filter`}
+                    className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                    onClick={() => {
+                      setFilterValue('')
+                      document.getElementById('operation-filter')?.focus()
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M3 3l10 10M13 3L3 13" />
+                    </svg>
+                  </button>
+                ) : null}
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                  <Kbd hotkey="/" />
+                </span>
+              </div>
+            )}
           </div>
           <nav
             aria-label={api.labels.executablePlural}
@@ -740,12 +751,6 @@ function ApiWorkbench({
             authUiSchema={api.credentialUiSchema}
             authPending={authPending}
             authError={authError}
-            onPreviousOperation={selectedIndex > 0 ? () => navigateOperation(-1) : undefined}
-            onNextOperation={
-              selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
-                ? () => navigateOperation(1)
-                : undefined
-            }
             onSaveAuth={onSaveAuth}
           />
         ) : null}

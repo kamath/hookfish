@@ -106,8 +106,6 @@ export function ExecutableClient({
   authUiSchema,
   authPending,
   authError,
-  onPreviousOperation,
-  onNextOperation,
   onSaveAuth,
 }: {
   api: ExecutableSource
@@ -118,8 +116,6 @@ export function ExecutableClient({
   authUiSchema?: FormUiSchema
   authPending?: boolean
   authError?: unknown
-  onPreviousOperation?: () => void
-  onNextOperation?: () => void
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
   const [formData, setFormData] = useState<unknown>({})
@@ -369,24 +365,6 @@ export function ExecutableClient({
           <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
           {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!onPreviousOperation}
-              onClick={onPreviousOperation}
-            >
-              Previous
-              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!onNextOperation}
-              onClick={onNextOperation}
-            >
-              Next
-              {onNextOperation ? <Kbd hotkey="L" /> : null}
-            </button>
             {result ? (
               <button
                 type="button"
