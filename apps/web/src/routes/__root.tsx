@@ -160,8 +160,8 @@ function CloudProxyToggle() {
       <p className="min-w-0 flex-1" role="status">
         {cloudProxy ? (
           <>
-            <strong className="font-medium">Cloud mode.</strong> Hookfish brokers requests
-            to remote services for you.
+            <strong className="font-medium">Cloud mode.</strong> Connect to remote services
+            that browsers may otherwise block.
           </>
         ) : (
           <>
