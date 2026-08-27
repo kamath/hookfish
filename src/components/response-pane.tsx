@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
-import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 import { ProtocolTrace } from './protocol-trace'
 
@@ -419,6 +419,20 @@ export function ResponsePane({
                 className={`flex min-h-6 w-full min-w-0 ${
                   isActive ? 'exec-active items-start' : 'items-center'
                 }`}
+                onPointerEnter={() => {
+                  if (!consumePointerIntent()) {
+                    return
+                  }
+                  setSelected(index)
+                  if (node.collection) {
+                    setExpanded((current) => {
+                      if (current.has(node.id)) {
+                        return current
+                      }
+                      return new Set(current).add(node.id)
+                    })
+                  }
+                }}
               >
                 <button
                   type="button"
@@ -515,7 +529,7 @@ export function ResponsePane({
                         />
                       </svg>
                     )}
-                    {isCopied ? 'Copied' : 'Copy'}
+                    Copy
                   </button>
                 ) : null}
               </div>
