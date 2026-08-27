@@ -5,8 +5,11 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "web/**"]
     },
+    "@hookfish/web#build:node": {
+      "outputs": ["dist-node/**"]
+    },
     "hookfish#build": {
-      "dependsOn": ["@hookfish/web#build"],
+      "dependsOn": ["@hookfish/web#build:node"],
       "outputs": ["dist/**", "web/**"]
     },
     "dev": {
