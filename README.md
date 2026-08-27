@@ -68,7 +68,14 @@ hookfish --port 3000
 Run the workspace build directly during development:
 
 ```bash
-pnpm --filter hookfish start -- --port 3000
+pnpm build
+pnpm cli
+```
+
+CLI options are forwarded after `--`:
+
+```bash
+pnpm cli -- --host 127.0.0.1 --port 4000
 ```
 
 To inspect the independently publishable npm tarball:
