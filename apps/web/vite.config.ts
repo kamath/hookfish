@@ -6,7 +6,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const config = defineConfig({
+const config = defineConfig(({ command }) => ({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
     include: [
@@ -15,7 +15,7 @@ const config = defineConfig({
     ],
   },
   ssr: {
-    noExternal: true,
+    ...(command === 'build' ? { noExternal: true } : {}),
     optimizeDeps: {
       include: [
         '@tanstack/react-query',
@@ -29,6 +29,6 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
-})
+}))
 
 export default config
