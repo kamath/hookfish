@@ -40,6 +40,30 @@ function revealInList(row: HTMLElement | null, list: HTMLElement | null) {
   }
 }
 
+function revealExpandedInList(
+  title: HTMLElement | null,
+  item: HTMLElement | null,
+  list: HTMLElement | null,
+) {
+  if (!title || !item || !list) {
+    return
+  }
+  const listRect = list.getBoundingClientRect()
+  const titleRect = title.getBoundingClientRect()
+  const itemRect = item.getBoundingClientRect()
+  if (titleRect.top < listRect.top) {
+    list.scrollTop -= listRect.top - titleRect.top
+    return
+  }
+  if (itemRect.bottom <= listRect.bottom) {
+    return
+  }
+  list.scrollTop += Math.min(
+    itemRect.bottom - listRect.bottom,
+    titleRect.top - listRect.top,
+  )
+}
+
 type JsonToken = {
   text: string
   kind: 'key' | 'string' | 'number' | 'literal' | 'punct' | 'space'
@@ -138,7 +162,7 @@ function JsonBlock({ value }: { value: unknown }) {
 
 function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
   return (
-    <ol className="mt-1 space-y-2 pb-3">
+    <ol className="col-span-full mt-1 space-y-2 pb-3">
       {frames.map((frame, index) => (
         <li key={`${frame.atMs}:${frame.summary}:${index}`}>
           <div className="flex gap-3 pl-12 font-mono text-xs text-mute">
@@ -172,6 +196,7 @@ export function ProtocolTrace({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const followLatest = useRef(true)
   const listRef = useRef<HTMLDivElement>(null)
+  const prevExpanded = useRef(expanded)
 
   function revealRpc(id: string | undefined) {
     if (!id) {
@@ -237,6 +262,23 @@ export function ProtocolTrace({
     revealRpc(selectedId)
   }, [selectedId])
 
+  useLayoutEffect(() => {
+    let added: string | undefined
+    for (const id of expanded) {
+      if (!prevExpanded.current.has(id)) {
+        added = id
+        break
+      }
+    }
+    prevExpanded.current = expanded
+    if (!added) {
+      return
+    }
+    const title = document.getElementById(`rpc-${added}`)
+    const item = document.getElementById(`rpc-block-${added}`)
+    revealExpandedInList(title, item, listRef.current)
+  }, [expanded])
+
   const found = groups.findIndex((group) => group.id === selectedId)
   const activeIndex = found === -1 ? Math.max(groups.length - 1, 0) : found
 
@@ -278,7 +320,7 @@ export function ProtocolTrace({
         className="min-h-0 flex-1 overscroll-contain overflow-y-auto px-3 py-3 md:px-4"
       >
         {groups.length > 0 ? (
-          <ol className="w-full font-mono text-sm leading-relaxed">
+          <ol className="grid w-full min-w-0 grid-cols-[auto_auto_auto_minmax(0,1fr)_auto] gap-x-3 font-mono text-sm leading-relaxed">
             {groups.map((group, index) => {
               const active = group.id === selectedId
               const isExpanded = expanded.has(group.id)
@@ -293,7 +335,8 @@ export function ProtocolTrace({
               return (
                 <li
                   key={group.id}
-                  className="exec-context"
+                  id={`rpc-block-${group.id}`}
+                  className="exec-context col-span-full grid grid-cols-subgrid"
                   style={{ '--exec-color': accent } as CSSProperties}
                 >
                   <button
@@ -303,7 +346,7 @@ export function ProtocolTrace({
                     data-oc-current={active ? 'true' : undefined}
                     aria-current={active ? 'true' : undefined}
                     aria-expanded={isExpanded}
-                    className={`relative flex min-h-7 w-full items-center gap-3 py-1 pr-10 text-left outline-none ${
+                    className={`relative col-span-full grid min-h-7 grid-cols-subgrid items-center py-1 pr-10 text-left outline-none ${
                       active ? 'exec-active' : ''
                     }`}
                     onFocus={() => {
@@ -322,14 +365,14 @@ export function ProtocolTrace({
                     <span className="inline-block w-4 shrink-0 text-faint">
                       {isExpanded ? '▾' : '▸'}
                     </span>
-                    <span className="w-14 shrink-0 text-right tabular-nums text-mute">
-                      {group.atMs} ms
+                    <span className="whitespace-nowrap text-right tabular-nums text-mute">
+                      {group.atMs}ms
                     </span>
                     <span className="w-5 shrink-0 text-mute">
                       {group.direction === 'out' ? '→' : '←'}
                     </span>
                     <span className="min-w-0 truncate exec-ink">{group.summary}</span>
-                    <span className="ml-auto shrink-0 text-xs text-faint">
+                    <span className="shrink-0 text-xs text-faint">
                       {group.frames.length === 1
                         ? group.kind
                         : `${group.frames.length} frames`}
