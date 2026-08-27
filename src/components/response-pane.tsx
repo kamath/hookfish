@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
-import { consumePointerIntent, usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
 import { ProtocolTrace } from './protocol-trace'
 
@@ -419,12 +419,8 @@ export function ResponsePane({
                 className={`flex min-h-6 w-full min-w-0 ${
                   isActive ? 'exec-active items-start' : 'items-center'
                 }`}
-                onPointerEnter={() => {
-                  if (
-                    node.raw ||
-                    typeof node.value !== 'string' ||
-                    !consumePointerIntent()
-                  ) {
+                onPointerMove={() => {
+                  if (node.raw || typeof node.value !== 'string') {
                     return
                   }
                   setSelected(index)
