@@ -35,4 +35,20 @@ const routesNext = paneConfig.routes.bindings.find((binding) => binding.id === '
 const routesNextTab = paneConfig.routes.bindings.find((binding) => binding.id === 'nextTab')
 assert.equal(routesNext?.label, routesNextTab?.label, 'routes J and Tab share a label')
 
+const submitBindings = paneConfig.specs.bindings.filter((binding) =>
+  binding.id.startsWith('submit-'),
+)
+assert.ok(submitBindings.length > 0, 'specs has submit bindings')
+for (const binding of submitBindings) {
+  assert.deepEqual(binding.modes, ['edit'], `${binding.id} is edit-only`)
+}
+assert.ok(
+  submitBindings.some((binding) => binding.hotkey === 'Enter'),
+  'specs submit includes Enter',
+)
+assert.ok(
+  submitBindings.some((binding) => binding.hotkey === 'Mod+Enter'),
+  'specs submit includes Mod+Enter',
+)
+
 console.log('keymap step and tab bindings ok')

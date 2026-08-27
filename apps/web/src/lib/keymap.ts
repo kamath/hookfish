@@ -26,6 +26,10 @@ export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
   return [binding.hotkey, ...(binding.aliases ?? [])]
 }
 
+export function sourceSubmitActionId(kind: string) {
+  return `submit-${kind}`
+}
+
 export type PaneAction = {
   callback: (event: KeyboardEvent) => void
   enabled?: boolean
@@ -46,6 +50,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
+      { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
+      { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
       ...CATALOG.map((entry) => ({
         id: catalogActionId(entry),
         hotkey: entry.hotkey,

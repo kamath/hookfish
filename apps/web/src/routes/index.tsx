@@ -16,10 +16,16 @@ import {
 } from '../lib/catalog'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import {
+  sourceSubmitActionId,
+  usePaneActions,
+  usePaneFlags,
+  useShowKeybindings,
+  useStepKeys,
+} from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
-import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
+import { sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 export const Route = createFileRoute('/')({
@@ -55,6 +61,7 @@ function Home() {
   })
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
+  const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
     mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
@@ -93,6 +100,7 @@ function Home() {
       }
     },
   })
+  const compactLauncher = showKeybindings && !openSource.isPending
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -189,6 +197,12 @@ function Home() {
       },
       enabled: !pendingAuth,
     },
+    ...Object.fromEntries(
+      sourceOptions.map((option) => [
+        sourceSubmitActionId(option.kind),
+        { callback: () => submit(option.kind), enabled: !pendingAuth, ignoreInputs: false },
+      ]),
+    ),
     command: () => {
       enterCommand()
       blurActive()
@@ -229,17 +243,20 @@ function Home() {
                 api.kind === entry.kind &&
                 sourceUrlKey(api.sourceUrl) === sourceUrlKey(entry.url),
             )
+            const hotkey = (
+              <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
+                {showKeybindings ? <Kbd hotkey={entry.hotkey} /> : null}
+              </span>
+            )
             return (
               <li key={entry.id}>
                 {pendingAuth?.entryId === entry.id ? (
                   <div className="bg-signal/10 px-3 py-2">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex w-4 shrink-0 justify-center">
-                        <Kbd hotkey={entry.hotkey} />
-                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-ink">{entry.title}</span>
                       </span>
+                      {hotkey}
                     </div>
                   </div>
                 ) : (
@@ -249,9 +266,6 @@ function Home() {
                     disabled={openSource.isPending || Boolean(pendingAuth)}
                     onClick={() => launch(entry)}
                   >
-                    <span className="inline-flex w-4 shrink-0 justify-center">
-                      <Kbd hotkey={entry.hotkey} />
-                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-ink">{entry.title}</span>
                       <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -271,6 +285,7 @@ function Home() {
                     {added ? (
                       <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
                     ) : null}
+                    {hotkey}
                   </button>
                 )}
               </li>
@@ -290,7 +305,11 @@ function Home() {
           onSubmit={(event) => {
             event.preventDefault()
           }}
-          className="flex flex-col gap-3 sm:flex-row sm:items-start"
+          className={
+            compactLauncher
+              ? 'mx-auto w-full max-w-xl'
+              : 'flex w-full flex-col gap-3 sm:flex-row sm:items-start'
+          }
         >
           <label htmlFor="url" className="sr-only">
             MCP endpoint or OpenAPI document URL
@@ -306,51 +325,50 @@ function Home() {
               spellCheck={false}
               required
               disabled={openSource.isPending || Boolean(pendingAuth)}
-              className={`${softInputClass} pl-10`}
+              className={`${softInputClass} ${showKeybindings ? 'pl-10' : ''}`}
               placeholder="MCP URL or link to OpenAPI JSON/YAML"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onFocus={() => {
                 activate('specs', 'edit')
               }}
-              onKeyDown={(event) => {
-                if (pendingAuth || event.key !== 'Enter') {
-                  return
-                }
-                event.preventDefault()
-                const adapter = sourceAdapterForSubmit(
-                  event.metaKey || event.ctrlKey ? 'Mod+Enter' : 'Enter',
-                )
-                if (adapter) {
-                  submit(adapter.kind)
-                }
-              }}
             />
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Kbd hotkey="I" />
-            </span>
+            {showKeybindings ? (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <Kbd hotkey="I" />
+              </span>
+            ) : null}
           </div>
-          <div className="flex shrink-0 gap-2">
-            {sourceOptions.map((option, index) => {
-              const pending =
-                openSource.isPending && !openSource.variables?.entryId && openSource.variables?.kind === option.kind
-              return (
-                <button
-                  key={option.kind}
-                  type="button"
-                  className={index === 0 ? primaryButtonClass : softButtonClass}
-                  disabled={openSource.isPending || Boolean(pendingAuth)}
-                  onClick={() => submit(option.kind)}
-                >
-                  {pending ? 'Reading…' : option.label}
-                  <Kbd hotkey={option.submitHotkey} persistent />
-                </button>
-              )
-            })}
-          </div>
+          {compactLauncher ? null : (
+            <div className="flex shrink-0 gap-2">
+              {sourceOptions.map((option, index) => {
+                const pending =
+                  openSource.isPending &&
+                  !openSource.variables?.entryId &&
+                  openSource.variables?.kind === option.kind
+                return (
+                  <button
+                    key={option.kind}
+                    type="button"
+                    className={index === 0 ? primaryButtonClass : softButtonClass}
+                    disabled={openSource.isPending || Boolean(pendingAuth)}
+                    onClick={() => submit(option.kind)}
+                  >
+                    {pending ? 'Reading…' : option.label}
+                    {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </form>
         {openSource.isError && !openSource.variables?.entryId && !pendingAuth ? (
-          <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
+          <p
+            className={`mt-3 line-clamp-3 break-words text-sm text-error ${
+              compactLauncher ? 'mx-auto max-w-xl' : ''
+            }`}
+            role="alert"
+          >
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>
         ) : null}
@@ -369,7 +387,7 @@ function Home() {
             <section>
               <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
                 <h2>Recent</h2>
-                {pendingAuth ? null : (
+                {pendingAuth || !showKeybindings ? null : (
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
@@ -398,7 +416,7 @@ function Home() {
                         className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
                         onFocus={() => setSelected(index)}
                       >
-                        {navigationHint ? (
+                        {showKeybindings && navigationHint ? (
                           <span className="inline-flex w-4 shrink-0 justify-center">
                             <Kbd hotkey={navigationHint} />
                           </span>
