@@ -144,7 +144,17 @@ function CloudProxyToggle() {
         ) : (
           <>
             <strong className="font-medium">Local mode.</strong> Connect to services on this
-            computer, including localhost. Remote services may block browser connections.
+            computer, including localhost. Remote services may block browser connections
+            because of{' '}
+            <a
+              href="https://www.google.com/search?q=what+is+cors"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-signal underline underline-offset-2"
+            >
+              CORS
+            </a>
+            .
           </>
         )}
       </p>
