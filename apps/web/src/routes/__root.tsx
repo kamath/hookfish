@@ -18,6 +18,7 @@ import { ThemeToggle } from '../components/theme-toggle'
 import { hydrateCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
+import { hydrateRouteView } from '../lib/route-view'
 import { THEME_COLORS, THEME_INIT_SCRIPT, bindTheme } from '../lib/theme'
 import appCss from '../styles.css?url'
 
@@ -92,7 +93,10 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  useLayoutEffect(() => bindTheme(), [])
+  useLayoutEffect(() => {
+    bindTheme()
+    hydrateRouteView()
+  }, [])
 
   useEffect(() => {
     hydrateCloudProxy()

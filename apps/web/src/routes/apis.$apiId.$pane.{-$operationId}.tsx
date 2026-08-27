@@ -38,6 +38,7 @@ import {
   useStepKeys,
 } from '../lib/keys'
 import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '../lib/mode'
+import { setRouteView, useRouteView } from '../lib/route-view'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
@@ -262,6 +263,7 @@ function ApiWorkbench({
   const queryClient = useQueryClient()
   const activePane = usePane()
   const keybindings = useKeybindingsEnabled()
+  const routeView = useRouteView()
   const [serverUrl, setServerUrl] = useState(api.targets[0] ?? '')
   const [filterValue, setFilterValue] = useState(search.q ?? '')
   const deferredFilterValue = useDeferredValue(filterValue)
@@ -567,8 +569,31 @@ function ApiWorkbench({
   usePaneFlags('trace', {
     canClear,
   })
+  function applyRouteView(view: 'invoke' | 'inspect') {
+    blurActive()
+    setRouteView(view)
+    if (getPane() !== 'response' && getPane() !== 'trace') {
+      return
+    }
+    const parentOperationId = heldOpRef.current ?? operationId
+    if (!parentOperationId) {
+      return
+    }
+    activate('input', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: {
+        apiId: api.id,
+        pane: 'input',
+        operationId: parentOperationId,
+      },
+      replace: true,
+      resetScroll: false,
+    })
+  }
+
   useStepKeys('routes', move)
-  useFormPaneNavigation('input', 'call-form')
+  useFormPaneNavigation('input', 'call-form', { enabled: routeView === 'invoke' })
 
   usePaneActions('routes', {
     filter: () => {
@@ -595,12 +620,16 @@ function ApiWorkbench({
       blurActive()
       activate('routes', 'command')
     },
+    invoke: () => applyRouteView('invoke'),
+    inspect: () => applyRouteView('inspect'),
     trace: () => {
       openTrace()
     },
   })
 
   usePaneActions('input', {
+    invoke: () => applyRouteView('invoke'),
+    inspect: () => applyRouteView('inspect'),
     previousRoute: () => navigateOperation(-1),
     nextRoute: () => navigateOperation(1),
     clearAuth: {
@@ -622,6 +651,8 @@ function ApiWorkbench({
   })
 
   usePaneActions('response', {
+    invoke: () => applyRouteView('invoke'),
+    inspect: () => applyRouteView('inspect'),
     trace: () => {
       openTrace()
     },

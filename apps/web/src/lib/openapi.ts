@@ -512,6 +512,57 @@ function operationToForm(
   }
 }
 
+function responseMediaSchema(response: Json, root: unknown): JsonSchema | undefined {
+  if (isObject(response.content)) {
+    const content = response.content
+    const preferred =
+      (isObject(content['application/json']) && 'application/json') ||
+      Object.keys(content)[0]
+    if (preferred && isObject(content[preferred]) && content[preferred].schema) {
+      return oasToJsonSchema(deref(content[preferred].schema, root))
+    }
+  }
+  if (response.schema) {
+    return oasToJsonSchema(deref(response.schema, root))
+  }
+  return undefined
+}
+
+function operationOutputSchema(operation: Json, root: unknown): JsonSchema | undefined {
+  if (!isObject(operation.responses)) {
+    return undefined
+  }
+
+  const properties: Record<string, JsonSchema> = {}
+  for (const [status, raw] of Object.entries(operation.responses)) {
+    const resolved = deref(raw, root)
+    if (!isObject(resolved)) {
+      continue
+    }
+    const schema = responseMediaSchema(resolved, root)
+    const description =
+      typeof resolved.description === 'string' ? resolved.description : undefined
+    if (!schema && !description) {
+      continue
+    }
+    properties[status] = schema
+      ? description
+        ? { ...schema, description }
+        : schema
+      : { description }
+  }
+
+  if (Object.keys(properties).length === 0) {
+    return undefined
+  }
+
+  return {
+    type: 'object',
+    title: 'Responses',
+    properties,
+  }
+}
+
 function serversFromSpec(root: Json, specUrl: string): string[] {
   if (Array.isArray(root.servers)) {
     const urls = root.servers
@@ -624,6 +675,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
         },
         inputSchema: form.schema,
         inputUiSchema: form.uiSchema,
+        outputSchema: operationOutputSchema(operation, spec),
       })
     }
   }

@@ -37,6 +37,7 @@ function executable(
   value: {
     title?: string
     description?: string
+    outputSchema?: JsonSchema
   },
 ): Executable {
   const labels = {
@@ -68,6 +69,7 @@ function executable(
     binding,
     inputSchema,
     inputUiSchema: FORM_UI,
+    outputSchema: value.outputSchema,
   }
 }
 
@@ -80,7 +82,11 @@ function toolExecutable(tool: Tool) {
       name: tool.name,
     },
     tool.inputSchema as JsonSchema,
-    tool,
+    {
+      title: tool.title,
+      description: tool.description,
+      outputSchema: tool.outputSchema as JsonSchema | undefined,
+    },
   )
 }
 
