@@ -7,7 +7,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const config = defineConfig(({ command }) => ({
+const config = defineConfig(({ command, mode }) => ({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
     include: ['@tanstack/react-query'],
@@ -20,7 +20,7 @@ const config = defineConfig(({ command }) => ({
   },
   plugins: [
     devtools(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    ...(mode === 'cloudflare' ? [cloudflare({ viteEnvironment: { name: 'ssr' } })] : []),
     tailwindcss(),
     tanstackStart(),
     viteReact(),

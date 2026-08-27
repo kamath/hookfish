@@ -7,8 +7,9 @@
   },
   "scripts": {
     "build": "vite build",
+    "build:cloudflare": "vite build --mode cloudflare",
     "dev": "vite dev --port 3000",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "pnpm build:cloudflare && wrangler deploy",
     "cf-typegen": "wrangler types",
     "generate-routes": "tsr generate",
     "preview": "vite preview",
