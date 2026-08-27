@@ -279,8 +279,14 @@ const execution = await mcpExecutableAdapter.execute(invocation)
 assert.ok(execution.inputRequired)
 assert.ok(execution.trace?.some((entry) => entry.summary === 'tools/call'))
 const modernTrace = getMcpTrace('modern')
-assert.ok(modernTrace.some((entry) => entry.summary === 'initialize'))
+assert.ok(
+  modernTrace.some(
+    (entry) => entry.summary === 'initialize' || entry.summary === 'server/discover',
+  ),
+)
+assert.ok(modernTrace.some((entry) => entry.summary === 'tools/list'))
 assert.ok(modernTrace.some((entry) => entry.summary === 'tools/call'))
+assert.ok(modernTrace.length > (execution.trace?.length ?? 0))
 const modernCall = seen.find(
   (request) =>
     request.endpoint.includes('/modern') && request.message?.method === 'tools/call',
