@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { AuthRedirect } from '../components/auth-status'
+import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -135,13 +135,6 @@ function Home() {
     })
   }
 
-  function continueAuthorization() {
-    if (!pendingAuth) {
-      return
-    }
-    window.location.assign(pendingAuth.href)
-  }
-
   function cancelAuthorization() {
     const sourceId = pendingAuth?.sourceId
     setPendingAuth(undefined)
@@ -233,7 +226,7 @@ function Home() {
     },
     confirmRemove,
     cancelRemove,
-    continueAuth: continueAuthorization,
+    continueAuth: finishPendingAuthRedirect,
     cancelAuth: cancelAuthorization,
     insert: {
       callback: () => {

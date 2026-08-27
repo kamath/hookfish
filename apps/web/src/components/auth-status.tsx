@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
@@ -39,6 +39,12 @@ function Spinner() {
   )
 }
 
+let finishAuthRedirect: (() => void) | undefined
+
+export function finishPendingAuthRedirect() {
+  finishAuthRedirect?.()
+}
+
 export function AuthRedirect({
   href,
   onCancel,
@@ -50,7 +56,23 @@ export function AuthRedirect({
 }) {
   const [remaining, setRemaining] = useState(COUNTDOWN_START)
   const onCancelRef = useRef(onCancel)
+  const remainingRef = useRef(remaining)
   onCancelRef.current = onCancel
+  remainingRef.current = remaining
+
+  const goNow = useCallback(() => {
+    setRemaining(0)
+  }, [])
+  finishAuthRedirect = goNow
+
+  useEffect(() => {
+    finishAuthRedirect = goNow
+    return () => {
+      if (finishAuthRedirect === goNow) {
+        finishAuthRedirect = undefined
+      }
+    }
+  }, [goNow])
 
   useEffect(() => {
     if (remaining === 0) {
@@ -65,27 +87,31 @@ export function AuthRedirect({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const waiting = remainingRef.current > 0
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
         event.stopImmediatePropagation()
-        onCancelRef.current()
+        if (waiting) {
+          onCancelRef.current()
+        }
         return
       }
       if (event.key === 'Enter') {
         event.preventDefault()
         event.stopPropagation()
         event.stopImmediatePropagation()
-        if (!event.metaKey && !event.ctrlKey && !event.altKey) {
-          window.location.assign(href)
+        if (waiting && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          goNow()
         }
       }
     }
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [href])
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [goNow])
 
   const host = authorizationHost(href)
+  const waiting = remaining > 0
 
   return (
     <div className="flex w-full flex-col items-center text-center">
@@ -96,30 +122,31 @@ export function AuthRedirect({
         <Spinner />
         <span>
           Sending you to <span className="text-ink" title={href}>{host}</span>
-          {remaining > 0 ? (
+          {waiting ? (
             <>
               {' '}
               in <span className="font-mono text-ink">{remaining}</span>
             </>
-          ) : null}
+          ) : (
+            <>
+              {' '}
+              <span className="text-ink">now</span>
+            </>
+          )}
         </span>
       </p>
-      <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <button
-          type="button"
-          className={primaryButtonClass}
-          onClick={() => {
-            window.location.assign(href)
-          }}
-        >
-          Go now
-          <Kbd hotkey="Enter" persistent />
-        </button>
-        <button type="button" className={softButtonClass} onClick={onCancel}>
-          Cancel
-          <Kbd hotkey="Escape" persistent />
-        </button>
-      </div>
+      {waiting ? (
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          <button type="button" className={primaryButtonClass} onClick={goNow}>
+            Go now
+            <Kbd hotkey="Enter" persistent />
+          </button>
+          <button type="button" className={softButtonClass} onClick={onCancel}>
+            Cancel
+            <Kbd hotkey="Escape" persistent />
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
