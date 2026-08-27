@@ -419,12 +419,7 @@ export function ResponsePane({
                 className={`flex min-h-6 w-full min-w-0 ${
                   isActive ? 'exec-active items-start' : 'items-center'
                 }`}
-                onPointerMove={() => {
-                  if (node.raw || typeof node.value !== 'string') {
-                    return
-                  }
-                  setSelected(index)
-                }}
+                onPointerEnter={() => setSelected(index)}
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
@@ -459,7 +454,7 @@ export function ResponsePane({
                   </span>
                   <span
                     className={`min-w-0 ${
-                      isActive
+                      isActive && !node.raw && typeof node.value === 'string'
                         ? 'whitespace-pre-wrap break-words'
                         : 'flex-1 overflow-hidden text-ellipsis whitespace-pre'
                     }`}
