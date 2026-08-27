@@ -14,4 +14,9 @@ export const executeRequest = createServerFn({
       body: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => executeUpstreamRequest(data))
+  .handler(async ({ data }) =>
+    executeUpstreamRequest({
+      ...data,
+      headers: data.headers ?? {},
+    }),
+  )

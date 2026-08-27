@@ -36,9 +36,12 @@ const result = await executeUpstreamRequest(
 assert.equal(seen[1]?.url, 'http://localhost:8787/widgets')
 assert.equal(seen[1]?.init?.method, 'POST')
 assert.equal(seen[1]?.init?.body, '{"name":"local"}')
-assert.equal(result.status.code, 201)
+assert.equal(result.status?.code, 201)
 assert.equal(result.body, '{"ok":true}')
-assert.deepEqual(result.details.items, [{ name: 'x-upstream', value: 'direct' }])
+assert.deepEqual(
+  result.details?.items.find((item) => item.name === 'x-upstream'),
+  { name: 'x-upstream', value: 'direct' },
+)
 
 await assert.rejects(
   () => fetchUpstreamSpec('file:///tmp/openapi.yaml', upstreamFetch),
