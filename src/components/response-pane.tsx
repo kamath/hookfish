@@ -429,6 +429,14 @@ export function ResponsePane({
                   }
                   setSelected(index)
                 }}
+                onClick={() => {
+                  setSelected(index)
+                  if (node.collection) {
+                    setExpanded((current) =>
+                      current.has(node.id) ? current : new Set(current).add(node.id),
+                    )
+                  }
+                }}
               >
                 <button
                   type="button"
@@ -436,20 +444,6 @@ export function ResponsePane({
                     isActive ? 'items-start pr-1' : 'flex-1 items-center pr-3'
                   }`}
                   style={{ paddingInlineStart: '0.25rem' }}
-                  onClick={() => {
-                    setSelected(index)
-                    if (node.collection) {
-                      setExpanded((current) => {
-                        const next = new Set(current)
-                        if (next.has(node.id)) {
-                          next.delete(node.id)
-                        } else {
-                          next.add(node.id)
-                        }
-                        return next
-                      })
-                    }
-                  }}
                 >
                   <span className="inline-flex w-8 shrink-0 justify-end pr-2">
                     {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
