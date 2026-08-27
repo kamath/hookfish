@@ -143,8 +143,9 @@ function CloudProxyToggle() {
           <>Cloud proxy is on. Upstream requests run through the server.</>
         ) : (
           <>
-            <strong className="font-medium">Local mode.</strong> Requests run fully in this
-            browser, so localhost URLs work. Some requests may fail because of CORS.
+            <strong className="font-medium">Local mode.</strong> Connect to services on this
+            computer, including localhost. Some remote services may block browser
+            connections.
           </>
         )}
       </p>
