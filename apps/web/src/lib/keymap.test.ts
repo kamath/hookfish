@@ -53,6 +53,9 @@ const routesNext = paneConfig.routes.bindings.find((binding) => binding.id === '
 const routesNextTab = paneConfig.routes.bindings.find((binding) => binding.id === 'nextTab')
 assert.equal(routesNext?.label, routesNextTab?.label, 'routes J and Tab share a label')
 
+const inspect = paneConfig.input.bindings.find((binding) => binding.id === 'inspect')
+assert.equal(inspect?.hotkey, 'V', 'input inspect toggle is V')
+
 const submitBindings = paneConfig.specs.bindings.filter((binding) =>
   binding.id.startsWith('submit-'),
 )

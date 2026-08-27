@@ -171,6 +171,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       },
       { id: 'expand', hotkey: 'Enter', label: 'edit' },
       { id: 'insert', hotkey: 'I', label: 'edit' },
+      { id: 'inspect', hotkey: 'V', label: 'inspect' },
       { id: 'export', hotkey: 'Y', label: 'copy code', flag: 'hasExport' },
       { id: 'copy', hotkey: 'Y', label: 'copy JSON', flag: 'hasJson' },
       { id: 'children', hotkey: 'A', label: 'toggle children', flag: 'canToggleChildren' },

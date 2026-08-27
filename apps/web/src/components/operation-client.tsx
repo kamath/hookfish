@@ -228,6 +228,12 @@ export function ExecutableClient({
     }
   }
 
+  function toggleInspect() {
+    blurActive()
+    enterCommand()
+    setInspecting((current) => !current)
+  }
+
   usePaneFlags('input', {
     hasResult: Boolean(result),
     hasExport: !inspecting && Boolean(adapter.exportSnippet && api.labels.export),
@@ -247,6 +253,7 @@ export function ExecutableClient({
     export: () => {
       void copyExport()
     },
+    inspect: toggleInspect,
   })
   usePaneActions('response', {
     parent: () => showInput(false),
@@ -441,13 +448,12 @@ export function ExecutableClient({
                   ? 'bg-ink/15 text-ink'
                   : 'bg-ink/10 text-mute hover:bg-ink/15 hover:text-ink'
               }`}
-              onClick={() => {
-                blurActive()
-                enterCommand()
-                setInspecting((current) => !current)
-              }}
+              onClick={toggleInspect}
             >
               Inspect
+              <KeyHints>
+                <Kbd hotkey="V" />
+              </KeyHints>
             </button>
             {inspecting ? null : (
             <button
