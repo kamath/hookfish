@@ -420,18 +420,14 @@ export function ResponsePane({
                   isActive ? 'exec-active items-start' : 'items-center'
                 }`}
                 onPointerEnter={() => {
-                  if (!consumePointerIntent()) {
+                  if (
+                    node.raw ||
+                    typeof node.value !== 'string' ||
+                    !consumePointerIntent()
+                  ) {
                     return
                   }
                   setSelected(index)
-                  if (node.collection) {
-                    setExpanded((current) => {
-                      if (current.has(node.id)) {
-                        return current
-                      }
-                      return new Set(current).add(node.id)
-                    })
-                  }
                 }}
               >
                 <button
