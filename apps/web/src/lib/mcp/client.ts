@@ -3,6 +3,8 @@ import {
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
+import { getCloudProxy } from '../cloud'
+import { localUpstreamFetch } from '../upstream'
 import { BrowserMcpOAuthProvider } from './oauth'
 
 const CLIENT_INFO = {
@@ -14,6 +16,7 @@ type McpConnection = {
   client: Client
   transport: StreamableHTTPClientTransport
   endpoint: string
+  cloudProxy: boolean
   trace: ProtocolTraceEntry[]
   startedAt: number
 }
@@ -51,7 +54,7 @@ function jsonValue(value: unknown): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue
 }
 
-function proxyFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>) {
+function upstreamFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>, cloudProxy: boolean) {
   return async (input: string | URL | Request, init?: RequestInit) => {
     const target =
       input instanceof Request
@@ -59,8 +62,6 @@ function proxyFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>) {
         : input instanceof URL
           ? input.toString()
           : input
-    const proxyUrl = new URL('/api/mcp-proxy', window.location.origin)
-    proxyUrl.searchParams.set('url', target)
     const request = requestSummary(init?.body)
     traceEntry(connection, {
       direction: 'out',
@@ -68,7 +69,13 @@ function proxyFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>) {
       summary: request.summary,
       detail: request.detail,
     })
-    const response = await fetch(proxyUrl, init)
+    let fetchInput: string | URL | Request = input
+    if (cloudProxy) {
+      const proxyUrl = new URL('/api/mcp-proxy', window.location.origin)
+      proxyUrl.searchParams.set('url', target)
+      fetchInput = proxyUrl
+    }
+    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, init)
     traceEntry(connection, {
       direction: 'in',
       kind: 'http',
@@ -107,8 +114,13 @@ export async function getMcpConnection(
   sourceId: string,
   endpoint: string,
 ) {
+  const cloudProxy = getCloudProxy()
   const current = connections.get(sourceId)
-  if (current && current.endpoint === endpoint) {
+  if (
+    current &&
+    current.endpoint === endpoint &&
+    current.cloudProxy === cloudProxy
+  ) {
     return current
   }
   if (current) {
@@ -123,7 +135,7 @@ export async function getMcpConnection(
   const authProvider = new BrowserMcpOAuthProvider(sourceId)
   const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
     authProvider,
-    fetch: proxyFetch(pending),
+    fetch: upstreamFetch(pending, cloudProxy),
   })
   const client = new Client(CLIENT_INFO, {
     versionNegotiation: { mode: 'auto' },
@@ -167,6 +179,7 @@ export async function getMcpConnection(
     client,
     transport,
     endpoint,
+    cloudProxy,
     trace: pending.trace,
     startedAt: pending.startedAt,
   }

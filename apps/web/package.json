@@ -10,7 +10,7 @@
     "build:node": "vite build --mode node",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/keymap.test.ts",
+    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/keymap.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
