@@ -469,11 +469,11 @@ export function ExecutableClient({
                 'Saving…'
               ) : (
                 <>
+                  <span>{showAuth ? 'Continue' : api.labels.execute}</span>
                   <KeyHints className="inline-flex gap-1">
                     <Kbd hotkey="Mod" />
                     <Kbd hotkey="Enter" />
                   </KeyHints>
-                  <span>{showAuth ? 'Continue' : api.labels.execute}</span>
                 </>
               )}
             </button>
