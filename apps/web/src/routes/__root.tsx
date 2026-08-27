@@ -154,7 +154,7 @@ function CloudProxyToggle() {
         aria-pressed={cloudProxy}
         title={
           cloudProxy
-            ? 'Hookfish is reaching remote hosts for you. Click to run browser-first.'
+            ? 'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
             : 'Local mode. Click to use the cloud proxy.'
         }
         onClick={() => setCloudProxy(!cloudProxy)}
@@ -164,7 +164,7 @@ function CloudProxyToggle() {
       </button>
       <p className="min-w-0 flex-1 truncate max-md:sr-only" role="status">
         {cloudProxy ? (
-          'Hookfish is reaching remote hosts for you. Click to run browser-first.'
+          'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
         ) : (
           <>
             This computer. Remote hosts may block the browser (
