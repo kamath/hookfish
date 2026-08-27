@@ -22,8 +22,25 @@ export type PaneBinding = {
   flag?: string
 }
 
+export function isEscapeLike(event: KeyboardEvent) {
+  return (
+    event.key === 'Escape' ||
+    (event.key === 'Backspace' &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.shiftKey)
+  )
+}
+
 export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
-  return [binding.hotkey, ...(binding.aliases ?? [])]
+  const keys: RegisterableHotkey[] = [binding.hotkey, ...(binding.aliases ?? [])]
+  const modes = binding.modes ?? ['command']
+  // Command-mode Escape also binds Backspace. Edit-only Escape stays insert-exit.
+  if (binding.hotkey === 'Escape' && modes.includes('command') && !keys.includes('Backspace')) {
+    keys.push('Backspace')
+  }
+  return keys
 }
 
 export function sourceSubmitActionId(kind: string) {

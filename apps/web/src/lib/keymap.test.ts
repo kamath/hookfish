@@ -3,6 +3,7 @@ import {
   KEYBINDINGS_MEDIA,
   dialogAllowsBinding,
   hotkeysFor,
+  isEscapeLike,
   keybindingsEnabled,
   paneConfig,
 } from './keymap.ts'
@@ -93,6 +94,52 @@ assert.ok(
   ),
   'auth redirect allows go now',
 )
+
+for (const [pane, config] of Object.entries(paneConfig)) {
+  for (const binding of config.bindings) {
+    const modes = binding.modes ?? ['command']
+    if (binding.hotkey !== 'Escape') {
+      continue
+    }
+    if (modes.includes('command')) {
+      assert.ok(
+        hotkeysFor(binding).includes('Backspace'),
+        `${pane} ${binding.id} Backspace matches Escape in command mode`,
+      )
+    } else {
+      assert.equal(
+        hotkeysFor(binding).includes('Backspace'),
+        false,
+        `${pane} ${binding.id} keeps Backspace for editing`,
+      )
+    }
+  }
+}
+
+function keyEvent(key: string, modifiers: Partial<KeyboardEvent> = {}) {
+  return {
+    key,
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...modifiers,
+  } as KeyboardEvent
+}
+
+assert.equal(isEscapeLike(keyEvent('Escape')), true, 'Escape is escape-like')
+assert.equal(isEscapeLike(keyEvent('Backspace')), true, 'Backspace is escape-like')
+assert.equal(
+  isEscapeLike(keyEvent('Backspace', { metaKey: true })),
+  false,
+  'Mod+Backspace is not escape-like',
+)
+assert.equal(
+  isEscapeLike(keyEvent('Backspace', { ctrlKey: true })),
+  false,
+  'Ctrl+Backspace is not escape-like',
+)
+assert.equal(isEscapeLike(keyEvent('Enter')), false, 'Enter is not escape-like')
 
 console.log('keymap step and tab bindings ok')
 

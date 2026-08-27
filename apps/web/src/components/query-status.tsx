@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { isEscapeLike } from '../lib/keys'
 import { queryErrorMessage } from '../lib/queries'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 import { Kbd } from './hints'
@@ -65,7 +66,7 @@ export function QueryStatus({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && onBackRef.current) {
+      if (isEscapeLike(event) && onBackRef.current) {
         event.preventDefault()
         event.stopPropagation()
         event.stopImmediatePropagation()
