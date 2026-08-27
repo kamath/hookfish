@@ -5,7 +5,6 @@ import { activate, getPane } from '../lib/mode'
 import {
   groupProtocolTrace,
   rpcAccent,
-  rpcFrameView,
   useMcpTrace,
   type ProtocolRpc,
 } from '../lib/mcp/trace'
@@ -28,172 +27,115 @@ function moveSelection(
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+type JsonToken = {
+  text: string
+  kind: 'key' | 'string' | 'number' | 'literal' | 'punct' | 'space'
 }
 
-function scalarText(value: unknown) {
-  if (typeof value === 'string') {
-    return value
-  }
-  if (value === undefined) {
-    return 'undefined'
-  }
-  return JSON.stringify(value)
-}
-
-function scalarClass(value: unknown) {
-  if (typeof value === 'string' || typeof value === 'number') {
-    return 'text-ink'
-  }
-  return 'text-faint'
-}
-
-function collectionMark(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.length === 0 ? '[]' : `[${value.length}]`
-  }
-  if (isRecord(value)) {
-    const n = Object.keys(value).length
-    return n === 0 ? '{}' : `{${n}}`
-  }
-  return ''
-}
-
-function itemLead(value: unknown): { text: string; rest?: unknown } | undefined {
-  if (!isRecord(value)) {
-    return undefined
-  }
-  for (const key of ['name', 'uri', 'method', 'uriTemplate'] as const) {
-    const text = value[key]
-    if (typeof text === 'string' && text.length > 0) {
-      const rest = { ...value }
-      delete rest[key]
-      return {
-        text,
-        rest: Object.keys(rest).length > 0 ? rest : undefined,
+function tokenizeJson(source: string): JsonToken[] {
+  const tokens: JsonToken[] = []
+  let i = 0
+  while (i < source.length) {
+    const ch = source[i] ?? ''
+    if (ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t') {
+      let end = i + 1
+      while (end < source.length && ' \n\r\t'.includes(source[end] ?? '')) {
+        end += 1
       }
+      tokens.push({ text: source.slice(i, end), kind: 'space' })
+      i = end
+      continue
     }
+    if (ch === '"') {
+      let end = i + 1
+      while (end < source.length) {
+        if (source[end] === '\\') {
+          end += 2
+          continue
+        }
+        if (source[end] === '"') {
+          end += 1
+          break
+        }
+        end += 1
+      }
+      const text = source.slice(i, end)
+      let next = end
+      while (next < source.length && ' \n\r\t'.includes(source[next] ?? '')) {
+        next += 1
+      }
+      tokens.push({ text, kind: source[next] === ':' ? 'key' : 'string' })
+      i = end
+      continue
+    }
+    if (ch === '-' || (ch >= '0' && ch <= '9')) {
+      let end = i + 1
+      while (end < source.length && /[0-9.eE+-]/.test(source[end] ?? '')) {
+        end += 1
+      }
+      tokens.push({ text: source.slice(i, end), kind: 'number' })
+      i = end
+      continue
+    }
+    if (source.startsWith('true', i) || source.startsWith('null', i)) {
+      const text = source.startsWith('true', i) ? 'true' : 'null'
+      tokens.push({ text, kind: 'literal' })
+      i += text.length
+      continue
+    }
+    if (source.startsWith('false', i)) {
+      tokens.push({ text: 'false', kind: 'literal' })
+      i += 5
+      continue
+    }
+    tokens.push({ text: ch, kind: 'punct' })
+    i += 1
   }
-  return undefined
+  return tokens
 }
 
-function JsonTree({ value }: { value: unknown }) {
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <span className="text-faint">[]</span>
-    }
-    return (
-      <ol className="space-y-0.5">
-        {value.map((item, index) => {
-          const lead = itemLead(item)
-          const nested = item !== null && typeof item === 'object'
-          return (
-            <li key={index} className="font-mono text-xs leading-relaxed">
-              <div className="flex gap-3">
-                <span className="w-6 shrink-0 text-right tabular-nums text-faint">{index}</span>
-                {lead ? (
-                  <span className="min-w-0 break-words text-ink">{lead.text}</span>
-                ) : nested ? (
-                  <span className="text-faint">{collectionMark(item)}</span>
-                ) : (
-                  <span className={`min-w-0 break-words ${scalarClass(item)}`}>
-                    {scalarText(item)}
-                  </span>
-                )}
-              </div>
-              {lead?.rest !== undefined ? (
-                <div className="pl-9">
-                  <JsonTree value={lead.rest} />
-                </div>
-              ) : !lead && nested ? (
-                <div className="pl-9">
-                  <JsonTree value={item} />
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
-      </ol>
-    )
-  }
+const jsonTokenClass: Record<JsonToken['kind'], string> = {
+  key: 'text-mute',
+  string: 'text-ink',
+  number: 'text-ink',
+  literal: 'text-faint',
+  punct: 'text-faint',
+  space: '',
+}
 
-  if (!isRecord(value)) {
-    return (
-      <span className={`break-words ${scalarClass(value)}`}>{scalarText(value)}</span>
-    )
+function JsonBlock({ value }: { value: unknown }) {
+  const source = JSON.stringify(value, null, 2)
+  if (source === undefined) {
+    return null
   }
-
-  const entries = Object.entries(value).filter(([key]) => key !== 'jsonrpc')
-  if (entries.length === 0) {
-    return <span className="text-faint">{'{}'}</span>
-  }
-
   return (
-    <div className="space-y-0.5">
-      {entries.map(([key, item]) => {
-        const nested = item !== null && typeof item === 'object'
-        return (
-          <div key={key} className="font-mono text-xs leading-relaxed">
-            <div className="flex gap-3">
-              <span className="w-28 shrink-0 truncate text-mute" title={key}>
-                {key}
-              </span>
-              {nested ? (
-                <span className="text-faint">{collectionMark(item)}</span>
-              ) : (
-                <span className={`min-w-0 break-words ${scalarClass(item)}`}>
-                  {scalarText(item)}
-                </span>
-              )}
-            </div>
-            {nested ? (
-              <div className="pl-4">
-                <JsonTree value={item} />
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
-    </div>
+    <pre className="mt-1 overflow-auto whitespace-pre-wrap pl-[5.75rem] font-mono text-[11px] leading-relaxed">
+      {tokenizeJson(source).map((token, index) =>
+        token.kind === 'space' ? (
+          token.text
+        ) : (
+          <span key={index} className={jsonTokenClass[token.kind]}>
+            {token.text}
+          </span>
+        ),
+      )}
+    </pre>
   )
-}
-
-function frameLabelClass(frame: ProtocolTraceEntry, label: string) {
-  if (label === 'error' || /^[45]\d\d\b/.test(label)) {
-    return 'text-error'
-  }
-  if (frame.kind === 'http') {
-    return 'text-mute'
-  }
-  return 'text-ink'
 }
 
 function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
   return (
-    <ol className="space-y-2 pb-3 pt-1">
-      {frames.map((frame, index) => {
-        const view = rpcFrameView(frame)
-        return (
-          <li key={`${frame.atMs}:${frame.summary}:${index}`}>
-            <div className="flex gap-3 font-mono text-xs">
-              <span className="w-4 shrink-0" />
-              <span className="w-14 shrink-0" />
-              <span className="w-5 shrink-0 text-faint">
-                {frame.direction === 'out' ? '→' : '←'}
-              </span>
-              <span className={`min-w-0 ${frameLabelClass(frame, view.label)}`}>
-                {view.label}
-              </span>
-            </div>
-            {view.value !== undefined ? (
-              <div className="mt-0.5 pl-32">
-                <JsonTree value={view.value} />
-              </div>
-            ) : null}
-          </li>
-        )
-      })}
+    <ol className="mt-1 space-y-2 pb-3">
+      {frames.map((frame, index) => (
+        <li key={`${frame.atMs}:${frame.summary}:${index}`}>
+          <div className="flex gap-3 pl-12 font-mono text-xs text-mute">
+            <span className="w-5 shrink-0">{frame.direction === 'out' ? '→' : '←'}</span>
+            <span className="w-20 shrink-0 text-faint">{frame.kind}</span>
+            <span className="min-w-0 text-ink">{frame.summary}</span>
+          </div>
+          {frame.detail !== undefined ? <JsonBlock value={frame.detail} /> : null}
+        </li>
+      ))}
     </ol>
   )
 }
