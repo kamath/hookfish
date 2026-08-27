@@ -3,7 +3,6 @@ import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
-import { ProtocolTrace } from './protocol-trace'
 
 type ResponseNode = {
   id: string
@@ -458,8 +457,6 @@ export function ResponsePane({
             </button>
           </section>
         ) : null}
-
-        <ProtocolTrace entries={result.trace ?? []} />
 
         {result.details && result.details.items.length > 0 ? (
           <div className="mb-3">
