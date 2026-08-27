@@ -5,7 +5,7 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
 import { KeyHints, Kbd } from '../components/hints'
-import { QueryMessage } from '../components/query-status'
+import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import {
   CATALOG,
@@ -283,46 +283,35 @@ function Home() {
             ) : null
             return (
               <li key={entry.id}>
-                {pendingAuth?.entryId === entry.id ? (
-                  <div className="bg-signal/10 px-3 py-2">
-                    <div className="flex items-center gap-3">
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-ink">{entry.title}</span>
-                      </span>
-                      {hotkey}
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
-                      added
-                        ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
-                        : 'hover:bg-ink/10 focus-visible:bg-ink/10'
-                    }`}
-                    disabled={openSource.isPending || dialogOpen}
-                    onClick={() => launch(entry)}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">{entry.title}</span>
-                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                        {entry.detail}
-                      </span>
-                      {status.message ? (
-                        <span
-                          role={status.failed ? 'alert' : undefined}
-                          className={`mt-1 block truncate font-mono text-xs ${
-                            status.failed ? 'text-error' : 'text-mute'
-                          }`}
-                        >
-                          {status.message}
-                        </span>
-                      ) : null}
+                <button
+                  type="button"
+                  className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
+                    added
+                      ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
+                      : 'hover:bg-ink/10 focus-visible:bg-ink/10'
+                  }`}
+                  disabled={openSource.isPending || dialogOpen}
+                  onClick={() => launch(entry)}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-ink">{entry.title}</span>
+                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                      {entry.detail}
                     </span>
-                    {added ? <span className="sr-only">added</span> : null}
-                    {hotkey}
-                  </button>
-                )}
+                    {status.message ? (
+                      <span
+                        role={status.failed ? 'alert' : undefined}
+                        className={`mt-1 block truncate font-mono text-xs ${
+                          status.failed ? 'text-error' : 'text-mute'
+                        }`}
+                      >
+                        {status.message}
+                      </span>
+                    ) : null}
+                  </span>
+                  {added ? <span className="sr-only">added</span> : null}
+                  {hotkey}
+                </button>
               </li>
             )
           })}
@@ -331,8 +320,35 @@ function Home() {
     )
   }
 
+  if (pendingAuth) {
+    return (
+      <StatusPane>
+        <AuthRedirect
+          href={pendingAuth.href}
+          name={
+            CATALOG.find((entry) => entry.id === pendingAuth.entryId)?.title ??
+            apis.find((api) => api.id === pendingAuth.sourceId)?.title
+          }
+          onCancel={cancelAuthorization}
+        />
+      </StatusPane>
+    )
+  }
+
+  if (pendingRemove) {
+    return (
+      <StatusPane>
+        <RemoveConfirm
+          title={pendingRemove.title}
+          onConfirm={confirmRemove}
+          onCancel={cancelRemove}
+        />
+      </StatusPane>
+    )
+  }
+
   return (
-    <main id="main" className="relative flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
+    <main id="main" className="flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
       <div className="mx-auto my-auto flex w-full max-w-3xl flex-col gap-6 py-10">
         <div className={compactLauncher ? 'mx-auto' : undefined}>
           <Brand hero />
@@ -511,26 +527,6 @@ function Home() {
           </div>
         </div>
       </div>
-      {pendingAuth ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
-          <AuthRedirect
-            href={pendingAuth.href}
-            name={
-              CATALOG.find((entry) => entry.id === pendingAuth.entryId)?.title ??
-              apis.find((api) => api.id === pendingAuth.sourceId)?.title
-            }
-            onCancel={cancelAuthorization}
-          />
-        </div>
-      ) : pendingRemove ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
-          <RemoveConfirm
-            title={pendingRemove.title}
-            onConfirm={confirmRemove}
-            onCancel={cancelRemove}
-          />
-        </div>
-      ) : null}
     </main>
   )
 }
