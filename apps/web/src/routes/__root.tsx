@@ -11,6 +11,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from '../components/brand'
+import { CloudToggle } from '../components/cloud-toggle'
 import { GitHubLink } from '../components/github-link'
 import { QueryStatus } from '../components/query-status'
 import { ThemeToggle } from '../components/theme-toggle'
@@ -112,7 +113,7 @@ function AppShell() {
         >
           Skip to content
         </a>
-        <CloudProxyToggle />
+        <AppToolbar />
         <div className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </div>
@@ -121,52 +122,14 @@ function AppShell() {
   )
 }
 
-function CloudIcon({ disabled }: { disabled: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.2 8.7 4.7 4.7 0 0 0 7 18Z" />
-      {disabled ? <path d="m4 4 16 16" /> : null}
-    </svg>
-  )
-}
-
-function CloudProxyToggle() {
-  const [cloudProxy, setCloudProxy] = useCloudProxy()
+function AppToolbar() {
+  const [cloudProxy] = useCloudProxy()
   return (
     <div className="flex shrink-0 items-center gap-2 bg-ink/5 px-3 py-1.5 text-xs text-mute md:gap-3 md:px-4">
-      <button
-        type="button"
-        className="inline-flex min-h-8 shrink-0 items-center gap-2 bg-ink/10 px-2.5 py-1 font-medium text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
-        aria-label={
-          cloudProxy
-            ? 'Run browser-first'
-            : 'Turn on cloud proxy'
-        }
-        aria-pressed={cloudProxy}
-        title={
-          cloudProxy
-            ? 'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
-            : 'Requests originate from this browser. Click to use the cloud proxy.'
-        }
-        onClick={() => setCloudProxy(!cloudProxy)}
-      >
-        <CloudIcon disabled={!cloudProxy} />
-        <span>{cloudProxy ? 'Cloud' : 'Local'}</span>
-      </button>
-      <p className="min-w-0 flex-1 truncate max-md:sr-only" role="status">
-        {cloudProxy ? (
-          'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
-        ) : (
-          <>
+      {cloudProxy ? null : (
+        <p className="min-w-0 flex-1 truncate" role="status">
+          <span className="font-medium text-ink">Browser mode.</span>{' '}
+          <span className="max-md:sr-only">
             Requests originate from this browser, so you can safely access
             localhost/internal URLs. You&apos;ll likely get blocked by{' '}
             <a
@@ -178,10 +141,11 @@ function CloudProxyToggle() {
               CORS
             </a>
             .
-          </>
-        )}
-      </p>
+          </span>
+        </p>
+      )}
       <div className="ml-auto flex shrink-0 items-center">
+        <CloudToggle />
         <GitHubLink />
         <ThemeToggle />
       </div>
