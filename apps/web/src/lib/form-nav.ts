@@ -155,13 +155,33 @@ function clearCurrent(root: HTMLElement) {
   }
 }
 
+function itemMark(item: HTMLElement): HTMLElement {
+  return item.closest<HTMLElement>('[data-oc-nav="field"]') ?? item
+}
+
+function nextDistinctItem(
+  items: HTMLElement[],
+  currentIndex: number,
+  delta: number,
+): HTMLElement | undefined {
+  const current = items[currentIndex]
+  const currentMark = current ? itemMark(current) : undefined
+  for (let step = 1; step <= items.length; step += 1) {
+    const index = (currentIndex + delta * step + items.length * 2) % items.length
+    const candidate = items[index]
+    if (candidate && (!currentMark || itemMark(candidate) !== currentMark)) {
+      return candidate
+    }
+  }
+  return undefined
+}
+
 function markItem(root: HTMLElement, item: HTMLElement) {
   clearCurrent(root)
-  const field = item.closest<HTMLElement>('[data-oc-nav="field"]')
-  ;(field ?? item).dataset.ocCurrent = 'true'
+  itemMark(item).dataset.ocCurrent = 'true'
   const items = listFormInputs(root.id)
   const index = indexOfItem(items, item)
-  const next = items[(index + 1) % items.length]
+  const next = nextDistinctItem(items, index, 1)
   const nextField = next?.closest<HTMLElement>('[data-oc-nav="field"]')
   if (nextField) {
     nextField.dataset.ocTabTarget = 'true'
@@ -331,8 +351,7 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   }
 
   const current = indexOfCurrent(root, items, delta)
-  const index = (current + delta + items.length) % items.length
-  const next = items[index]
+  const next = nextDistinctItem(items, current, delta)
   if (!next) {
     return false
   }
