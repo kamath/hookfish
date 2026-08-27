@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { Kbd } from '../components/hints'
+import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import {
@@ -283,17 +283,15 @@ function Home() {
             />
           ) : apis.length > 0 ? (
             <section>
-              <h2 className="px-3 pb-1 font-mono text-[11px] text-mute">Recent</h2>
+              <div className="flex items-baseline justify-between gap-3 px-3 pb-1">
+                <h2 className="font-mono text-[11px] text-mute">Recent</h2>
+                <KeyHints className="font-mono text-[11px] text-faint">enter to open</KeyHints>
+              </div>
               <ul>
                 {apis.map((api, index) => {
                   const active = index === selected
-                  const navigationHint = active
-                    ? 'Enter'
-                    : index === selected - 1
-                      ? 'K'
-                      : index === selected + 1
-                        ? 'J'
-                        : undefined
+                  const navigationHint =
+                    index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
                   return (
                     <li
                       key={api.id}
@@ -309,9 +307,11 @@ function Home() {
                         className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
                         onFocus={() => setSelected(index)}
                       >
-                        <span className="inline-flex w-4 shrink-0 justify-center">
-                          {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                        </span>
+                        {apis.length > 1 ? (
+                          <span className="inline-flex w-4 shrink-0 justify-center">
+                            {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                          </span>
+                        ) : null}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm text-ink">{api.title}</span>
                           <span className="mt-0.5 block truncate font-mono text-xs text-faint">
