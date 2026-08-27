@@ -558,8 +558,12 @@ function FieldTemplate(props: FieldTemplateProps) {
         {children}
         {!nest ? (
           <p data-oc-input-helper className="text-xs text-mute">
-            Press <Kbd hotkey="I" /> to insert text and <Kbd hotkey="Escape" /> to activate
-            keybindings.
+            <span data-oc-command-helper>
+              Press <Kbd hotkey="I" /> to insert text.
+            </span>
+            <span data-oc-insert-helper>
+              Press <Kbd hotkey="Escape" />/<Kbd hotkey="Enter" /> to activate keybindings.
+            </span>
           </p>
         ) : null}
         {errors}

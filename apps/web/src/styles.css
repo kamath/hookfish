@@ -150,6 +150,22 @@ html[data-oc-mode='edit'] .oc-key-hints {
   display: block;
 }
 
+[data-oc-command-helper],
+[data-oc-insert-helper] {
+  display: none;
+}
+
+[data-oc-mode='command']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  > [data-oc-command-helper],
+[data-oc-mode='insert']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  > [data-oc-insert-helper] {
+  display: inline;
+}
+
 html[data-oc-mode='edit']
   [data-oc-nav='field'][data-oc-current='true']
   > [data-oc-input-helper]
