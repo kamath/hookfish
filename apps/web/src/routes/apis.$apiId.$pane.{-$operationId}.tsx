@@ -15,7 +15,7 @@ import { McpServerPanel } from '../components/mcp-server-panel'
 import { Brand } from '../components/brand'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
-import { QueryStatus } from '../components/query-status'
+import { QueryStatus, StatusPane } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import { listApis } from '../lib/apis'
 import type {
@@ -186,7 +186,7 @@ function ApiClientPage() {
       authorizationUrl
     ) {
       return (
-        <main id="main" className="flex h-full items-center justify-center px-4">
+        <StatusPane>
           <AuthRedirect
             href={authorizationUrl}
             name={listApis().find((api) => api.id === apiId)?.title}
@@ -195,7 +195,7 @@ function ApiClientPage() {
               setAuthDismissed(true)
             }}
           />
-        </main>
+        </StatusPane>
       )
     }
     return (

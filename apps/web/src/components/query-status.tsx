@@ -3,6 +3,16 @@ import { queryErrorMessage } from '../lib/queries'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 import { Kbd } from './hints'
 
+export function StatusPane({ children }: { children: ReactNode }) {
+  return (
+    <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-4">
+        {children}
+      </div>
+    </main>
+  )
+}
+
 export function QueryMessage({
   label,
   error,
@@ -80,7 +90,7 @@ export function QueryStatus({
   }, [])
 
   return (
-    <main id="main" className="flex h-full items-center justify-center px-4">
+    <StatusPane>
       <div className="flex w-full flex-col items-center text-center">
         <p
           className={`max-w-xl text-sm ${failed ? 'text-error' : 'text-mute'}`}
@@ -106,6 +116,6 @@ export function QueryStatus({
         ) : null}
         {children}
       </div>
-    </main>
+    </StatusPane>
   )
 }

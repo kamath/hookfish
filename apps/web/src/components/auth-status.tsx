@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
 import { keybindingsEnabled } from '../lib/keys'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
+import { StatusPane } from './query-status'
 
 function authorizationHost(href: string) {
   try {
@@ -181,8 +182,8 @@ export function AuthRedirectView({
 
 export function AuthCallback() {
   return (
-    <main id="main" className="flex h-full items-center justify-center px-4">
+    <StatusPane>
       <p className="text-sm text-mute">Completing authentication…</p>
-    </main>
+    </StatusPane>
   )
 }
