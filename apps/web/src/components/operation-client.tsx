@@ -18,6 +18,7 @@ import { validatorForSchema } from '../lib/form-validator'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, usePane } from '../lib/mode'
+import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
@@ -106,8 +107,6 @@ export function ExecutableClient({
   authUiSchema,
   authPending,
   authError,
-  onPreviousOperation,
-  onNextOperation,
   onSaveAuth,
 }: {
   api: ExecutableSource
@@ -118,11 +117,11 @@ export function ExecutableClient({
   authUiSchema?: FormUiSchema
   authPending?: boolean
   authError?: unknown
-  onPreviousOperation?: () => void
-  onNextOperation?: () => void
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
-  const [formData, setFormData] = useState<unknown>({})
+  const [formData, setFormData] = useState<unknown>(() =>
+    readOperationFormData(api.id, operation.id),
+  )
   const [lastSubmission, setLastSubmission] = useState<unknown>({})
   const [lastInvocation, setLastInvocation] = useState<unknown>()
   const [result, setResult] = useState<ExecutionResult | null>(null)
@@ -250,8 +249,14 @@ export function ExecutableClient({
     formData,
   })
 
-  function onSubmit({ formData: next }: IChangeEvent) {
+  function updateFormData(next: unknown) {
+    formDataRef.current = next
+    writeOperationFormData(api.id, operation.id, next)
     setFormData(next)
+  }
+
+  function onSubmit({ formData: next }: IChangeEvent) {
+    updateFormData(next)
     const request = withoutAuth(next)
     setLastSubmission(request)
     if (needsAuth && !askingAuth) {
@@ -369,24 +374,6 @@ export function ExecutableClient({
           <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
           {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!onPreviousOperation}
-              onClick={onPreviousOperation}
-            >
-              Previous
-              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!onNextOperation}
-              onClick={onNextOperation}
-            >
-              Next
-              {onNextOperation ? <Kbd hotkey="L" /> : null}
-            </button>
             {result ? (
               <button
                 type="button"
@@ -457,7 +444,7 @@ export function ExecutableClient({
                 : operation.inputSchema,
             )}
             formData={formData}
-            onChange={(event: IChangeEvent) => setFormData(event.formData)}
+            onChange={(event: IChangeEvent) => updateFormData(event.formData)}
             onSubmit={onSubmit}
             showErrorList={false}
             omitExtraData

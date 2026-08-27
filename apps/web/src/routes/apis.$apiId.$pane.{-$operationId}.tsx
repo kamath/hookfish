@@ -294,6 +294,9 @@ function ApiWorkbench({
   const requestedIndex = operationIndexById.get(heldOp ?? operationId ?? '')
   const selectedIndex = requestedIndex ?? (orderedOperations.length > 0 ? 0 : -1)
   const selected = orderedOperations[selectedIndex]
+  const canPreviousOperation = selectedIndex > 0
+  const canNextOperation =
+    selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
   const manyServers = api.targets.length > 1
 
   useEffect(() => {
@@ -454,8 +457,8 @@ function ApiWorkbench({
   })
   usePaneFlags('input', {
     canClear,
-    canNextRoute: selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1,
-    canPreviousRoute: selectedIndex > 0,
+    canNextRoute: canNextOperation,
+    canPreviousRoute: canPreviousOperation,
     manyServers,
   })
   useStepKeys('routes', move)
@@ -653,52 +656,75 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div className="relative w-full max-w-[26rem]">
-              <label htmlFor="operation-filter" className="sr-only">
-                Filter {api.labels.executablePlural}
-              </label>
-              <input
-                id="operation-filter"
-                name="operation-filter"
-                type="search"
-                autoComplete="off"
-                spellCheck={false}
-                className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                  filterValue ? 'pr-16' : 'pr-9'
-                }`}
-                value={filterValue}
-                onFocus={() => {
-                  activate('routes', 'edit')
-                }}
-                onChange={(event) => setFilterValue(event.target.value)}
-                placeholder={`Filter ${api.labels.executablePlural}`}
-              />
-              {filterValue ? (
+            {activePane === 'input' ? (
+              <div className="flex w-full gap-2">
                 <button
                   type="button"
-                aria-label={`Clear ${api.labels.executable} filter`}
-                  className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
-                  onClick={() => {
-                    setFilterValue('')
-                    document.getElementById('operation-filter')?.focus()
-                  }}
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!canPreviousOperation}
+                  onClick={() => navigateOperation(-1)}
                 >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M3 3l10 10M13 3L3 13" />
-                  </svg>
+                  Previous
+                  {canPreviousOperation ? <Kbd hotkey="H" /> : null}
                 </button>
-              ) : null}
-              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                <Kbd hotkey="/" />
-              </span>
-            </div>
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!canNextOperation}
+                  onClick={() => navigateOperation(1)}
+                >
+                  Next
+                  {canNextOperation ? <Kbd hotkey="L" /> : null}
+                </button>
+              </div>
+            ) : (
+              <div className="relative w-full max-w-[26rem]">
+                <label htmlFor="operation-filter" className="sr-only">
+                  Filter {api.labels.executablePlural}
+                </label>
+                <input
+                  id="operation-filter"
+                  name="operation-filter"
+                  type="search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                    filterValue ? 'pr-16' : 'pr-9'
+                  }`}
+                  value={filterValue}
+                  onFocus={() => {
+                    activate('routes', 'edit')
+                  }}
+                  onChange={(event) => setFilterValue(event.target.value)}
+                  placeholder={`Filter ${api.labels.executablePlural}`}
+                />
+                {filterValue ? (
+                  <button
+                    type="button"
+                    aria-label={`Clear ${api.labels.executable} filter`}
+                    className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                    onClick={() => {
+                      setFilterValue('')
+                      document.getElementById('operation-filter')?.focus()
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M3 3l10 10M13 3L3 13" />
+                    </svg>
+                  </button>
+                ) : null}
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                  <Kbd hotkey="/" />
+                </span>
+              </div>
+            )}
           </div>
           <nav
             aria-label={api.labels.executablePlural}
@@ -733,7 +759,7 @@ function ApiWorkbench({
 
         {selected && (activePane === 'input' || activePane === 'response') ? (
           <ExecutableClient
-            key={selected.id}
+            key={JSON.stringify([api.id, selected.id])}
             api={api}
             operation={selected}
             target={serverUrl}
@@ -742,12 +768,6 @@ function ApiWorkbench({
             authUiSchema={api.credentialUiSchema}
             authPending={authPending}
             authError={authError}
-            onPreviousOperation={selectedIndex > 0 ? () => navigateOperation(-1) : undefined}
-            onNextOperation={
-              selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
-                ? () => navigateOperation(1)
-                : undefined
-            }
             onSaveAuth={onSaveAuth}
           />
         ) : null}
