@@ -397,10 +397,11 @@ function Home() {
                       <>
                         <span>·</span>
                         <span className="inline-flex items-center gap-1">
-                          <span className="inline-flex items-center gap-0.5">
-                            <Kbd hotkey="J" />/<Kbd hotkey="K" />
-                          </span>
-                          down/up
+                          <Kbd hotkey="J" /> down
+                        </span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Kbd hotkey="K" /> up
                         </span>
                       </>
                     ) : null}
