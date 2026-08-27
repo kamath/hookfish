@@ -1,3 +1,5 @@
+import { executeUpstreamRequest } from '@hookfish/api'
+import { apiJson, getApi } from './api'
 import type {
   AuthScheme,
   Executable,
@@ -8,9 +10,8 @@ import { asRecord, buildRequestUrl, omitEmpty } from './build-request'
 import { getCloudProxy } from './cloud'
 import { toFetch } from './export-snippet'
 import { buildOperationRequest, httpBindingFor, type ExecuteRequest } from './invoke'
-import { executeRequest } from './invoke.functions'
 import { mcpExecutableAdapter } from './mcp/executable'
-import { executeUpstreamRequest, localUpstreamFetch } from './upstream'
+import { localUpstreamFetch } from './upstream'
 
 export type InvocationContext = {
   source: ExecutableSource
@@ -68,10 +69,10 @@ registerExecutableAdapter('openapi', {
       auth: credentials,
       authSchemes: openApiAuthSchemes(source),
     }),
-  execute: (invocation) => {
+  execute: async (invocation) => {
     const request = asHttpInvocation(invocation)
     return getCloudProxy()
-      ? executeRequest({ data: request })
+      ? apiJson(await getApi().execute.$post({ json: request }))
       : executeUpstreamRequest(request, localUpstreamFetch)
   },
   preview: ({ executable, target, formData }) => {

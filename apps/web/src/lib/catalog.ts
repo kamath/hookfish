@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './api'
+
 export type CatalogHotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0'
 
 export type CatalogEntry = {
@@ -62,9 +64,25 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     url: 'https://api.arcade.dev/v1/swagger',
   },
   {
-    id: 'openai',
+    id: 'hookfish-api',
     kind: 'openapi',
     hotkey: '7',
+    title: 'Hookfish API',
+    detail: `${API_BASE_URL}/openapi.json`,
+    url: `${API_BASE_URL}/openapi.json`,
+  },
+  {
+    id: 'petstore',
+    kind: 'openapi',
+    hotkey: '8',
+    title: 'Swagger Petstore',
+    detail: 'petstore3.swagger.io',
+    url: 'https://petstore3.swagger.io/api/v3/openapi.json',
+  },
+  {
+    id: 'openai',
+    kind: 'openapi',
+    hotkey: '9',
     title: 'OpenAI',
     detail: 'openai/openai-openapi',
     url: 'https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/main/openapi.json',
@@ -72,26 +90,10 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'anthropic',
     kind: 'openapi',
-    hotkey: '8',
+    hotkey: '0',
     title: 'Anthropic',
     detail: 'api-evangelist/anthropic',
     url: 'https://raw.githubusercontent.com/api-evangelist/anthropic/refs/heads/main/openapi/anthropic-messages-api-openapi.yml',
-  },
-  {
-    id: 'openrouter',
-    kind: 'openapi',
-    hotkey: '9',
-    title: 'OpenRouter',
-    detail: 'openrouter.ai/openapi.json',
-    url: 'https://openrouter.ai/openapi.json',
-  },
-  {
-    id: 'petstore',
-    kind: 'openapi',
-    hotkey: '0',
-    title: 'Swagger Petstore',
-    detail: 'petstore3.swagger.io',
-    url: 'https://petstore3.swagger.io/api/v3/openapi.json',
   },
 ]
 
@@ -99,6 +101,10 @@ export const CATALOG: readonly CatalogEntry[] = [...MCP_CATALOG, ...OPENAPI_CATA
 
 export function catalogActionId(entry: CatalogEntry) {
   return `launch-${entry.id}`
+}
+
+export function catalogSourceUrl(entry: CatalogEntry) {
+  return new URL(entry.url, typeof window === 'undefined' ? 'http://localhost' : window.location.origin).toString()
 }
 
 export function sourceUrlKey(url: string): string {
