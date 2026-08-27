@@ -173,7 +173,12 @@ async function openMcpTransport(
   )
   try {
     if (finishAuth && callbackParameters) {
-      await transport.finishAuth(callbackParameters)
+      try {
+        await transport.finishAuth(callbackParameters)
+      } finally {
+        authProvider.finishCallback()
+        authProvider.cleanCallbackUrl()
+      }
     }
     await client.connect(transport)
     return { client, transport }
@@ -239,12 +244,7 @@ export async function getMcpConnection(
         throw UnauthorizedError.isInstance(legacyError) ? legacyError : error
       }
     }
-  })().finally(() => {
-    if (callbackParameters) {
-      authProvider.finishCallback()
-      authProvider.cleanCallbackUrl()
-    }
-  })
+  })()
   const { client, transport } = opened
   const connection: McpConnection = {
     client,
