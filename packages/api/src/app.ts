@@ -11,6 +11,12 @@ import {
   mcpProxyQuerySchema,
   specRequestSchema,
 } from './schemas'
+import {
+  INTERNAL_FETCH_HEADER,
+  isOwnOpenApiUrl,
+  ownApiRequest,
+  withInternalFetchHeader,
+} from './self'
 import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
@@ -162,10 +168,36 @@ export function createApi(options: CreateApiOptions = {}) {
     },
   })
 
+  const openApiConfig = {
+    openapi: '3.1.0' as const,
+    info: {
+      title: options.openapi?.title ?? 'Hookfish API',
+      version: options.openapi?.version ?? '1.0.0',
+    },
+    servers: options.openapi?.servers ?? [{ url: '/' }],
+  }
+
+  const fetchOwnOrUpstream: (requestUrl: string, nested: boolean) => typeof fetch =
+    (requestUrl, nested) =>
+      async (input, init) => {
+        const own = ownApiRequest(input, init, requestUrl)
+        if (!own) {
+          return upstreamFetch(input, init)
+        }
+        if (nested && new URL(own.url).pathname === '/execute') {
+          throw new Error("Cannot proxy this API's execute endpoint through itself.")
+        }
+        return app.fetch(withInternalFetchHeader(own))
+      }
+
   const routes = app
     .openapi(specRoute, async (c) => {
       try {
-        const document = await fetchUpstreamSpec(c.req.valid('json').url, upstreamFetch)
+        const specUrl = c.req.valid('json').url
+        if (isOwnOpenApiUrl(specUrl, c.req.url)) {
+          return c.json(app.getOpenAPI31Document(openApiConfig), 200)
+        }
+        const document = await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
         return c.json(document, 200)
       } catch (error) {
         return c.json({ error: errorMessage(error, 'Could not fetch the spec.') }, 400)
@@ -174,12 +206,13 @@ export function createApi(options: CreateApiOptions = {}) {
     .openapi(executeRoute, async (c) => {
       try {
         const data = c.req.valid('json')
+        const nested = c.req.header(INTERNAL_FETCH_HEADER) === '1'
         const result = await executeUpstreamRequest(
           {
             ...data,
             headers: data.headers ?? {},
           },
-          upstreamFetch,
+          fetchOwnOrUpstream(c.req.url, nested),
         )
         return c.json(result, 200)
       } catch (error) {
@@ -208,16 +241,7 @@ export function createApi(options: CreateApiOptions = {}) {
     proxyMcpRequest(c.req.raw, upstreamFetch),
   )
 
-  routes.doc31('/openapi.json', {
-    openapi: '3.1.0',
-    info: {
-      title: options.openapi?.title ?? 'Hookfish API',
-      version: options.openapi?.version ?? '1.0.0',
-    },
-    servers: options.openapi?.servers ?? [{ url: '/' }],
-  })
-
-  return routes
+  return routes.doc31('/openapi.json', openApiConfig)
 }
 
 export type AppType = ReturnType<typeof createApi>

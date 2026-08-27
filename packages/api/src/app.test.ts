@@ -11,6 +11,9 @@ const upstreamFetch: typeof fetch = async (input, init) => {
   if (url.endsWith('.yaml')) {
     return new Response('openapi: 3.1.0\ninfo:\n  title: Local API')
   }
+  if (url.includes('/openapi.json')) {
+    return new Response('error code: 1042', { status: 404, statusText: 'Not Found' })
+  }
   if (url.includes('/mcp')) {
     const headers = new Headers({ 'mcp-session-id': 'session-1' })
     if (init?.method === 'GET') {
@@ -107,5 +110,43 @@ assert.equal(mountedSpec.status, 200)
 const mountedDoc = await mounted.request('/api/openapi.json')
 const mountedDocument = (await mountedDoc.json()) as { servers?: Array<{ url: string }> }
 assert.equal(mountedDocument.servers?.[0]?.url, '/api')
+
+const selfSpec = await api.request('/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost/openapi.json' }),
+})
+assert.equal(selfSpec.status, 200)
+assert.deepEqual(await selfSpec.json(), document)
+assert.equal(
+  seen.some((entry) => entry.url.includes('/openapi.json')),
+  false,
+)
+
+const mountedSelfSpec = await mounted.request('/api/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost/api/openapi.json' }),
+})
+assert.equal(mountedSelfSpec.status, 200)
+assert.equal((await mountedSelfSpec.json() as { openapi?: string }).openapi, '3.1.0')
+
+const selfExecute = await api.request('/execute', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    transport: 'http',
+    method: 'get',
+    url: 'http://localhost/openapi.json',
+  }),
+})
+assert.equal(selfExecute.status, 200)
+const selfExecuteBody = await selfExecute.json()
+assert.equal(selfExecuteBody.status.code, 200)
+assert.equal(JSON.parse(selfExecuteBody.body).openapi, '3.1.0')
+assert.equal(
+  seen.some((entry) => entry.url.includes('/openapi.json')),
+  false,
+)
 
 console.log('api tests passed')

@@ -1,5 +1,5 @@
 import { fetchUpstreamSpec } from '@hookfish/api'
-import { apiJson, getApi } from './api'
+import { apiJson, getApi, isOwnOpenApiUrl } from './api'
 import type { ExecutableSource } from './client-types'
 import { getCloudProxy } from './cloud'
 import { loadMcpSource } from './mcp/source'
@@ -61,9 +61,11 @@ registerSourceAdapter({
   inputLabel: 'OpenAPI document URL',
   submitHotkey: 'Mod+Enter',
   load: async (sourceUrl, id) => {
-    const document = getCloudProxy()
-      ? await apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
-      : await fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
+    const document = isOwnOpenApiUrl(sourceUrl)
+      ? await apiJson(await getApi()['openapi.json'].$get())
+      : getCloudProxy()
+        ? await apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
+        : await fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
     return specToClient(document, sourceUrl, id)
   },
 })
