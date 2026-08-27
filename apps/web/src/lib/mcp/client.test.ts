@@ -157,7 +157,7 @@ globalThis.fetch = async (input, init) => {
     rpcMethod !== 'initialize' &&
     rpcMethod !== 'server/discover'
   ) {
-    invalidSessions.delete(sessionId)
+    invalidSessions.delete(sessionId as string)
     return new Response('Invalid session ID', { status: invalidSessionStatus })
   }
   if (rpcMethod === 'server/discover') {
@@ -245,6 +245,13 @@ globalThis.fetch = async (input, init) => {
   }
   if (rpcMethod === 'tools/call') {
     const params = message.params as Record<string, unknown>
+    const args = params.arguments as Record<string, unknown> | undefined
+    if (args?.text === 'recover') {
+      return result(id, {
+        resultType: 'complete',
+        content: [{ type: 'text', text: 'recovered' }],
+      })
+    }
     if (!params.inputResponses) {
       return result(id, {
         resultType: 'input_required',
@@ -367,7 +374,7 @@ const legacyInvocation = mcpExecutableAdapter.buildInvocation({
 invalidSessions.set('legacy-session', 400)
 const recoveredExecution =
   await mcpExecutableAdapter.execute(legacyInvocation)
-assert.ok(recoveredExecution.inputRequired)
+assert.match(recoveredExecution.body, /recovered/)
 assert.equal(initializeCounts.get('https://mcp.test/legacy'), 3)
 
 await assert.rejects(
