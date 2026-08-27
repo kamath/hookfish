@@ -42,9 +42,11 @@ function Spinner() {
 export function AuthRedirect({
   href,
   onCancel,
+  name,
 }: {
   href: string
   onCancel: () => void
+  name?: string
 }) {
   const [remaining, setRemaining] = useState(COUNTDOWN_START)
   const onCancelRef = useRef(onCancel)
@@ -87,7 +89,9 @@ export function AuthRedirect({
 
   return (
     <div className="flex w-full flex-col items-center text-center">
-      <p className="max-w-xl text-sm text-ink">This source needs you to sign in.</p>
+      <p className="max-w-xl text-sm text-ink">
+        {name ? `Sign in to ${name} to continue.` : 'This MCP server needs you to sign in.'}
+      </p>
       <p className="mt-3 flex items-center justify-center gap-2 text-sm text-mute">
         <Spinner />
         <span>
