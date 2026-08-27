@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
-const COUNTDOWN_START = 3
+function authorizationOrigin(href: string) {
+  try {
+    return `${new URL(href).origin}/`
+  } catch {
+    return href
+  }
+}
+
+const COUNTDOWN_START = 10
 
 function Spinner() {
   return (
@@ -75,9 +83,14 @@ export function AuthRedirect({
     return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [href])
 
+  const destination = authorizationOrigin(href)
+
   return (
     <div className="flex w-full flex-col items-center text-center">
-      <p className="flex items-center justify-center gap-2 text-sm text-mute">
+      <p className="max-w-xl truncate font-mono text-sm text-ink" title={destination}>
+        {destination}
+      </p>
+      <p className="mt-3 flex items-center justify-center gap-2 text-sm text-mute">
         <Spinner />
         <span>
           Redirecting
