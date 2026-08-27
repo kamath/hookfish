@@ -130,6 +130,10 @@ html[data-oc-mode='edit'] .oc-key-hints {
   outline: none;
 }
 
+[data-oc-tab-target='true'] {
+  background-color: color-mix(in srgb, var(--signal) 6%, var(--paper));
+}
+
 [data-oc-current='true'] {
   background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
 }
