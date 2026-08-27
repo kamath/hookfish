@@ -30,8 +30,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     path: '/',
     bindings: [
       { id: 'open', hotkey: 'Enter', label: 'open' },
-      { id: 'next', hotkey: 'J', label: 'next source', flag: 'hasSpecs' },
-      { id: 'previous', hotkey: 'K', label: 'previous source', flag: 'hasSpecs' },
+      { id: 'next', hotkey: 'J', label: 'next' },
+      { id: 'previous', hotkey: 'K', label: 'previous' },
       {
         id: 'sourceType',
         hotkey: 'Mod+/',

@@ -80,6 +80,18 @@ function formRoot(rootId: string): HTMLElement | null {
   return document.getElementById(rootId)
 }
 
+export function formOwnsNavigation(rootId: string): boolean {
+  const root = formRoot(rootId)
+  const active = document.activeElement
+  if (!root) {
+    return false
+  }
+  if (active instanceof HTMLElement && active !== document.body) {
+    return root.contains(active)
+  }
+  return root.querySelector('[data-oc-current="true"]') !== null
+}
+
 function syncMode(root: HTMLElement) {
   root.dataset.ocMode = isInsertMode() ? 'insert' : 'command'
 }

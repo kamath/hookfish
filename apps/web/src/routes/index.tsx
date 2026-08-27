@@ -5,8 +5,14 @@ import { Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { blurActive } from '../lib/focus'
+import {
+  bindFormTabSync,
+  confirmForm,
+  formOwnsNavigation,
+  moveFormTab,
+} from '../lib/form-nav'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
-import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import { usePaneActions } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
 import { sourceAdapterOptions } from '../lib/source-adapters'
 import { inputClass, primaryButtonClass } from '../lib/ui'
@@ -67,6 +73,8 @@ function Home() {
     activate('specs', 'command')
   }, [])
 
+  useEffect(() => bindFormTabSync('add-source-form'), [sourceKind])
+
   function move(delta: number) {
     setSelected((index) => {
       const last = Math.max(apis.length - 1, 0)
@@ -74,11 +82,21 @@ function Home() {
     })
   }
 
-  usePaneFlags('specs', { hasSpecs: apis.length > 0 })
-  useStepKeys('specs', move, apis.length > 0)
+  function moveFromFocus(delta: number) {
+    if (formOwnsNavigation('add-source-form')) {
+      moveFormTab('add-source-form', delta)
+      return
+    }
+    move(delta)
+  }
+
   usePaneActions('specs', {
     open: {
       callback: () => {
+        if (formOwnsNavigation('add-source-form')) {
+          confirmForm('add-source-form')
+          return
+        }
         const api = apis[selected]
         if (api) {
           void router.navigate({
@@ -87,8 +105,9 @@ function Home() {
           })
         }
       },
-      enabled: apis.length > 0,
     },
+    next: () => moveFromFocus(1),
+    previous: () => moveFromFocus(-1),
     insert: () => {
       activate('specs', 'edit')
       urlRef.current?.focus()
@@ -132,6 +151,7 @@ function Home() {
       className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4"
     >
       <form
+        id="add-source-form"
         data-oc-enter-submit="true"
         onSubmit={onSubmit}
         className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start"
@@ -142,23 +162,20 @@ function Home() {
         <div className="flex min-w-0 flex-1">
           <div className="relative shrink-0">
             <select
-            ref={sourceKindRef}
-            id="source-kind"
-            name="source-kind"
-            data-oc-command-focus="true"
-            className="min-h-11 appearance-none bg-ink/5 py-2 pl-16 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
-            value={sourceKind}
-            onChange={(event) => {
-              setSourceKind(event.target.value)
-              event.currentTarget.blur()
-              enterCommand()
-            }}
-          >
-            {sourceOptions.map((option) => (
-              <option key={option.kind} value={option.kind}>
-                {option.label}
-              </option>
-            ))}
+              ref={sourceKindRef}
+              id="source-kind"
+              name="source-kind"
+              className="min-h-11 appearance-none bg-ink/5 py-2 pl-16 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
+              value={sourceKind}
+              onChange={(event) => {
+                setSourceKind(event.target.value)
+              }}
+            >
+              {sourceOptions.map((option) => (
+                <option key={option.kind} value={option.kind}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
               <Kbd hotkey="Mod+/" />
@@ -179,25 +196,25 @@ function Home() {
           </label>
           <div className="relative min-w-0 flex-1">
             <input
-            ref={urlRef}
-            id="url"
-            name="url"
-            type="url"
-            inputMode="url"
-            autoComplete="off"
-            spellCheck={false}
-            required
-            className={`${inputClass} border-l-0 pl-10`}
-            placeholder={sourceOption?.placeholder}
-            onFocus={() => {
-              activate('specs', 'edit')
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
-                event.preventDefault()
-                event.currentTarget.form?.requestSubmit()
-              }
-            }}
+              ref={urlRef}
+              id="url"
+              name="url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              className={`${inputClass} border-l-0 pl-10`}
+              placeholder={sourceOption?.placeholder}
+              onFocus={() => {
+                activate('specs', 'edit')
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
+                  event.preventDefault()
+                  event.currentTarget.form?.requestSubmit()
+                }
+              }}
             />
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
               <Kbd hotkey="I" />
