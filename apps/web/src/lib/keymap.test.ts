@@ -22,4 +22,17 @@ for (const [pane, config] of Object.entries(paneConfig)) {
   )
 }
 
-console.log('keymap arrow aliases ok')
+for (const pane of ['routes', 'input'] as const) {
+  const nextTab = paneConfig[pane].bindings.find((binding) => binding.id === 'nextTab')
+  const previousTab = paneConfig[pane].bindings.find((binding) => binding.id === 'previousTab')
+  assert.ok(nextTab, `${pane} has a nextTab binding`)
+  assert.ok(previousTab, `${pane} has a previousTab binding`)
+  assert.equal(nextTab.hotkey, 'Tab', `${pane} nextTab is Tab`)
+  assert.equal(previousTab.hotkey, 'Shift+Tab', `${pane} previousTab is Shift+Tab`)
+}
+
+const routesNext = paneConfig.routes.bindings.find((binding) => binding.id === 'next')
+const routesNextTab = paneConfig.routes.bindings.find((binding) => binding.id === 'nextTab')
+assert.equal(routesNext?.label, routesNextTab?.label, 'routes J and Tab share a label')
+
+console.log('keymap step and tab bindings ok')
