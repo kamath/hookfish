@@ -374,7 +374,7 @@ function Home() {
               }
               setUrlFocused(false)
             }}
-            className="relative w-full"
+            className="w-full"
           >
           <label htmlFor="url" className="sr-only">
             MCP endpoint or OpenAPI document URL
@@ -404,35 +404,31 @@ function Home() {
               </span>
             ) : null}
           </div>
-          {showSubmitButtons || urlError ? (
-            <div className="absolute inset-x-0 top-full z-10 mt-2 flex flex-col gap-2">
-              {showSubmitButtons ? (
-                <div className="flex gap-2">
-                  {sourceOptions.map((option, index) => {
-                    const pending =
-                      submittingUrl && openSource.variables?.kind === option.kind
-                    return (
-                      <button
-                        key={option.kind}
-                        type="button"
-                        className={`${index === 0 ? primaryButtonClass : softButtonClass} min-w-0 flex-1 whitespace-nowrap`}
-                        disabled={openSource.isPending || dialogOpen}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => submit(option.kind)}
-                      >
-                        {pending ? 'Reading…' : option.label}
-                        {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : null}
-              {urlError ? (
-                <p className="line-clamp-3 break-words text-sm text-error" role="alert">
-                  {urlError}
-                </p>
-              ) : null}
-            </div>
+          <div className="mt-2 flex h-11 gap-2">
+            {showSubmitButtons
+              ? sourceOptions.map((option, index) => {
+                  const pending =
+                    submittingUrl && openSource.variables?.kind === option.kind
+                  return (
+                    <button
+                      key={option.kind}
+                      type="button"
+                      className={`${index === 0 ? primaryButtonClass : softButtonClass} min-w-0 flex-1 whitespace-nowrap`}
+                      disabled={openSource.isPending || dialogOpen}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => submit(option.kind)}
+                    >
+                      {pending ? 'Reading…' : option.label}
+                      {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
+                    </button>
+                  )
+                })
+              : null}
+          </div>
+          {urlError ? (
+            <p className="mt-2 line-clamp-3 break-words text-sm text-error" role="alert">
+              {urlError}
+            </p>
           ) : null}
         </form>
         </div>
