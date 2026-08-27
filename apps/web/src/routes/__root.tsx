@@ -144,8 +144,7 @@ function CloudProxyToggle() {
         ) : (
           <>
             <strong className="font-medium">Local mode.</strong> Connect to services on this
-            computer, including localhost. Some remote services may block browser
-            connections.
+            computer, including localhost. Remote services may block browser connections.
           </>
         )}
       </p>
