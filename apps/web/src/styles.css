@@ -195,6 +195,21 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   display: inline-flex;
 }
 
+/* Touch / mobile: no keyboard chrome. Keep in sync with KEYBINDINGS_MEDIA in keymap.ts. */
+.oc-kbd-fallback {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--mute);
+}
+
+@media (hover: none), (pointer: coarse) {
+  kbd,
+  .oc-key-hints,
+  [data-oc-hint] {
+    display: none !important;
+  }
+}
+
 [data-oc-mode='insert'] [data-oc-current='true'] {
   background-color: transparent;
 }

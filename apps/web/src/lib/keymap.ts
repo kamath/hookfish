@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
@@ -250,8 +250,33 @@ type Registration = {
   flags?: Record<string, boolean>
 }
 
+// Keep in sync with the `@media (hover: none), (pointer: coarse)` hide in styles.css.
+export const KEYBINDINGS_MEDIA = '(hover: hover) and (pointer: fine)'
+
+export function keybindingsEnabled() {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(KEYBINDINGS_MEDIA).matches
+  )
+}
+
+function subscribeKeybindingsEnabled(onChange: () => void) {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return () => {}
+  }
+  const media = window.matchMedia(KEYBINDINGS_MEDIA)
+  media.addEventListener('change', onChange)
+  return () => media.removeEventListener('change', onChange)
+}
+
+export function useKeybindingsEnabled() {
+  return useSyncExternalStore(subscribeKeybindingsEnabled, keybindingsEnabled, () => false)
+}
+
 export function useShowKeybindings() {
-  return useAtomValue(modeAtom) === 'command'
+  const enabled = useKeybindingsEnabled()
+  return enabled && useAtomValue(modeAtom) === 'command'
 }
 
 const registrationsAtom = atom(new Map<symbol, Registration>())
@@ -343,6 +368,7 @@ export function usePaneActions(
 }
 
 export function useGlobalKeybindings() {
+  const keybindingsOn = useKeybindingsEnabled()
   const chrome = useAtomValue(chromeAtom)
   const registrations = useAtomValue(registrationsAtom)
   const actions: Partial<Record<string, PaneAction>> = {}
@@ -365,6 +391,7 @@ export function useGlobalKeybindings() {
         callback: action?.callback ?? noopKeybinding,
         options: {
           enabled:
+            keybindingsOn &&
             pane === chrome.pane &&
             Boolean(action) &&
             action?.enabled !== false &&
@@ -390,6 +417,7 @@ export function usePaneStep(pane: Pane, step: (delta: number) => void, enabled =
 export function bindEnterMode() {
   const onKeyDown = (event: KeyboardEvent) => {
     if (
+      !keybindingsEnabled() ||
       event.key !== 'Enter' ||
       event.metaKey ||
       event.ctrlKey ||
