@@ -11,6 +11,7 @@ import {
   MCP_CATALOG,
   OPENAPI_CATALOG,
   catalogActionId,
+  catalogSourceUrl,
   sourceUrlKey,
   type CatalogEntry,
 } from '../lib/catalog'
@@ -153,7 +154,7 @@ function Home() {
     if (pendingAuth) {
       cancelAuthorization()
     }
-    openSource.mutate({ url: entry.url, kind: entry.kind, entryId: entry.id })
+    openSource.mutate({ url: catalogSourceUrl(entry), kind: entry.kind, entryId: entry.id })
   }
 
   usePaneFlags('specs', {
@@ -227,7 +228,7 @@ function Home() {
             const added = apis.some(
               (api) =>
                 api.kind === entry.kind &&
-                sourceUrlKey(api.sourceUrl) === sourceUrlKey(entry.url),
+                sourceUrlKey(api.sourceUrl) === sourceUrlKey(catalogSourceUrl(entry)),
             )
             return (
               <li key={entry.id}>
