@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import {
   buildNode,
-  expandedIds,
   parseJsonBody,
   selectedJsonText,
   visibleNodes,
@@ -18,8 +17,6 @@ assert.equal(collapsed.length, 1)
 const expanded = visibleNodes(object, new Set([object.id]))
 assert.equal(expanded.length, 4)
 assert.equal(expanded[3]?.value, '}')
-assert.deepEqual([...expandedIds(object, 0)], [object.id])
-assert.ok(expandedIds(object, 1).has(object.id))
 
 const parsed = parseJsonBody(JSON.stringify({ ok: true }))
 assert.ok(parsed.root)

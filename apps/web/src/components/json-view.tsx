@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   buildNode,
   collectionMark,
-  expandedIds,
   findNode,
   lineNodes,
   parseJsonBody,
@@ -25,14 +24,12 @@ export function JsonView({
   pane,
   enabled = true,
   copyAction = 'copy',
-  expandDepth = 0,
 }: {
   value?: unknown
   text?: string
   pane: Pane
   enabled?: boolean
   copyAction?: 'copy' | 'export'
-  expandDepth?: number
 }) {
   const parsed = useMemo(() => {
     if (text !== undefined) {
@@ -43,7 +40,9 @@ export function JsonView({
     }
     return { root: buildNode(value) }
   }, [text, value])
-  const [expanded, setExpanded] = useState(() => expandedIds(parsed.root, expandDepth))
+  const [expanded, setExpanded] = useState(() =>
+    parsed.root?.collection ? new Set([parsed.root.id]) : new Set<string>(),
+  )
   const [selected, setSelected] = useState(() => (parsed.root?.children?.length ? 1 : 0))
   const [copiedId, setCopiedId] = useState<string>()
   const [wrapped, setWrapped] = useState<Set<string>>(new Set())
@@ -56,10 +55,10 @@ export function JsonView({
   )
 
   useEffect(() => {
-    setExpanded(expandedIds(parsed.root, expandDepth))
+    setExpanded(parsed.root?.collection ? new Set([parsed.root.id]) : new Set())
     setSelected(parsed.root?.children?.length ? 1 : 0)
     setWrapped(new Set())
-  }, [expandDepth, parsed])
+  }, [parsed])
 
   useEffect(() => {
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
