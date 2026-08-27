@@ -1,7 +1,7 @@
 import type { ExecuteRequest } from './invoke'
 
 function headerList(request: ExecuteRequest): Array<[string, string]> {
-  return Object.entries(request.headers).filter(
+  return Object.entries(request.headers ?? {}).filter(
     ([name]) => name.toLowerCase() !== 'content-length',
   )
 }

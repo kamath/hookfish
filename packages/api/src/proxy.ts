@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { isHttpUrl } from '../lib/build-request'
+import { isHttpUrl } from './http'
 
 const REQUEST_HEADER_BLOCKLIST = new Set([
   'connection',
@@ -35,14 +34,17 @@ function filteredHeaders(source: Headers, blocked: Set<string>) {
   return headers
 }
 
-async function proxy(request: Request) {
+export async function proxyMcpRequest(
+  request: Request,
+  upstreamFetch: typeof fetch = fetch,
+) {
   const target = new URL(request.url).searchParams.get('url') ?? ''
   if (!isHttpUrl(target)) {
     return Response.json({ error: 'Choose an http or https MCP endpoint.' }, { status: 400 })
   }
 
   const headers = filteredHeaders(request.headers, REQUEST_HEADER_BLOCKLIST)
-  const response = await fetch(target, {
+  const response = await upstreamFetch(target, {
     method: request.method,
     headers,
     body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
@@ -61,13 +63,3 @@ async function proxy(request: Request) {
     headers: responseHeaders,
   })
 }
-
-export const Route = createFileRoute('/api/mcp-proxy')({
-  server: {
-    handlers: {
-      GET: ({ request }) => proxy(request),
-      POST: ({ request }) => proxy(request),
-      DELETE: ({ request }) => proxy(request),
-    },
-  },
-})
