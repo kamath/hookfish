@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
-import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
+import {
+  executeUpstreamRequest,
+  fetchUpstreamSpec,
+  localUpstreamFetch,
+} from './upstream'
 
 const seen: Array<{ url: string; init?: RequestInit }> = []
 const upstreamFetch: typeof fetch = async (input, init) => {
@@ -46,6 +50,22 @@ assert.deepEqual(
 await assert.rejects(
   () => fetchUpstreamSpec('file:///tmp/openapi.yaml', upstreamFetch),
   /http or https OpenAPI URL/,
+)
+
+await assert.rejects(
+  () =>
+    localUpstreamFetch('https://cross-origin.test', undefined, async () => {
+      throw new TypeError('Failed to fetch')
+    }),
+  /may be blocked by CORS\. Turn off local mode/,
+)
+
+await assert.rejects(
+  () =>
+    localUpstreamFetch('https://slow.test', undefined, async () => {
+      throw new DOMException('Timed out', 'TimeoutError')
+    }),
+  (error) => error instanceof DOMException && !error.message.includes('CORS'),
 )
 
 console.log('upstream tests passed')

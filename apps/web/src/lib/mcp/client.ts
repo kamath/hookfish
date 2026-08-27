@@ -4,6 +4,7 @@ import {
 } from '@modelcontextprotocol/client'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
+import { localUpstreamFetch } from '../upstream'
 import { BrowserMcpOAuthProvider } from './oauth'
 
 const CLIENT_INFO = {
@@ -74,7 +75,7 @@ function upstreamFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>, c
       proxyUrl.searchParams.set('url', target)
       fetchInput = proxyUrl
     }
-    const response = await fetch(fetchInput, init)
+    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, init)
     traceEntry(connection, {
       direction: 'in',
       kind: 'http',

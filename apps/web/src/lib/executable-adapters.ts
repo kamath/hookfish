@@ -10,7 +10,7 @@ import { toFetch } from './export-snippet'
 import { buildOperationRequest, httpBindingFor, type ExecuteRequest } from './invoke'
 import { executeRequest } from './invoke.functions'
 import { mcpExecutableAdapter } from './mcp/executable'
-import { executeUpstreamRequest } from './upstream'
+import { executeUpstreamRequest, localUpstreamFetch } from './upstream'
 
 export type InvocationContext = {
   source: ExecutableSource
@@ -72,7 +72,7 @@ registerExecutableAdapter('openapi', {
     const request = asHttpInvocation(invocation)
     return getCloudProxy()
       ? executeRequest({ data: request })
-      : executeUpstreamRequest(request)
+      : executeUpstreamRequest(request, localUpstreamFetch)
   },
   preview: ({ executable, target, formData }) => {
     let binding

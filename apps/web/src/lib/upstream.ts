@@ -8,6 +8,24 @@ const MAX_SPEC_BYTES = 16_000_000
 
 type UpstreamFetch = typeof fetch
 
+export async function localUpstreamFetch(
+  input: string | URL | Request,
+  init?: RequestInit,
+  upstreamFetch: UpstreamFetch = fetch,
+) {
+  try {
+    return await upstreamFetch(input, init)
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        'This request may be blocked by CORS. Turn off local mode and try again.',
+        { cause: error },
+      )
+    }
+    throw error
+  }
+}
+
 async function readLimited(response: Response): Promise<string> {
   const contentLength = Number(response.headers.get('content-length') ?? '0')
   if (contentLength > MAX_RESPONSE_CHARS * 2) {
