@@ -3,7 +3,7 @@ import type { ProtocolTraceEntry } from '../lib/client-types'
 import { consumePointerIntent, usePaneActions, useStepKeys } from '../lib/keys'
 import { activate, getPane } from '../lib/mode'
 import { groupProtocolTrace, rpcAccent, useMcpTrace, type ProtocolRpc } from '../lib/mcp/trace'
-import { Kbd } from './hints'
+import { Kbd, KeyHints } from './hints'
 
 function moveSelection(
   groups: ProtocolRpc[],
@@ -53,7 +53,13 @@ function claimTracePane() {
   }
 }
 
-export function ProtocolTrace({ sourceId }: { sourceId: string }) {
+export function ProtocolTrace({
+  sourceId,
+  onClose,
+}: {
+  sourceId: string
+  onClose: () => void
+}) {
   const entries = useMcpTrace(sourceId)
   const groups = useMemo(() => groupProtocolTrace(entries), [entries])
   const [selectedId, setSelectedId] = useState<string>()
@@ -135,10 +141,27 @@ export function ProtocolTrace({ sourceId }: { sourceId: string }) {
         claimTracePane()
       }}
     >
+      <div className="oc-bar flex shrink-0 flex-wrap items-center gap-3 px-3 py-2 md:px-4">
+        <p className="font-mono text-xs text-ink">
+          {groups.length === 0
+            ? 'No protocol messages yet'
+            : `${groups.length} ${groups.length === 1 ? 'rpc' : 'rpcs'}`}
+        </p>
+        <div className="ml-auto">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
+            onClick={onClose}
+          >
+            Close trace
+            <KeyHints>
+              <Kbd hotkey="T" />
+            </KeyHints>
+          </button>
+        </div>
+      </div>
       <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
-        {groups.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-mute">No protocol messages yet.</p>
-        ) : (
+        {groups.length > 0 ? (
           <ol className="w-max min-w-full font-mono text-sm leading-relaxed">
             {groups.map((group, index) => {
               const active = group.id === selectedId

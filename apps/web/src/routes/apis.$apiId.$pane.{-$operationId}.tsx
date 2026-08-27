@@ -595,6 +595,9 @@ function ApiWorkbench({
     parent: () => {
       stepBack()
     },
+    trace: () => {
+      stepBack()
+    },
   })
 
   function renderOperation(operation: Executable) {
@@ -705,9 +708,7 @@ function ApiWorkbench({
               onClick={stepBack}
             >
               {routePane === 'trace'
-                ? operationId
-                  ? 'Input'
-                  : api.labels.executablePlural
+                ? 'Close trace'
                 : activePane === 'response'
                   ? 'Input'
                   : activePane === 'input'
@@ -738,7 +739,7 @@ function ApiWorkbench({
       </div>
 
       {routePane === 'trace' || activePane === 'trace' ? (
-        <ProtocolTrace sourceId={api.id} />
+        <ProtocolTrace sourceId={api.id} onClose={stepBack} />
       ) : (
         <div
           className={`grid min-h-0 flex-1 grid-cols-1 ${

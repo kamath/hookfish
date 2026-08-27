@@ -166,6 +166,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', label: 'next rpc' },
       { id: 'previous', hotkey: 'K', label: 'previous rpc' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      { id: 'trace', hotkey: 'T', label: 'close' },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',

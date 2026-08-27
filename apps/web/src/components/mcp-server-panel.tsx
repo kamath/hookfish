@@ -91,13 +91,14 @@ function McpServerChrome({
           data-oc-trace-toggle
           data-oc-command-focus="true"
           aria-pressed={traceOpen}
+          aria-label={traceOpen ? 'Close protocol trace' : 'Open protocol trace'}
           className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 font-mono ${
             traceOpen ? 'bg-paper text-ink' : 'bg-paper text-mute hover:text-ink'
           }`}
           onClick={onToggleTrace}
         >
           trace {entries.length}
-          {traceOpen ? null : <Kbd hotkey="T" />}
+          <Kbd hotkey="T" />
         </button>
         {capabilities
           .filter(
