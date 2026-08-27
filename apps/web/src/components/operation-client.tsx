@@ -343,17 +343,19 @@ export function ExecutableClient({
       style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
-        <div className="oc-bar sticky top-0 z-10 flex items-baseline gap-3 px-3 py-2 md:px-4">
-          <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
-            {operation.badge}
-          </span>
-          <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
-          {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="oc-bar sticky top-0 z-10 flex flex-col gap-2 px-3 py-2 md:flex-row md:items-baseline md:gap-3 md:px-4">
+          <div className="flex min-w-0 items-baseline gap-3">
+            <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
+              {operation.badge}
+            </span>
+            <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
+            {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
             {result ? (
               <button
                 type="button"
-                className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
                 onClick={showResponse}
               >
                 View output
@@ -364,7 +366,7 @@ export function ExecutableClient({
               <button
                 type="button"
                 data-oc-nav="action"
-                className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none md:flex-none"
                 aria-live="polite"
                 aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
                 onClick={() => {
@@ -380,7 +382,7 @@ export function ExecutableClient({
             <button
               type="button"
               data-oc-nav="action"
-              className={`${formPrimaryButtonClass} exec-solid`}
+              className={`${formPrimaryButtonClass} exec-solid flex-1 md:flex-none`}
               disabled={pending || authPending}
               onClick={() => submitForm('call-form')}
             >
