@@ -706,6 +706,15 @@ function ApiWorkbench({
     )
   }
 
+  const backLabel =
+    routePane === 'trace'
+      ? 'Close traces'
+      : activePane === 'response'
+        ? 'Back to input'
+        : activePane === 'input'
+          ? `Back to ${api.labels.executablePlural}`
+          : `Back to ${api.labels.sourcePlural}`
+
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
       <div className="oc-bar shrink-0">
@@ -749,31 +758,33 @@ function ApiWorkbench({
               </button>
             </div>
           ) : null}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex w-full items-center gap-1 md:ml-auto md:w-auto md:gap-3">
             <button
               type="button"
-              className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
+              className="oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm text-mute hover:text-ink"
+              aria-label={backLabel}
               onClick={stepBack}
             >
-              {routePane === 'trace'
-                ? 'Close traces'
-                : activePane === 'response'
-                  ? 'Input'
-                  : activePane === 'input'
-                    ? api.labels.executablePlural
-                    : api.labels.sourcePlural}
+              <span className="oc-bar-action-icon" aria-hidden="true">
+                <BackIcon />
+              </span>
+              <span className="min-w-0 truncate">{backLabel}</span>
               <Kbd hotkey="Escape" />
             </button>
             {onClearAuth ? (
               <button
                 type="button"
-                className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
+                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm text-mute hover:text-ink disabled:opacity-40"
+                aria-label="Clear credentials"
                 disabled={authPending}
                 onClick={() => {
                   void onClearAuth()
                 }}
               >
-                Clear credentials
+                <span className="oc-bar-action-label">Clear credentials</span>
+                <span className="oc-bar-action-icon" aria-hidden="true">
+                  <TrashIcon />
+                </span>
                 <Kbd hotkey="Mod+Backspace" />
               </button>
             ) : null}
@@ -930,5 +941,43 @@ function ApiWorkbench({
         </div>
       )}
     </main>
+  )
+}
+
+function BackIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M6 7l1 14h10l1-14" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
   )
 }
