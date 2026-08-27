@@ -110,6 +110,30 @@ export function AuthRedirect({
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [goNow])
 
+  return (
+    <AuthRedirectView
+      href={href}
+      name={name}
+      remaining={remaining}
+      onGoNow={goNow}
+      onCancel={onCancel}
+    />
+  )
+}
+
+export function AuthRedirectView({
+  href,
+  name,
+  remaining,
+  onGoNow,
+  onCancel,
+}: {
+  href: string
+  name?: string
+  remaining: number
+  onGoNow: () => void
+  onCancel: () => void
+}) {
   const host = authorizationHost(href)
   const waiting = remaining > 0
 
@@ -137,7 +161,7 @@ export function AuthRedirect({
       </p>
       {waiting ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
-          <button type="button" className={primaryButtonClass} onClick={goNow}>
+          <button type="button" className={primaryButtonClass} onClick={onGoNow}>
             Go now
             <Kbd hotkey="Enter" persistent />
           </button>
