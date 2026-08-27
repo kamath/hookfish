@@ -16,9 +16,9 @@ export const Route = createFileRoute('/api/mcp-oauth-client')({
             ...mcpOAuthClientMetadata(sourceId, url.origin),
           },
           {
-          headers: {
-            'Cache-Control': 'public, max-age=300',
-          },
+            headers: {
+              'Cache-Control': 'public, max-age=300',
+            },
           },
         )
       },

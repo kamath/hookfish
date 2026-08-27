@@ -1,11 +1,40 @@
 import assert from 'node:assert/strict'
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { closeMcpConnection } from './client'
 import { mcpExecutableAdapter } from './executable'
+import {
+  BrowserMcpOAuthProvider,
+  clearMcpOAuth,
+  hasMcpOAuthTokens,
+  mcpOAuthClientMetadata,
+} from './oauth'
 import { loadMcpSource } from './source'
 
+const browserStorage = new Map<string, string>()
+let assignedUrl: string | undefined
+const location = {
+  origin: 'http://hookfish.test',
+  href: 'http://hookfish.test/',
+  assign: (url: string | URL) => {
+    assignedUrl = String(url)
+  },
+}
 Object.defineProperty(globalThis, 'window', {
   value: {
-    location: { origin: 'http://hookfish.test' },
+    location,
+    history: {
+      state: null,
+      replaceState: (_state: unknown, _unused: string, url?: string | URL | null) => {
+        if (url) {
+          location.href = String(url)
+        }
+      },
+    },
+    localStorage: {
+      getItem: (key: string) => browserStorage.get(key) ?? null,
+      setItem: (key: string, value: string) => browserStorage.set(key, value),
+      removeItem: (key: string) => browserStorage.delete(key),
+    },
     prompt: () => null,
   },
   configurable: true,
@@ -45,12 +74,62 @@ globalThis.fetch = async (input, init) => {
   const endpoint = proxyUrl.searchParams.get('url') ?? ''
   const method = init?.method ?? 'GET'
   const headers = new Headers(init?.headers)
-  const message =
-    typeof init?.body === 'string'
-      ? (JSON.parse(init.body) as Record<string, unknown>)
-      : undefined
+  let message: Record<string, unknown> | undefined
+  if (typeof init?.body === 'string') {
+    try {
+      message = JSON.parse(init.body) as Record<string, unknown>
+    } catch {
+      message = undefined
+    }
+  }
   seen.push({ endpoint, method, headers, message })
 
+  if (endpoint === 'https://mcp.test/.well-known/oauth-protected-resource') {
+    return Response.json({
+      resource: 'https://mcp.test/oauth',
+      authorization_servers: ['https://auth.test'],
+      scopes_supported: ['mcp'],
+    })
+  }
+  if (endpoint === 'https://auth.test/.well-known/oauth-authorization-server') {
+    return Response.json({
+      issuer: 'https://auth.test',
+      authorization_endpoint: 'https://auth.test/authorize',
+      token_endpoint: 'https://auth.test/token',
+      registration_endpoint: 'https://auth.test/register',
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code', 'refresh_token'],
+      code_challenge_methods_supported: ['S256'],
+      token_endpoint_auth_methods_supported: ['none'],
+      scopes_supported: ['mcp'],
+    })
+  }
+  if (endpoint === 'https://auth.test/register') {
+    return Response.json({
+      client_id: 'registered-client',
+      redirect_uris: ['http://hookfish.test/apis/oauth-flow/routes'],
+      token_endpoint_auth_method: 'none',
+    })
+  }
+  if (endpoint === 'https://auth.test/token') {
+    return Response.json({
+      access_token: 'oauth-access-token',
+      token_type: 'bearer',
+      scope: 'mcp',
+    })
+  }
+  if (
+    endpoint === 'https://mcp.test/oauth' &&
+    headers.get('authorization') !== 'Bearer oauth-access-token'
+  ) {
+    return new Response(null, {
+      status: 401,
+      headers: {
+        'WWW-Authenticate':
+          'Bearer resource_metadata="https://mcp.test/.well-known/oauth-protected-resource"',
+      },
+    })
+  }
   if (method === 'GET') {
     return new Response(null, { status: 405, statusText: 'Method Not Allowed' })
   }
@@ -239,6 +318,68 @@ assert.ok(
   ),
 )
 
+await assert.rejects(
+  loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {}),
+  (error) => UnauthorizedError.isInstance(error),
+)
+assert.ok(assignedUrl)
+const authorizationUrl = new URL(assignedUrl)
+assert.equal(authorizationUrl.origin, 'https://auth.test')
+assert.equal(authorizationUrl.searchParams.get('code_challenge_method'), 'S256')
+const authorizationState = authorizationUrl.searchParams.get('state')
+assert.ok(authorizationState)
+location.href = `http://hookfish.test/apis/oauth-flow/routes?code=oauth-code&state=${authorizationState}`
+const oauthSource = await loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {})
+assert.equal(oauthSource.title, 'modern-test')
+assert.equal(
+  (oauthSource.adapterData as { oauthAuthorized: boolean }).oauthAuthorized,
+  true,
+)
+assert.ok(
+  seen.some(
+    (request) =>
+      request.endpoint === 'https://mcp.test/oauth' &&
+      request.headers.get('authorization') === 'Bearer oauth-access-token',
+  ),
+)
+
+const oauth = new BrowserMcpOAuthProvider('oauth-source')
+const oauthState = oauth.state()
+oauth.saveCodeVerifier('test-verifier')
+oauth.saveClientInformation(
+  { client_id: 'test-client', issuer: 'https://auth.test' },
+  { issuer: 'https://auth.test' },
+)
+oauth.saveTokens(
+  {
+    access_token: 'test-access-token',
+    token_type: 'bearer',
+    issuer: 'https://auth.test',
+  },
+  { issuer: 'https://auth.test' },
+)
+assert.equal(oauth.codeVerifier(), 'test-verifier')
+assert.equal(oauth.tokens()?.access_token, 'test-access-token')
+assert.equal(hasMcpOAuthTokens('oauth-source'), true)
+location.href = `http://hookfish.test/apis/oauth-source/routes?code=test-code&state=${oauthState}`
+assert.equal(oauth.callbackParameters()?.get('code'), 'test-code')
+oauth.finishCallback()
+oauth.cleanCallbackUrl()
+assert.equal(location.href, 'http://hookfish.test/apis/oauth-source/routes')
+assert.throws(() => oauth.codeVerifier(), /verifier is missing/)
+assert.deepEqual(mcpOAuthClientMetadata('oauth-source', 'https://hookfish.test'), {
+  client_name: 'Hookfish MCP Inspector',
+  client_uri: 'https://hookfish.test',
+  redirect_uris: ['https://hookfish.test/apis/oauth-source/routes'],
+  response_types: ['code'],
+  grant_types: ['authorization_code', 'refresh_token'],
+  token_endpoint_auth_method: 'none',
+})
+clearMcpOAuth('oauth-source')
+assert.equal(hasMcpOAuthTokens('oauth-source'), false)
+
 await closeMcpConnection('modern')
 await closeMcpConnection('legacy')
-console.log('mcp modern and legacy SHTTP ok')
+await closeMcpConnection('oauth-flow')
+clearMcpOAuth('oauth-flow')
+console.log('mcp modern, legacy SHTTP, and browser OAuth storage ok')
