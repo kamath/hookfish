@@ -18,11 +18,11 @@ export function Kbd({
     setLabel(formatForDisplay(hotkey))
   }, [hotkey])
 
-  if (!label) {
-    return <kbd className={className} aria-hidden="true">&nbsp;</kbd>
-  }
-
-  return <kbd className={className}>{label}</kbd>
+  return (
+    <kbd className={className} aria-hidden={label ? undefined : true}>
+      <span>{label || '\u00a0'}</span>
+    </kbd>
+  )
 }
 
 export function KeyHints({
