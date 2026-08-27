@@ -7,6 +7,7 @@
     "hookfish": "dist/index.js"
   },
   "files": [
+    "LICENSE",
     "dist",
     "web"
   ],

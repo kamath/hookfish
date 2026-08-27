@@ -1,6 +1,7 @@
 {
   "name": "hookfish-workspace",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "turbo run build",
     "cli": "pnpm build && pnpm --filter hookfish start",

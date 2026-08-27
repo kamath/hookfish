@@ -11,6 +11,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from '../components/brand'
+import { GitHubLink } from '../components/github-link'
 import { QueryStatus } from '../components/query-status'
 import { ThemeToggle } from '../components/theme-toggle'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
@@ -179,7 +180,10 @@ function CloudProxyToggle() {
           </>
         )}
       </p>
-      <ThemeToggle />
+      <div className="ml-auto flex shrink-0 items-center">
+        <GitHubLink />
+        <ThemeToggle />
+      </div>
     </div>
   )
 }

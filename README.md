@@ -86,3 +86,8 @@ To inspect the independently publishable npm tarball:
 ```bash
 pnpm --filter hookfish pack
 ```
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
+
