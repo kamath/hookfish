@@ -51,6 +51,8 @@ type SeenRequest = {
 }
 
 const seen: SeenRequest[] = []
+const initializeCounts = new Map<string, number>()
+const invalidSessions = new Map<string, number>()
 
 function result(id: unknown, value: Record<string, unknown>, headers?: HeadersInit) {
   return Response.json(
@@ -146,6 +148,18 @@ globalThis.fetch = async (input, init) => {
   const id = message.id
   const rpcMethod = String(message.method)
   const legacy = endpoint.includes('/legacy')
+  const sessionId = headers.get('mcp-session-id')
+  const invalidSessionStatus = sessionId
+    ? invalidSessions.get(sessionId)
+    : undefined
+  if (
+    invalidSessionStatus &&
+    rpcMethod !== 'initialize' &&
+    rpcMethod !== 'server/discover'
+  ) {
+    invalidSessions.delete(sessionId)
+    return new Response('Invalid session ID', { status: invalidSessionStatus })
+  }
   if (rpcMethod === 'server/discover') {
     if (legacy) {
       return Response.json(
@@ -177,6 +191,7 @@ globalThis.fetch = async (input, init) => {
     })
   }
   if (rpcMethod === 'initialize') {
+    initializeCounts.set(endpoint, (initializeCounts.get(endpoint) ?? 0) + 1)
     return result(
       id,
       {
@@ -329,6 +344,31 @@ assert.ok(
       request.headers.get('mcp-session-id') === 'legacy-session',
   ),
 )
+invalidSessions.set('legacy-session', 404)
+const recoveredLegacy = await loadMcpSource(
+  'https://mcp.test/legacy',
+  'legacy',
+  {},
+)
+assert.equal(recoveredLegacy.title, 'legacy-test')
+assert.equal(initializeCounts.get('https://mcp.test/legacy'), 2)
+
+const legacyTool = recoveredLegacy.executables.find(
+  (item) => item.id === 'tool:echo',
+)
+assert.ok(legacyTool)
+const legacyInvocation = mcpExecutableAdapter.buildInvocation({
+  source: recoveredLegacy,
+  executable: legacyTool,
+  target: recoveredLegacy.targets[0] ?? '',
+  formData: { text: 'recover' },
+  credentials: {},
+})
+invalidSessions.set('legacy-session', 400)
+const recoveredExecution =
+  await mcpExecutableAdapter.execute(legacyInvocation)
+assert.ok(recoveredExecution.inputRequired)
+assert.equal(initializeCounts.get('https://mcp.test/legacy'), 3)
 
 await assert.rejects(
   loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {}),

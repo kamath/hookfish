@@ -1,5 +1,6 @@
 import {
   Client,
+  SdkHttpError,
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
@@ -216,6 +217,48 @@ export async function getMcpConnection(
   connections.set(sourceId, connection)
   emitTrace(sourceId)
   return connection
+}
+
+function isInvalidSessionError(error: unknown, connection: McpConnection) {
+  if (!connection.transport.sessionId || !SdkHttpError.isInstance(error)) {
+    return false
+  }
+  return (
+    error.status === 404 ||
+    /(?:invalid|expired|unknown)\s+session|session\s+(?:not\s+found|expired)/i.test(
+      `${error.message} ${error.data.text ?? ''}`,
+    )
+  )
+}
+
+async function discardMcpConnection(
+  sourceId: string,
+  connection: McpConnection,
+) {
+  if (connections.get(sourceId) !== connection) {
+    return
+  }
+  connections.delete(sourceId)
+  emitTrace(sourceId)
+  await connection.client.close().catch(() => {})
+}
+
+export async function withMcpConnection<T>(
+  sourceId: string,
+  endpoint: string,
+  operation: (connection: McpConnection) => Promise<T>,
+) {
+  const connection = await getMcpConnection(sourceId, endpoint)
+  try {
+    return await operation(connection)
+  } catch (error) {
+    if (!isInvalidSessionError(error, connection)) {
+      throw error
+    }
+    await discardMcpConnection(sourceId, connection)
+    const recovered = await getMcpConnection(sourceId, endpoint)
+    return operation(recovered)
+  }
 }
 
 export function traceMark(connection: McpConnection) {
