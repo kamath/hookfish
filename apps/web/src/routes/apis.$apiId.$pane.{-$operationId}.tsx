@@ -759,7 +759,7 @@ function ApiWorkbench({
 
         {selected && (activePane === 'input' || activePane === 'response') ? (
           <ExecutableClient
-            key={selected.id}
+            key={JSON.stringify([api.id, selected.id])}
             api={api}
             operation={selected}
             target={serverUrl}
