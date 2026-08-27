@@ -28,6 +28,13 @@ const CALLBACK_PARAMETERS = [
   'session_state',
 ]
 
+type PendingAuthorization = {
+  sourceId: string
+  url: string
+}
+
+let pendingAuthorization: PendingAuthorization | undefined
+
 function storageKey(sourceId: string) {
   return `oc:mcp-oauth:${sourceId}`
 }
@@ -130,7 +137,10 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   }
 
   redirectToAuthorization(authorizationUrl: URL) {
-    window.location.assign(authorizationUrl)
+    pendingAuthorization = {
+      sourceId: this.sourceId,
+      url: authorizationUrl.toString(),
+    }
   }
 
   saveCodeVerifier(codeVerifier: string) {
@@ -205,6 +215,7 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   }
 
   finishCallback() {
+    pendingAuthorization = undefined
     const store = readStore(this.sourceId)
     delete store.codeVerifier
     delete store.state
@@ -230,4 +241,21 @@ export function hasMcpOAuthTokens(sourceId: string) {
 
 export function mcpOAuthClientMetadata(sourceId: string, origin: string) {
   return clientMetadata(sourceId, origin)
+}
+
+export function pendingMcpAuthorization() {
+  return pendingAuthorization
+}
+
+export function pendingMcpAuthorizationUrl() {
+  return pendingAuthorization?.url
+}
+
+export function clearPendingMcpAuthorization() {
+  pendingAuthorization = undefined
+}
+
+export function isMcpOAuthCallback(href = window.location.href) {
+  const parameters = new URL(href).searchParams
+  return parameters.has('code') || parameters.has('error')
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { AuthRedirect } from '../components/auth-status'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -16,6 +18,7 @@ import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
+import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
 import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
@@ -23,6 +26,12 @@ export const Route = createFileRoute('/')({
   ssr: false,
   component: Home,
 })
+
+type PendingAuth = {
+  href: string
+  sourceId: string
+  entryId?: string
+}
 
 type OpenSource = {
   url: string
@@ -38,6 +47,12 @@ function Home() {
   const urlRef = useRef<HTMLInputElement>(null)
   const [url, setUrl] = useState('')
   const [selected, setSelected] = useState(0)
+  const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
+    const pending = pendingMcpAuthorization()
+    return pending
+      ? { href: pending.url, sourceId: pending.sourceId }
+      : undefined
+  })
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
 
@@ -59,7 +74,20 @@ function Home() {
         params: { apiId: id, pane: 'routes', operationId: undefined },
       })
     },
-    onError: (_error, variables) => {
+    onError: (error, variables) => {
+      if (UnauthorizedError.isInstance(error)) {
+        const next = pendingMcpAuthorization()
+        if (next) {
+          enterCommand()
+          blurActive()
+          setPendingAuth({
+            href: next.url,
+            sourceId: next.sourceId,
+            entryId: variables.entryId,
+          })
+          return
+        }
+      }
       if (!variables.entryId) {
         urlRef.current?.focus()
       }
@@ -88,9 +116,32 @@ function Home() {
     })
   }
 
+  function continueAuthorization() {
+    if (!pendingAuth) {
+      return
+    }
+    window.location.assign(pendingAuth.href)
+  }
+
+  function cancelAuthorization() {
+    const sourceId = pendingAuth?.sourceId
+    setPendingAuth(undefined)
+    openSource.reset()
+    clearPendingMcpAuthorization()
+    if (sourceId) {
+      removeApi(sourceId)
+      void queryClient.invalidateQueries({
+        queryKey: apisQueryOptions.queryKey,
+      })
+    }
+  }
+
   function submit(kind: string) {
     if (openSource.isPending || !formRef.current?.reportValidity()) {
       return
+    }
+    if (pendingAuth) {
+      cancelAuthorization()
     }
     openSource.mutate({ url: url.trim(), kind })
   }
@@ -99,14 +150,23 @@ function Home() {
     if (openSource.isPending) {
       return
     }
+    if (pendingAuth) {
+      cancelAuthorization()
+    }
     openSource.mutate({ url: entry.url, kind: entry.kind, entryId: entry.id })
   }
 
-  usePaneFlags('specs', { hasSpecs: apis.length > 0 })
-  useStepKeys('specs', move, apis.length > 0)
+  usePaneFlags('specs', {
+    hasSpecs: apis.length > 0,
+    hasAuthRedirect: Boolean(pendingAuth),
+  })
+  useStepKeys('specs', move, apis.length > 0 && !pendingAuth)
   usePaneActions('specs', {
     ...Object.fromEntries(
-      CATALOG.map((entry) => [catalogActionId(entry), { callback: () => launch(entry) }]),
+      CATALOG.map((entry) => [
+        catalogActionId(entry),
+        { callback: () => launch(entry), enabled: !pendingAuth },
+      ]),
     ),
     open: {
       callback: () => {
@@ -118,11 +178,16 @@ function Home() {
           })
         }
       },
-      enabled: apis.length > 0,
+      enabled: !pendingAuth && apis.length > 0,
     },
-    insert: () => {
-      activate('specs', 'edit')
-      urlRef.current?.focus()
+    continueAuth: continueAuthorization,
+    cancelAuth: cancelAuthorization,
+    insert: {
+      callback: () => {
+        activate('specs', 'edit')
+        urlRef.current?.focus()
+      },
+      enabled: !pendingAuth,
     },
     command: () => {
       enterCommand()
@@ -166,35 +231,48 @@ function Home() {
             )
             return (
               <li key={entry.id}>
-                <button
-                  type="button"
-                  className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
-                  disabled={openSource.isPending}
-                  onClick={() => launch(entry)}
-                >
-                  <span className="inline-flex w-4 shrink-0 justify-center">
-                    <Kbd hotkey={entry.hotkey} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink">{entry.title}</span>
-                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                      {entry.detail}
-                    </span>
-                    {status.message ? (
-                      <span
-                        role={status.failed ? 'alert' : undefined}
-                        className={`mt-1 block truncate font-mono text-xs ${
-                          status.failed ? 'text-error' : 'text-mute'
-                        }`}
-                      >
-                        {status.message}
+                {pendingAuth?.entryId === entry.id ? (
+                  <div className="bg-signal/10 px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex w-4 shrink-0 justify-center">
+                        <Kbd hotkey={entry.hotkey} />
                       </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{entry.title}</span>
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                    disabled={openSource.isPending || Boolean(pendingAuth)}
+                    onClick={() => launch(entry)}
+                  >
+                    <span className="inline-flex w-4 shrink-0 justify-center">
+                      <Kbd hotkey={entry.hotkey} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink">{entry.title}</span>
+                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                        {entry.detail}
+                      </span>
+                      {status.message ? (
+                        <span
+                          role={status.failed ? 'alert' : undefined}
+                          className={`mt-1 block truncate font-mono text-xs ${
+                            status.failed ? 'text-error' : 'text-mute'
+                          }`}
+                        >
+                          {status.message}
+                        </span>
+                      ) : null}
+                    </span>
+                    {added ? (
+                      <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
                     ) : null}
-                  </span>
-                  {added ? (
-                    <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
-                  ) : null}
-                </button>
+                  </button>
+                )}
               </li>
             )
           })}
@@ -204,7 +282,7 @@ function Home() {
   }
 
   return (
-    <main id="main" className="flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
+    <main id="main" className="relative flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
       <div className="mx-auto my-auto w-full max-w-3xl py-10">
         <form
           ref={formRef}
@@ -227,6 +305,7 @@ function Home() {
               autoComplete="off"
               spellCheck={false}
               required
+              disabled={openSource.isPending || Boolean(pendingAuth)}
               className={`${softInputClass} pl-10`}
               placeholder="MCP URL or link to OpenAPI JSON/YAML"
               value={url}
@@ -235,7 +314,7 @@ function Home() {
                 activate('specs', 'edit')
               }}
               onKeyDown={(event) => {
-                if (event.key !== 'Enter') {
+                if (pendingAuth || event.key !== 'Enter') {
                   return
                 }
                 event.preventDefault()
@@ -260,7 +339,7 @@ function Home() {
                   key={option.kind}
                   type="button"
                   className={index === 0 ? primaryButtonClass : softButtonClass}
-                  disabled={openSource.isPending}
+                  disabled={openSource.isPending || Boolean(pendingAuth)}
                   onClick={() => submit(option.kind)}
                 >
                   {pending ? 'Reading…' : option.label}
@@ -270,7 +349,7 @@ function Home() {
             })}
           </div>
         </form>
-        {openSource.isError && !openSource.variables?.entryId ? (
+        {openSource.isError && !openSource.variables?.entryId && !pendingAuth ? (
           <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>
@@ -290,12 +369,14 @@ function Home() {
             <section>
               <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
                 <h2>Recent</h2>
-                <KeyHints className="flex items-center gap-2 text-faint">
-                  <span>·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Kbd hotkey="Enter" /> to open
-                  </span>
-                </KeyHints>
+                {pendingAuth ? null : (
+                  <KeyHints className="flex items-center gap-2 text-faint">
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="Enter" /> to open
+                    </span>
+                  </KeyHints>
+                )}
               </div>
               <ul>
                 {apis.map((api, index) => {
@@ -356,6 +437,11 @@ function Home() {
           </div>
         </div>
       </div>
+      {pendingAuth ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
+          <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+        </div>
+      ) : null}
     </main>
   )
 }

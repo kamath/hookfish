@@ -7,7 +7,9 @@ import {
   BrowserMcpOAuthProvider,
   clearMcpOAuth,
   hasMcpOAuthTokens,
+  isMcpOAuthCallback,
   mcpOAuthClientMetadata,
+  pendingMcpAuthorizationUrl,
 } from './oauth'
 import { loadMcpSource } from './source'
 
@@ -323,15 +325,20 @@ await assert.rejects(
   loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {}),
   (error) => UnauthorizedError.isInstance(error),
 )
-assert.ok(assignedUrl)
-const authorizationUrl = new URL(assignedUrl)
+assert.equal(assignedUrl, undefined)
+const pendingUrl = pendingMcpAuthorizationUrl()
+assert.ok(pendingUrl)
+const authorizationUrl = new URL(pendingUrl)
 assert.equal(authorizationUrl.origin, 'https://auth.test')
 assert.equal(authorizationUrl.searchParams.get('code_challenge_method'), 'S256')
 const authorizationState = authorizationUrl.searchParams.get('state')
 assert.ok(authorizationState)
 location.href = `http://hookfish.test/apis/oauth-flow/routes?code=oauth-code&state=${authorizationState}`
+assert.equal(isMcpOAuthCallback(), true)
 const oauthSource = await loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {})
 assert.equal(oauthSource.title, 'modern-test')
+assert.equal(pendingMcpAuthorizationUrl(), undefined)
+assert.equal(isMcpOAuthCallback(), false)
 assert.equal(
   (oauthSource.adapterData as { oauthAuthorized: boolean }).oauthAuthorized,
   true,
