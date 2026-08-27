@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { queryErrorMessage } from '../lib/queries'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 import { Kbd } from './hints'
@@ -39,11 +39,13 @@ export function QueryStatus({
   error,
   onRetry,
   onBack,
+  children,
 }: {
   label?: string
   error?: unknown
   onRetry?: () => void
   onBack?: () => void
+  children?: ReactNode
 }) {
   const failed = error !== undefined && error !== null
   const onRetryRef = useRef(onRetry)
@@ -102,6 +104,7 @@ export function QueryStatus({
             ) : null}
           </div>
         ) : null}
+        {children}
       </div>
     </main>
   )

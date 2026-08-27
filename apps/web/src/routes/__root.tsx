@@ -10,6 +10,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
+import { Brand } from '../components/brand'
 import { QueryStatus } from '../components/query-status'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
@@ -32,13 +33,14 @@ export const Route = createRootRouteWithContext<{
       },
       { name: 'color-scheme', content: 'light' },
       { name: 'theme-color', content: '#f7f6f3' },
-      { title: 'Executable Client' },
+      { title: 'Hookfish' },
       {
         name: 'description',
         content: 'Browse, configure, and run executables from pluggable sources.',
       },
     ],
     links: [
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       {
         rel: 'preconnect',
@@ -211,6 +213,10 @@ function NotFound() {
       onBack={() => {
         void navigate({ to: '/' })
       }}
-    />
+    >
+      <div className="mt-4">
+        <Brand />
+      </div>
+    </QueryStatus>
   )
 }

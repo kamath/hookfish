@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { dialogAllowsBinding, hotkeysFor, paneConfig } from './keymap.ts'
+import {
+  KEYBINDINGS_MEDIA,
+  dialogAllowsBinding,
+  hotkeysFor,
+  keybindingsEnabled,
+  paneConfig,
+} from './keymap.ts'
 
 assert.deepEqual(hotkeysFor({ id: 'next', hotkey: 'J', label: 'next' }), ['J'])
 assert.deepEqual(
@@ -89,3 +95,69 @@ assert.ok(
 )
 
 console.log('keymap step and tab bindings ok')
+
+assert.equal(
+  KEYBINDINGS_MEDIA,
+  '(min-width: 768px) and (not (pointer: coarse))',
+  'availability query matches the CSS hide dual',
+)
+
+const originalMatchMedia = globalThis.matchMedia
+
+function withMatchMedia(matchesFor: (query: string) => boolean, run: () => void) {
+  globalThis.matchMedia = ((query: string) =>
+    ({
+      matches: matchesFor(query),
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent() {
+        return false
+      },
+      onchange: null,
+    })) as typeof matchMedia
+  try {
+    run()
+  } finally {
+    if (originalMatchMedia) {
+      globalThis.matchMedia = originalMatchMedia
+    } else {
+      Reflect.deleteProperty(globalThis, 'matchMedia')
+    }
+  }
+}
+
+withMatchMedia(
+  () => false,
+  () => {
+    assert.equal(keybindingsEnabled(), false, 'disabled when the media query does not match')
+  },
+)
+withMatchMedia(
+  (query) => query === KEYBINDINGS_MEDIA,
+  () => {
+    assert.equal(keybindingsEnabled(), true, 'enabled on md+ viewports that are not coarse-pointer')
+  },
+)
+withMatchMedia(
+  (query) => query !== KEYBINDINGS_MEDIA,
+  () => {
+    assert.equal(keybindingsEnabled(), false, 'disabled for other media queries')
+  },
+)
+
+{
+  const previous = globalThis.matchMedia
+  Reflect.deleteProperty(globalThis, 'matchMedia')
+  try {
+    assert.equal(keybindingsEnabled(), false, 'disabled without matchMedia')
+  } finally {
+    if (previous) {
+      globalThis.matchMedia = previous
+    }
+  }
+}
+
+console.log('keymap mobile availability ok')
