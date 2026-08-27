@@ -271,82 +271,80 @@ function Home() {
           </p>
         ) : null}
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
-          {renderCatalog('MCP servers', MCP_CATALOG)}
-          {renderCatalog('OpenAPI specs', OPENAPI_CATALOG)}
-        </div>
-
-        {apisQuery.isPending ? (
-          <div className="mt-8">
+        <div className="mt-6 space-y-6">
+          {apisQuery.isPending ? (
             <QueryMessage label="Loading sources…" />
-          </div>
-        ) : apisQuery.isError ? (
-          <div className="mt-8">
+          ) : apisQuery.isError ? (
             <QueryMessage
               error={apisQuery.error}
               onRetry={() => {
                 void apisQuery.refetch()
               }}
             />
-          </div>
-        ) : apis.length > 0 ? (
-          <section className="mt-8">
-            <h2 className="px-3 pb-1 font-mono text-[11px] text-mute">Added</h2>
-            <ul>
-              {apis.map((api, index) => {
-                const active = index === selected
-                const navigationHint = active
-                  ? 'Enter'
-                  : index === selected - 1
-                    ? 'K'
-                    : index === selected + 1
-                      ? 'J'
-                      : undefined
-                return (
-                  <li
-                    key={api.id}
-                    className={`flex items-center gap-3 px-3 ${active ? 'bg-signal/10' : ''}`}
-                  >
-                    <Link
-                      to="/apis/$apiId/$pane/{-$operationId}"
-                      params={{
-                        apiId: api.id,
-                        pane: 'routes',
-                        operationId: undefined,
-                      }}
-                      className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
-                      onFocus={() => setSelected(index)}
+          ) : apis.length > 0 ? (
+            <section>
+              <h2 className="px-3 pb-1 font-mono text-[11px] text-mute">Recent</h2>
+              <ul>
+                {apis.map((api, index) => {
+                  const active = index === selected
+                  const navigationHint = active
+                    ? 'Enter'
+                    : index === selected - 1
+                      ? 'K'
+                      : index === selected + 1
+                        ? 'J'
+                        : undefined
+                  return (
+                    <li
+                      key={api.id}
+                      className={`flex items-center gap-3 px-3 ${active ? 'bg-signal/10' : ''}`}
                     >
-                      <span className="inline-flex w-4 shrink-0 justify-center">
-                        {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-ink">{api.title}</span>
-                        <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                          {api.kind} · {api.executableCount} executables
-                          {api.version ? ` · ${api.version}` : ''}
+                      <Link
+                        to="/apis/$apiId/$pane/{-$operationId}"
+                        params={{
+                          apiId: api.id,
+                          pane: 'routes',
+                          operationId: undefined,
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
+                        onFocus={() => setSelected(index)}
+                      >
+                        <span className="inline-flex w-4 shrink-0 justify-center">
+                          {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                         </span>
-                      </span>
-                    </Link>
-                    <button
-                      type="button"
-                      className="min-h-11 px-2 text-sm text-mute hover:text-signal"
-                      onClick={() => onRemove(api.id, api.title)}
-                      disabled={remove.isPending}
-                    >
-                      Remove
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ) : null}
-        {remove.isError ? (
-          <p className="mt-3 text-sm text-error" role="alert">
-            {queryErrorMessage(remove.error, 'Could not remove that source.')}
-          </p>
-        ) : null}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-ink">{api.title}</span>
+                          <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                            {api.kind} · {api.executableCount} executables
+                            {api.version ? ` · ${api.version}` : ''}
+                          </span>
+                        </span>
+                      </Link>
+                      <button
+                        type="button"
+                        className="min-h-11 px-2 text-sm text-mute hover:text-signal"
+                        onClick={() => onRemove(api.id, api.title)}
+                        disabled={remove.isPending}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ) : null}
+          {remove.isError ? (
+            <p className="text-sm text-error" role="alert">
+              {queryErrorMessage(remove.error, 'Could not remove that source.')}
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {renderCatalog('MCP servers', MCP_CATALOG)}
+            {renderCatalog('OpenAPI specs', OPENAPI_CATALOG)}
+          </div>
+        </div>
       </div>
     </main>
   )
