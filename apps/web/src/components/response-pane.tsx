@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
@@ -181,6 +181,10 @@ export function ResponsePane({
   )
   const [selected, setSelected] = useState(() => (body.root?.children?.length ? 1 : 0))
   const [copiedId, setCopiedId] = useState<string>()
+  const [wrapped, setWrapped] = useState<Set<string>>(new Set())
+  const [clipped, setClipped] = useState(false)
+  const treeRef = useRef<HTMLDivElement>(null)
+  const selectedTextRef = useRef<HTMLSpanElement>(null)
   const rows = useMemo(
     () =>
       body.root
@@ -208,11 +212,29 @@ export function ResponsePane({
     )
     setExpanded(body.root?.collection ? new Set([body.root.id]) : new Set())
     setSelected(body.root?.children?.length ? 1 : 0)
+    setWrapped(new Set())
   }, [body, result])
 
   useEffect(() => {
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
   }, [rows.length])
+
+  const measureSelected = useCallback(() => {
+    const text = selectedTextRef.current
+    setClipped(text ? text.scrollWidth > text.clientWidth + 1 : false)
+  }, [])
+
+  useLayoutEffect(measureSelected)
+
+  useEffect(() => {
+    const tree = treeRef.current
+    if (!tree || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(measureSelected)
+    observer.observe(tree)
+    return () => observer.disconnect()
+  }, [measureSelected])
 
   useEffect(() => {
     if (!copiedId) {
@@ -238,11 +260,37 @@ export function ResponsePane({
     })
   }
 
+  function canUnclip(node: ResponseNode) {
+    if (node.collection || node.toggleId) {
+      return false
+    }
+    return wrapped.has(node.id) || (rows[selected]?.id === node.id && clipped)
+  }
+
+  function toggleWrap(id: string) {
+    setWrapped((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
   function toggleSelected() {
     const node = rows[selected]
-    const id = node?.toggleId ?? (node?.collection ? node.id : undefined)
+    if (!node) {
+      return
+    }
+    const id = node.toggleId ?? (node.collection ? node.id : undefined)
     if (id) {
       toggleNode(id)
+      return
+    }
+    if (canUnclip(node)) {
+      toggleWrap(node.id)
     }
   }
 
@@ -305,9 +353,7 @@ export function ResponsePane({
   usePaneActions('response', {
     expand: (event) => {
       event.preventDefault()
-      if (rows[selected]?.collection || rows[selected]?.toggleId) {
-        toggleSelected()
-      }
+      toggleSelected()
     },
     copy: (event) => {
       event.preventDefault()
@@ -440,29 +486,38 @@ export function ResponsePane({
           </div>
         ) : null}
 
-        <div className="w-full min-w-0 overflow-hidden font-mono text-sm leading-relaxed" role="tree">
+        <div
+          ref={treeRef}
+          className="w-full min-w-0 overflow-hidden font-mono text-sm leading-relaxed"
+          role="tree"
+        >
           {rows.map((node, index) => {
             const isExpanded = expanded.has(node.id)
             const isSelected = index === selected
+            const isWrapped = wrapped.has(node.id)
             const navigationHint =
               index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
             const childrenHint = node.id === firstActiveChildId ? 'A' : undefined
             const showEncoded = Boolean(node.decoded) && !isExpanded
+            const expandable = node.collection ? true : canUnclip(node)
+            const showsAll = node.collection ? isExpanded : isWrapped
             return (
               <div
                 key={node.id}
                 role="treeitem"
                 aria-selected={isSelected}
-                aria-expanded={node.collection ? isExpanded : undefined}
+                aria-expanded={expandable ? showsAll : undefined}
                 data-oc-current={isSelected ? 'true' : undefined}
-                className={`flex min-h-6 w-full min-w-0 items-center overflow-hidden whitespace-nowrap pr-3 text-left ${
-                  isSelected ? 'exec-active' : ''
-                }`}
+                className={`flex min-h-6 w-full min-w-0 overflow-hidden whitespace-nowrap pr-3 text-left ${
+                  isWrapped ? 'items-start' : 'items-center'
+                } ${isSelected ? 'exec-active' : ''}`}
                 style={{ paddingInlineStart: '0.25rem' }}
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
                     toggleNode(node.id)
+                  } else if (canUnclip(node)) {
+                    toggleWrap(node.id)
                   }
                 }}
               >
@@ -479,7 +534,12 @@ export function ResponsePane({
                     </span>
                   ) : null}
                 </span>
-                <span className="min-w-0 flex-1 truncate">
+                <span
+                  ref={isSelected ? selectedTextRef : undefined}
+                  className={`min-w-0 flex-1 ${
+                    isWrapped ? 'whitespace-pre-wrap break-words' : 'truncate'
+                  }`}
+                >
                   {node.label !== undefined ? (
                     <span className="text-mute">{node.label}: </span>
                   ) : null}
@@ -501,16 +561,20 @@ export function ResponsePane({
                   {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                   {isSelected ? (
                     <>
-                      {node.collection ? (
+                      {expandable ? (
                         <button
                           type="button"
                           className={rowActionClass}
                           onClick={(event) => {
                             event.stopPropagation()
-                            toggleNode(node.id)
+                            if (node.collection) {
+                              toggleNode(node.id)
+                            } else {
+                              toggleWrap(node.id)
+                            }
                           }}
                         >
-                          {isExpanded ? 'Collapse' : 'Expand'}
+                          {showsAll ? 'Collapse' : 'Expand'}
                           <KeyHints>
                             <Kbd hotkey="Enter" />
                           </KeyHints>
