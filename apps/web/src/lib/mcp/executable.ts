@@ -4,7 +4,7 @@ import type {
   InvocationContext,
 } from '../executable-adapters'
 import { asRecord } from '../build-request'
-import { getMcpConnection, traceMark, traceSince } from './client'
+import { traceMark, traceSince, withMcpConnection } from './client'
 
 type McpInvocation = {
   transport: 'mcp'
@@ -68,8 +68,6 @@ async function executeMcp(
   },
 ): Promise<ExecutionResult> {
   const invocation = asInvocation(value)
-  const connection = await getMcpConnection(invocation.sourceId, invocation.endpoint)
-  const mark = traceMark(connection)
   const params = {
     ...invocation.params,
     ...(continuation
@@ -81,51 +79,65 @@ async function executeMcp(
   }
   const options = { allowInputRequired: true } as never
   const started = performance.now()
-  let result: unknown
-  switch (invocation.binding.method) {
-    case 'tools/call':
-      result = await connection.client.callTool(params as never, options)
-      break
-    case 'resources/read':
-      result = await connection.client.readResource(params as never, options)
-      break
-    case 'prompts/get':
-      result = await connection.client.getPrompt(params as never, options)
-      break
-  }
-  const elapsedMs = Math.round(performance.now() - started)
-  const record = asRecord(result)
-  const inputRequired =
-    record.resultType === 'input_required'
-      ? {
-          requests: JSON.parse(JSON.stringify(asRecord(record.inputRequests))) as Record<
-            string,
-            JsonValue
-          >,
-          requestState:
-            typeof record.requestState === 'string' ? record.requestState : undefined,
-        }
-      : undefined
+  return withMcpConnection(
+    invocation.sourceId,
+    invocation.endpoint,
+    async (connection) => {
+      const mark = traceMark(connection)
+      let result: unknown
+      switch (invocation.binding.method) {
+        case 'tools/call':
+          result = await connection.client.callTool(params as never, options)
+          break
+        case 'resources/read':
+          result = await connection.client.readResource(params as never, options)
+          break
+        case 'prompts/get':
+          result = await connection.client.getPrompt(params as never, options)
+          break
+      }
+      const elapsedMs = Math.round(performance.now() - started)
+      const record = asRecord(result)
+      const inputRequired =
+        record.resultType === 'input_required'
+          ? {
+              requests: JSON.parse(
+                JSON.stringify(asRecord(record.inputRequests)),
+              ) as Record<string, JsonValue>,
+              requestState:
+                typeof record.requestState === 'string'
+                  ? record.requestState
+                  : undefined,
+            }
+          : undefined
 
-  return {
-    status: {
-      text: inputRequired ? 'Input required' : 'Complete',
+      return {
+        status: {
+          text: inputRequired ? 'Input required' : 'Complete',
+        },
+        details: {
+          label: 'MCP',
+          items: [
+            {
+              name: 'Protocol',
+              value: connection.client.getNegotiatedProtocolVersion() ?? 'unknown',
+            },
+            {
+              name: 'Era',
+              value: connection.client.getProtocolEra() ?? 'legacy',
+            },
+            { name: 'Method', value: invocation.binding.method },
+          ],
+        },
+        body: JSON.stringify(result, null, 2),
+        elapsedMs,
+        target: invocation.endpoint,
+        action: invocation.binding.method,
+        trace: traceSince(connection, mark),
+        inputRequired,
+      }
     },
-    details: {
-      label: 'MCP',
-      items: [
-        { name: 'Protocol', value: connection.client.getNegotiatedProtocolVersion() ?? 'unknown' },
-        { name: 'Era', value: connection.client.getProtocolEra() ?? 'legacy' },
-        { name: 'Method', value: invocation.binding.method },
-      ],
-    },
-    body: JSON.stringify(result, null, 2),
-    elapsedMs,
-    target: invocation.endpoint,
-    action: invocation.binding.method,
-    trace: traceSince(connection, mark),
-    inputRequired,
-  }
+  )
 }
 
 function exportSnippet(invocation: unknown) {

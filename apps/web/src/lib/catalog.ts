@@ -17,7 +17,7 @@ export const MCP_CATALOG: readonly CatalogEntry[] = [
     kind: 'mcp',
     hotkey: '1',
     title: 'Arcade Omni',
-    detail: 'omni.arcade.dev/mcp',
+    detail: 'omni.arcade.dev',
     url: 'https://omni.arcade.dev/mcp',
   },
   {
@@ -25,7 +25,7 @@ export const MCP_CATALOG: readonly CatalogEntry[] = [
     kind: 'mcp',
     hotkey: '2',
     title: 'Arcade Full Suite',
-    detail: 'api.bosslevel.dev/mcp',
+    detail: 'api.bosslevel.dev',
     url: 'https://api.bosslevel.dev/mcp/gw_3F3PbNNz9DdEJ6zdHqbegVC7mMo',
   },
   {
@@ -33,7 +33,7 @@ export const MCP_CATALOG: readonly CatalogEntry[] = [
     kind: 'mcp',
     hotkey: '3',
     title: 'Smithery Gmail',
-    detail: 'server.smithery.ai/gmail',
+    detail: 'server.smithery.ai',
     url: 'https://server.smithery.ai/gmail',
   },
   {
@@ -41,7 +41,7 @@ export const MCP_CATALOG: readonly CatalogEntry[] = [
     kind: 'mcp',
     hotkey: '4',
     title: 'Linear',
-    detail: 'mcp.linear.app/mcp',
+    detail: 'mcp.linear.app',
     url: 'https://mcp.linear.app/mcp',
   },
   {
@@ -49,7 +49,7 @@ export const MCP_CATALOG: readonly CatalogEntry[] = [
     kind: 'mcp',
     hotkey: '5',
     title: 'Notion',
-    detail: 'mcp.notion.com/mcp',
+    detail: 'mcp.notion.com',
     url: 'https://mcp.notion.com/mcp',
   },
 ]
@@ -60,7 +60,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     kind: 'openapi',
     hotkey: '6',
     title: 'Arcade API',
-    detail: 'api.arcade.dev/v1/swagger',
+    detail: 'api.arcade.dev',
     url: 'https://api.arcade.dev/v1/swagger',
   },
   {

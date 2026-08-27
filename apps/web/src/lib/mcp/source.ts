@@ -11,7 +11,7 @@ import type {
   JsonSchema,
   McpBinding,
 } from '../client-types'
-import { getMcpConnection } from './client'
+import { withMcpConnection } from './client'
 import { hasMcpOAuthTokens } from './oauth'
 
 export type McpAdapterData = {
@@ -161,66 +161,69 @@ export async function loadMcpSource(
   id: string,
   _credentials: Record<string, string>,
 ): Promise<ExecutableSource> {
-  const { client, transport } = await getMcpConnection(id, endpoint)
-  const [tools, resources, templates, prompts] = await Promise.all([
-    client.listTools(),
-    client.listResources(),
-    client.listResourceTemplates(),
-    client.listPrompts(),
-  ])
-  const serverInfo = client.getServerVersion()
-  const capabilities = client.getServerCapabilities() ?? {}
-  const instructions = client.getInstructions()
-  const protocolVersion = client.getNegotiatedProtocolVersion() ?? 'unknown'
-  const era = client.getProtocolEra() ?? 'legacy'
-  const executables = [
-    ...tools.tools.map(toolExecutable),
-    ...resources.resources.map(resourceExecutable),
-    ...templates.resourceTemplates.map(templateExecutable),
-    ...prompts.prompts.map(promptExecutable),
-  ]
-  if (executables.length === 0) {
-    throw new Error('This MCP server did not advertise tools, resources, templates, or prompts.')
-  }
+  return withMcpConnection(id, endpoint, async ({ client, transport }) => {
+    const [tools, resources, templates, prompts] = await Promise.all([
+      client.listTools(),
+      client.listResources(),
+      client.listResourceTemplates(),
+      client.listPrompts(),
+    ])
+    const serverInfo = client.getServerVersion()
+    const capabilities = client.getServerCapabilities() ?? {}
+    const instructions = client.getInstructions()
+    const protocolVersion = client.getNegotiatedProtocolVersion() ?? 'unknown'
+    const era = client.getProtocolEra() ?? 'legacy'
+    const executables = [
+      ...tools.tools.map(toolExecutable),
+      ...resources.resources.map(resourceExecutable),
+      ...templates.resourceTemplates.map(templateExecutable),
+      ...prompts.prompts.map(promptExecutable),
+    ]
+    if (executables.length === 0) {
+      throw new Error(
+        'This MCP server did not advertise tools, resources, templates, or prompts.',
+      )
+    }
 
-  return {
-    id,
-    kind: 'mcp',
-    title: serverInfo?.name ?? new URL(endpoint).hostname,
-    version: serverInfo?.version,
-    description: instructions,
-    sourceUrl: endpoint,
-    targets: [endpoint],
-    executables,
-    groups: [
-      { name: 'Tools', description: 'Functions exposed by this MCP server.' },
-      { name: 'Resources', description: 'Fixed resources available to read.' },
-      {
-        name: 'Resource templates',
-        description: 'Parameterized resource URIs available to read.',
+    return {
+      id,
+      kind: 'mcp',
+      title: serverInfo?.name ?? new URL(endpoint).hostname,
+      version: serverInfo?.version,
+      description: instructions,
+      sourceUrl: endpoint,
+      targets: [endpoint],
+      executables,
+      groups: [
+        { name: 'Tools', description: 'Functions exposed by this MCP server.' },
+        { name: 'Resources', description: 'Fixed resources available to read.' },
+        {
+          name: 'Resource templates',
+          description: 'Parameterized resource URIs available to read.',
+        },
+        { name: 'Prompts', description: 'Prompt templates exposed by this server.' },
+      ],
+      labels: {
+        source: 'MCP server',
+        sourcePlural: 'MCP servers',
+        executable: 'RPC',
+        executablePlural: 'RPCs',
+        target: 'Endpoint',
+        execute: 'Call',
+        executing: 'Calling…',
+        executed: 'Call again',
+        export: 'Copy MCP client code',
+        exported: 'Copied MCP client code',
       },
-      { name: 'Prompts', description: 'Prompt templates exposed by this server.' },
-    ],
-    labels: {
-      source: 'MCP server',
-      sourcePlural: 'MCP servers',
-      executable: 'RPC',
-      executablePlural: 'RPCs',
-      target: 'Endpoint',
-      execute: 'Call',
-      executing: 'Calling…',
-      executed: 'Call again',
-      export: 'Copy MCP client code',
-      exported: 'Copied MCP client code',
-    },
-    adapterData: {
-      era,
-      protocolVersion,
-      capabilities,
-      serverInfo,
-      instructions,
-      sessionId: transport.sessionId,
-      oauthAuthorized: hasMcpOAuthTokens(id),
-    } satisfies McpAdapterData & { sessionId?: string },
-  }
+      adapterData: {
+        era,
+        protocolVersion,
+        capabilities,
+        serverInfo,
+        instructions,
+        sessionId: transport.sessionId,
+        oauthAuthorized: hasMcpOAuthTokens(id),
+      } satisfies McpAdapterData & { sessionId?: string },
+    }
+  })
 }

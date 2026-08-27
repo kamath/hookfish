@@ -81,6 +81,9 @@ function mergeAuth(
   return next
 }
 
+const stepButtonClass =
+  'inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40 md:flex-none lg:hidden'
+
 export function ExecutableClient({
   api,
   operation,
@@ -91,6 +94,10 @@ export function ExecutableClient({
   authPending,
   authError,
   onSaveAuth,
+  canPrevious,
+  canNext,
+  onPrevious,
+  onNext,
 }: {
   api: ExecutableSource
   operation: Executable
@@ -101,6 +108,10 @@ export function ExecutableClient({
   authPending?: boolean
   authError?: unknown
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
+  canPrevious?: boolean
+  canNext?: boolean
+  onPrevious?: () => void
+  onNext?: () => void
 }) {
   const [formData, setFormData] = useState<unknown>(() =>
     readOperationFormData(api.id, operation.id),
@@ -343,17 +354,41 @@ export function ExecutableClient({
       style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
-        <div className="oc-bar sticky top-0 z-10 flex items-baseline gap-3 px-3 py-2 md:px-4">
-          <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
-            {operation.badge}
-          </span>
-          <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
-          {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="oc-bar sticky top-0 z-10 flex flex-col gap-2 px-3 py-2 md:flex-row md:items-baseline md:gap-3 md:px-4">
+          <div className="flex min-w-0 items-baseline gap-3">
+            <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
+              {operation.badge}
+            </span>
+            <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
+            {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
+            {onPrevious || onNext ? (
+              <>
+                <button
+                  type="button"
+                  className={stepButtonClass}
+                  disabled={!canPrevious}
+                  onClick={onPrevious}
+                >
+                  Previous
+                  {canPrevious ? <Kbd hotkey="H" /> : null}
+                </button>
+                <button
+                  type="button"
+                  className={stepButtonClass}
+                  disabled={!canNext}
+                  onClick={onNext}
+                >
+                  Next
+                  {canNext ? <Kbd hotkey="L" /> : null}
+                </button>
+              </>
+            ) : null}
             {result ? (
               <button
                 type="button"
-                className="inline-flex min-h-8 items-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
                 onClick={showResponse}
               >
                 View output
@@ -364,7 +399,7 @@ export function ExecutableClient({
               <button
                 type="button"
                 data-oc-nav="action"
-                className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none md:flex-none"
                 aria-live="polite"
                 aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
                 onClick={() => {
@@ -380,7 +415,7 @@ export function ExecutableClient({
             <button
               type="button"
               data-oc-nav="action"
-              className={`${formPrimaryButtonClass} exec-solid`}
+              className={`${formPrimaryButtonClass} exec-solid flex-1 whitespace-nowrap md:flex-none`}
               disabled={pending || authPending}
               onClick={() => submitForm('call-form')}
             >
