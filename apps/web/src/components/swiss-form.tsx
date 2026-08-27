@@ -542,7 +542,7 @@ function FieldTemplate(props: FieldTemplateProps) {
               <span>to insert text</span>
             </span>
             <span data-oc-tab-hint className="items-center gap-1">
-              <Kbd hotkey="Tab" />
+              <Kbd hotkey="Tab" label="Tab" />
               <span>to go to next input</span>
             </span>
           </span>
