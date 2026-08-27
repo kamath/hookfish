@@ -7,24 +7,21 @@ export function CloudToggle() {
     <div className="flex min-w-0 items-center">
       {cloudProxy ? null : (
         <p
-          className="mr-1 flex h-8 min-w-0 items-center overflow-hidden bg-error/10 px-2 text-[11px] leading-none text-error"
+          className="mr-1 flex h-8 w-max max-w-full shrink items-center overflow-hidden bg-error/10 px-2 text-[11px] leading-none text-error"
           role="status"
         >
           <span className="truncate">
-            <span className="font-medium">Browser mode.</span>{' '}
-            <span className="max-md:sr-only">
-              Requests originate from this browser, so you can safely access
-              localhost/internal URLs. You&apos;ll likely get blocked by{' '}
-              <a
-                href="https://www.google.com/search?q=what+is+cors"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium underline underline-offset-2"
-              >
-                CORS
-              </a>
-              .
-            </span>
+            <span className="font-medium">Browser mode.</span> Remote hosts
+            may block you with{' '}
+            <a
+              href="https://www.google.com/search?q=what+is+cors"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium underline underline-offset-2"
+            >
+              CORS
+            </a>
+            .
           </span>
         </p>
       )}

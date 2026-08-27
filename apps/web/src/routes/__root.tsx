@@ -124,12 +124,10 @@ function AppShell() {
 
 function AppToolbar() {
   return (
-    <div className="flex shrink-0 items-center px-3 py-1.5 md:px-4">
-      <div className="ml-auto flex min-w-0 items-center">
-        <CloudToggle />
-        <GitHubLink />
-        <ThemeToggle />
-      </div>
+    <div className="flex shrink-0 items-center justify-end px-3 py-1.5 md:px-4">
+      <CloudToggle />
+      <GitHubLink />
+      <ThemeToggle />
     </div>
   )
 }
