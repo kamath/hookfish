@@ -9,9 +9,14 @@ import { blurActive, isEditing } from './focus'
 export type PaneBinding = {
   id: string
   hotkey: RegisterableHotkey
+  aliases?: readonly RegisterableHotkey[]
   label: string
   modes?: readonly Mode[]
   flag?: string
+}
+
+export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
+  return [binding.hotkey, ...(binding.aliases ?? [])]
 }
 
 export type PaneAction = {
@@ -31,8 +36,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     path: '/',
     bindings: [
       { id: 'open', hotkey: 'Enter', label: 'open' },
-      { id: 'next', hotkey: 'J', label: 'next source', flag: 'hasSpecs' },
-      { id: 'previous', hotkey: 'K', label: 'previous source', flag: 'hasSpecs' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       ...CATALOG.map((entry) => ({
         id: catalogActionId(entry),
@@ -47,8 +52,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     path: '/apis/$apiId/routes',
     bindings: [
       { id: 'filter', hotkey: '/', label: 'filter' },
-      { id: 'next', hotkey: 'J', label: 'next' },
-      { id: 'previous', hotkey: 'K', label: 'previous' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous' },
       { id: 'input', hotkey: 'Enter', label: 'input' },
       {
         id: 'clearAuth',
@@ -77,8 +82,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'routes',
     path: '/apis/$apiId/input/$operationId',
     bindings: [
-      { id: 'next', hotkey: 'J', label: 'next control' },
-      { id: 'previous', hotkey: 'K', label: 'previous control' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next control' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous control' },
       { id: 'nextTab', hotkey: 'Tab', label: 'next control' },
       { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous control' },
       {
@@ -130,8 +135,8 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'input',
     path: '/apis/$apiId/response/$operationId',
     bindings: [
-      { id: 'next', hotkey: 'J', label: 'next line' },
-      { id: 'previous', hotkey: 'K', label: 'previous line' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next line' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous line' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
       {
         id: 'resend',
@@ -152,7 +157,10 @@ export const paneConfig: Record<Pane, PaneConfig> = {
 }
 
 const registeredPaneBindings = (Object.entries(paneConfig) as Array<[Pane, PaneConfig]>).flatMap(
-  ([pane, config]) => config.bindings.map((binding) => ({ pane, binding })),
+  ([pane, config]) =>
+    config.bindings.flatMap((binding) =>
+      hotkeysFor(binding).map((hotkey) => ({ pane, binding, hotkey })),
+    ),
 )
 const noopKeybinding = () => {}
 
@@ -264,12 +272,12 @@ export function useGlobalKeybindings() {
   }
 
   useHotkeys(
-    registeredPaneBindings.map(({ pane, binding }) => {
+    registeredPaneBindings.map(({ pane, binding, hotkey }) => {
       const action = actions[binding.id]
       const modes = binding.modes ?? ['command']
       const flagOn = !binding.flag || Boolean(flags[binding.flag])
       return {
-        hotkey: binding.hotkey,
+        hotkey,
         callback: action?.callback ?? noopKeybinding,
         options: {
           enabled:
