@@ -11,10 +11,11 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from '../components/brand'
+import { CloudToggle } from '../components/cloud-toggle'
 import { GitHubLink } from '../components/github-link'
 import { QueryStatus } from '../components/query-status'
 import { ThemeToggle } from '../components/theme-toggle'
-import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
+import { hydrateCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
 import { THEME_COLORS, THEME_INIT_SCRIPT, bindTheme } from '../lib/theme'
@@ -75,6 +76,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <TanStackDevtools
           config={{
             position: 'bottom-right',
+            triggerMode: 'fixed',
           }}
           plugins={[
             {
@@ -112,7 +114,7 @@ function AppShell() {
         >
           Skip to content
         </a>
-        <CloudProxyToggle />
+        <AppToolbar />
         <div className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </div>
@@ -121,70 +123,12 @@ function AppShell() {
   )
 }
 
-function CloudIcon({ disabled }: { disabled: boolean }) {
+function AppToolbar() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.2 8.7 4.7 4.7 0 0 0 7 18Z" />
-      {disabled ? <path d="m4 4 16 16" /> : null}
-    </svg>
-  )
-}
-
-function CloudProxyToggle() {
-  const [cloudProxy, setCloudProxy] = useCloudProxy()
-  return (
-    <div className="flex shrink-0 items-center gap-2 bg-ink/5 px-3 py-1.5 text-xs text-mute md:gap-3 md:px-4">
-      <button
-        type="button"
-        className="inline-flex min-h-8 shrink-0 items-center gap-2 bg-ink/10 px-2.5 py-1 font-medium text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
-        aria-label={
-          cloudProxy
-            ? 'Run browser-first'
-            : 'Turn on cloud proxy'
-        }
-        aria-pressed={cloudProxy}
-        title={
-          cloudProxy
-            ? 'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
-            : 'Requests originate from this browser. Click to use the cloud proxy.'
-        }
-        onClick={() => setCloudProxy(!cloudProxy)}
-      >
-        <CloudIcon disabled={!cloudProxy} />
-        <span>{cloudProxy ? 'Cloud' : 'Local'}</span>
-      </button>
-      <p className="min-w-0 flex-1 truncate max-md:sr-only" role="status">
-        {cloudProxy ? (
-          'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
-        ) : (
-          <>
-            Requests originate from this browser, so you can safely access
-            localhost/internal URLs. You&apos;ll likely get blocked by{' '}
-            <a
-              href="https://www.google.com/search?q=what+is+cors"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-signal underline underline-offset-2"
-            >
-              CORS
-            </a>
-            .
-          </>
-        )}
-      </p>
-      <div className="ml-auto flex shrink-0 items-center">
-        <GitHubLink />
-        <ThemeToggle />
-      </div>
+    <div className="flex shrink-0 items-center justify-end px-3 py-1.5 md:px-4">
+      <CloudToggle />
+      <GitHubLink />
+      <ThemeToggle />
     </div>
   )
 }

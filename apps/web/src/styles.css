@@ -8,6 +8,7 @@
   --rule: light-dark(#ddd9d1, #3a3732);
   --signal: light-dark(#2557a7, #7aa3e3);
   --error: light-dark(#8b1e3f, #e08a9a);
+  --warn: light-dark(#8a6d1d, #d4c05c);
   --on-signal: light-dark(#f7f6f3, #141311);
   --accent-http-get: light-dark(#2f6f4e, #5fb887);
   --accent-http-post: light-dark(#2557a7, #7aa3e3);
@@ -36,6 +37,7 @@
   --color-rule: var(--rule);
   --color-signal: var(--signal);
   --color-error: var(--error);
+  --color-warn: var(--warn);
   --color-on-signal: var(--on-signal);
 }
 
