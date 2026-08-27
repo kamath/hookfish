@@ -142,10 +142,18 @@ kbd {
   border-radius: 0.12rem;
   font-family: var(--font-mono);
   font-size: 9px;
-  line-height: 1;
+  /* Parent text-xs line-height: 1rem; 0 keeps that strut from filling the chip. */
+  line-height: 0;
   color: var(--mute);
   background: color-mix(in srgb, var(--ink) 7%, var(--paper));
   box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 12%, var(--paper));
+  vertical-align: middle;
+}
+
+kbd > span {
+  display: block;
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
 }
 
 html[data-oc-mode='edit'] .oc-key-hint,
