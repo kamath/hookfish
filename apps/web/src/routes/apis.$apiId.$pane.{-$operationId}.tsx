@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
+import { PaneBackButton } from '../components/pane-back-button'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { Brand } from '../components/brand'
 import { ExecutableClient } from '../components/operation-client'
@@ -837,55 +838,65 @@ function ApiWorkbench({
                 </button>
               </div>
             ) : (
-              <div className="relative w-full max-w-[26rem]">
-                <label htmlFor="operation-filter" className="sr-only">
-                  Filter {api.labels.executablePlural}
-                </label>
-                <input
-                  id="operation-filter"
-                  name="operation-filter"
-                  type="search"
-                  autoComplete="off"
-                  spellCheck={false}
-                  className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                    filterValue ? (keybindings ? 'pr-16' : 'pr-9') : keybindings ? 'pr-9' : ''
-                  }`}
-                  value={filterValue}
-                  onFocus={() => {
-                    activate('routes', 'edit')
-                  }}
-                  onChange={(event) => setFilterValue(event.target.value)}
-                  placeholder={`Filter ${api.labels.executablePlural}`}
-                />
-                {filterValue ? (
-                  <button
-                    type="button"
-                    aria-label={`Clear ${api.labels.executable} filter`}
-                    className={`absolute inset-y-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink ${
-                      keybindings ? 'right-8' : 'right-0'
+              <div className="flex w-full items-center gap-2">
+                {activePane === 'routes' ? (
+                  <PaneBackButton
+                    label={`Back to ${api.labels.sourcePlural}`}
+                    compactLabel="Back"
+                    className={`min-h-9 ${filterValue ? 'max-md:hidden' : ''}`}
+                    onClick={stepBack}
+                  />
+                ) : null}
+                <div className="relative min-w-0 w-full max-w-[26rem] flex-1">
+                  <label htmlFor="operation-filter" className="sr-only">
+                    Filter {api.labels.executablePlural}
+                  </label>
+                  <input
+                    id="operation-filter"
+                    name="operation-filter"
+                    type="search"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                      filterValue ? (keybindings ? 'pr-16' : 'pr-9') : keybindings ? 'pr-9' : ''
                     }`}
-                    onClick={() => {
-                      setFilterValue('')
-                      document.getElementById('operation-filter')?.focus()
+                    value={filterValue}
+                    onFocus={() => {
+                      activate('routes', 'edit')
                     }}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 16 16"
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
+                    onChange={(event) => setFilterValue(event.target.value)}
+                    placeholder={`Filter ${api.labels.executablePlural}`}
+                  />
+                  {filterValue ? (
+                    <button
+                      type="button"
+                      aria-label={`Clear ${api.labels.executable} filter`}
+                      className={`absolute inset-y-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink ${
+                        keybindings ? 'right-8' : 'right-0'
+                      }`}
+                      onClick={() => {
+                        setFilterValue('')
+                        document.getElementById('operation-filter')?.focus()
+                      }}
                     >
-                      <path d="M3 3l10 10M13 3L3 13" />
-                    </svg>
-                  </button>
-                ) : null}
-                {keybindings ? (
-                  <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                    <Kbd hotkey="/" />
-                  </span>
-                ) : null}
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 16 16"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path d="M3 3l10 10M13 3L3 13" />
+                      </svg>
+                    </button>
+                  ) : null}
+                  {keybindings ? (
+                    <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                      <Kbd hotkey="/" />
+                    </span>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>
@@ -936,6 +947,8 @@ function ApiWorkbench({
             canNext={canNextOperation}
             onPrevious={() => navigateOperation(-1)}
             onNext={() => navigateOperation(1)}
+            onBack={stepBack}
+            backLabel={`Back to ${api.labels.executablePlural}`}
           />
         ) : null}
         </div>

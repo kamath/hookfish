@@ -25,3 +25,6 @@ export const formPrimaryButtonClass =
   'inline-flex min-h-8 items-center justify-center bg-signal px-3 py-1 text-xs text-on-signal hover:opacity-90 outline-none disabled:cursor-not-allowed disabled:opacity-40'
 
 export const typeClass = 'font-mono text-[11px] font-normal text-faint'
+
+export const paneBarButtonClass =
+  'inline-flex shrink-0 items-center gap-2 whitespace-nowrap bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15'
