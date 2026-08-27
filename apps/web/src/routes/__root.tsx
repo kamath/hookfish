@@ -138,6 +138,25 @@ function CloudProxyToggle() {
         cloudProxy ? 'bg-ink/5 text-mute' : 'bg-signal/10 text-ink'
       }`}
     >
+      <button
+        type="button"
+        className="inline-flex min-h-8 shrink-0 items-center gap-2 bg-ink/10 px-2.5 py-1 font-medium text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
+        aria-label={
+          cloudProxy
+            ? 'Turn off cloud proxy and run locally'
+            : 'Turn on cloud proxy'
+        }
+        aria-pressed={cloudProxy}
+        title={
+          cloudProxy
+            ? 'Cloud proxy on — click to run locally'
+            : 'Local mode — click to use the cloud proxy'
+        }
+        onClick={() => setCloudProxy(!cloudProxy)}
+      >
+        <CloudIcon disabled={!cloudProxy} />
+        <span>{cloudProxy ? 'Cloud' : 'Local'}</span>
+      </button>
       <p className="min-w-0 flex-1" role="status">
         {cloudProxy ? (
           <>Cloud proxy is on. Upstream requests run through the server.</>
@@ -158,25 +177,6 @@ function CloudProxyToggle() {
           </>
         )}
       </p>
-      <button
-        type="button"
-        className="inline-flex min-h-8 shrink-0 items-center gap-2 bg-ink/10 px-2.5 py-1 font-medium text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
-        aria-label={
-          cloudProxy
-            ? 'Turn off cloud proxy and run locally'
-            : 'Turn on cloud proxy'
-        }
-        aria-pressed={cloudProxy}
-        title={
-          cloudProxy
-            ? 'Cloud proxy on — click to run locally'
-            : 'Local mode — click to use the cloud proxy'
-        }
-        onClick={() => setCloudProxy(!cloudProxy)}
-      >
-        <CloudIcon disabled={!cloudProxy} />
-        <span>{cloudProxy ? 'Cloud' : 'Local'}</span>
-      </button>
     </div>
   )
 }
