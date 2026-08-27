@@ -39,6 +39,7 @@ export type PaneAction = {
 export type PaneConfig = {
   parent?: Pane
   path: string
+  title?: string
   bindings: readonly PaneBinding[]
 }
 
@@ -125,6 +126,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   },
   input: {
     parent: 'routes',
+    title: 'Input',
     path: '/apis/$apiId/input/$operationId',
     bindings: [
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next control' },
@@ -220,6 +222,31 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'parent', hotkey: 'Escape', label: 'close' },
     ],
   },
+}
+
+export function paneTitle(
+  pane: Pane,
+  labels: { sourcePlural: string; executablePlural: string },
+) {
+  const title = paneConfig[pane].title
+  if (title) {
+    return title
+  }
+  if (pane === 'routes') {
+    return labels.executablePlural
+  }
+  return labels.sourcePlural
+}
+
+export function previousPaneTitle(
+  pane: Pane,
+  labels: { sourcePlural: string; executablePlural: string },
+) {
+  const parent = paneConfig[pane].parent
+  if (!parent) {
+    return undefined
+  }
+  return paneTitle(parent, labels)
 }
 
 const dialogBindings: Record<string, ReadonlySet<string>> = {

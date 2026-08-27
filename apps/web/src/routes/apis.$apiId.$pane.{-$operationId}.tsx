@@ -31,6 +31,7 @@ import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
 import {
   consumePointerIntent,
+  previousPaneTitle,
   useKeybindingsEnabled,
   usePaneActions,
   usePaneFlags,
@@ -707,14 +708,8 @@ function ApiWorkbench({
     )
   }
 
-  const backLabel =
-    routePane === 'trace'
-      ? 'Close traces'
-      : activePane === 'response'
-        ? 'Back to input'
-        : activePane === 'input'
-          ? `Back to ${api.labels.executablePlural}`
-          : `Back to ${api.labels.sourcePlural}`
+  const parentTitle = previousPaneTitle(activePane, api.labels)
+  const backLabel = routePane === 'trace' ? 'Close traces' : parentTitle
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
@@ -774,7 +769,10 @@ function ApiWorkbench({
                   <span className="min-w-0 truncate">Close traces</span>
                 </>
               ) : (
-                <BackCaret />
+                <>
+                  <BackCaret />
+                  {parentTitle}
+                </>
               )}
               <Kbd hotkey="Escape" />
             </button>
@@ -847,7 +845,7 @@ function ApiWorkbench({
               <div className="flex w-full items-center gap-2">
                 {activePane === 'routes' ? (
                   <PaneBackButton
-                    label={`Back to ${api.labels.sourcePlural}`}
+                    label={previousPaneTitle('routes', api.labels) ?? api.labels.sourcePlural}
                     className="min-h-9"
                     onClick={stepBack}
                   />
@@ -953,7 +951,7 @@ function ApiWorkbench({
             onPrevious={() => navigateOperation(-1)}
             onNext={() => navigateOperation(1)}
             onBack={stepBack}
-            backLabel={`Back to ${api.labels.executablePlural}`}
+            backLabel={previousPaneTitle('input', api.labels) ?? api.labels.executablePlural}
           />
         ) : null}
         </div>

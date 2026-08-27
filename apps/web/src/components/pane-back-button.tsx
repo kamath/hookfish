@@ -29,7 +29,12 @@ export function PaneBackButton({
       aria-label={label}
       onClick={onClick}
     >
-      {children ?? <BackCaret />}
+      {children ?? (
+        <>
+          <BackCaret />
+          {label}
+        </>
+      )}
       <KeyHints>
         <Kbd hotkey="Escape" />
       </KeyHints>

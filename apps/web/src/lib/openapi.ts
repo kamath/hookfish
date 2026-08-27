@@ -651,8 +651,8 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
     labels: {
       source: 'OpenAPI document',
       sourcePlural: 'OpenAPI documents',
-      executable: 'endpoint',
-      executablePlural: 'endpoints',
+      executable: 'Endpoint',
+      executablePlural: 'Endpoints',
       target: 'Server',
       execute: 'Send',
       executing: 'Sending…',

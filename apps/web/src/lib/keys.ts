@@ -7,6 +7,7 @@ export {
   activeKeybindingsAtom,
   keybindingsEnabled,
   paneConfig,
+  previousPaneTitle,
   sourceSubmitActionId,
   useGlobalKeybindings,
   useKeybindingsEnabled,

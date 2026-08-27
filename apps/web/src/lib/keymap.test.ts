@@ -5,6 +5,7 @@ import {
   hotkeysFor,
   keybindingsEnabled,
   paneConfig,
+  previousPaneTitle,
 } from './keymap.ts'
 
 assert.deepEqual(hotkeysFor({ id: 'next', hotkey: 'J', label: 'next' }), ['J'])
@@ -95,6 +96,13 @@ assert.ok(
 )
 
 console.log('keymap step and tab bindings ok')
+
+const labels = { sourcePlural: 'OpenAPI documents', executablePlural: 'Endpoints' }
+assert.equal(previousPaneTitle('routes', labels), 'OpenAPI documents')
+assert.equal(previousPaneTitle('input', labels), 'Endpoints')
+assert.equal(previousPaneTitle('response', labels), 'Input')
+assert.equal(previousPaneTitle('specs', labels), undefined)
+console.log('keymap previous pane titles ok')
 
 assert.equal(
   KEYBINDINGS_MEDIA,
