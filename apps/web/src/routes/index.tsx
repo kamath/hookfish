@@ -283,9 +283,25 @@ function Home() {
             />
           ) : apis.length > 0 ? (
             <section>
-              <div className="flex items-baseline justify-between gap-3 px-3 pb-1">
-                <h2 className="font-mono text-[11px] text-mute">Recent</h2>
-                <KeyHints className="font-mono text-[11px] text-faint">enter to open</KeyHints>
+              <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
+                <h2>Recent</h2>
+                <KeyHints className="flex items-center gap-2 text-faint">
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Kbd hotkey="Enter" /> to open
+                  </span>
+                  {apis.length > 1 ? (
+                    <>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-0.5">
+                          <Kbd hotkey="J" />/<Kbd hotkey="K" />
+                        </span>
+                        down/up
+                      </span>
+                    </>
+                  ) : null}
+                </KeyHints>
               </div>
               <ul>
                 {apis.map((api, index) => {
