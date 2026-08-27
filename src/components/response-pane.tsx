@@ -419,7 +419,6 @@ export function ResponsePane({
                 className={`flex min-h-6 w-full min-w-0 ${
                   isActive ? 'exec-active items-start' : 'items-center'
                 }`}
-                onPointerEnter={() => setSelected(index)}
                 onClick={() => {
                   setSelected(index)
                   if (node.collection) {
