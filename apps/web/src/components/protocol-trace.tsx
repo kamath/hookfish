@@ -40,6 +40,30 @@ function revealInList(row: HTMLElement | null, list: HTMLElement | null) {
   }
 }
 
+function revealExpandedInList(
+  title: HTMLElement | null,
+  item: HTMLElement | null,
+  list: HTMLElement | null,
+) {
+  if (!title || !item || !list) {
+    return
+  }
+  const listRect = list.getBoundingClientRect()
+  const titleRect = title.getBoundingClientRect()
+  const itemRect = item.getBoundingClientRect()
+  if (titleRect.top < listRect.top) {
+    list.scrollTop -= listRect.top - titleRect.top
+    return
+  }
+  if (itemRect.bottom <= listRect.bottom) {
+    return
+  }
+  list.scrollTop += Math.min(
+    itemRect.bottom - listRect.bottom,
+    titleRect.top - listRect.top,
+  )
+}
+
 type JsonToken = {
   text: string
   kind: 'key' | 'string' | 'number' | 'literal' | 'punct' | 'space'
@@ -172,6 +196,7 @@ export function ProtocolTrace({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const followLatest = useRef(true)
   const listRef = useRef<HTMLDivElement>(null)
+  const prevExpanded = useRef(expanded)
 
   function revealRpc(id: string | undefined) {
     if (!id) {
@@ -237,6 +262,23 @@ export function ProtocolTrace({
     revealRpc(selectedId)
   }, [selectedId])
 
+  useLayoutEffect(() => {
+    let added: string | undefined
+    for (const id of expanded) {
+      if (!prevExpanded.current.has(id)) {
+        added = id
+        break
+      }
+    }
+    prevExpanded.current = expanded
+    if (!added) {
+      return
+    }
+    const title = document.getElementById(`rpc-${added}`)
+    const item = document.getElementById(`rpc-block-${added}`)
+    revealExpandedInList(title, item, listRef.current)
+  }, [expanded])
+
   const found = groups.findIndex((group) => group.id === selectedId)
   const activeIndex = found === -1 ? Math.max(groups.length - 1, 0) : found
 
@@ -293,6 +335,7 @@ export function ProtocolTrace({
               return (
                 <li
                   key={group.id}
+                  id={`rpc-block-${group.id}`}
                   className="exec-context col-span-full grid grid-cols-subgrid"
                   style={{ '--exec-color': accent } as CSSProperties}
                 >
