@@ -187,7 +187,7 @@ function Home() {
             autoComplete="off"
             spellCheck={false}
             required
-            className={`${inputClass} border-l-0 pl-10`}
+            className={`${inputClass} pl-10`}
             placeholder={sourceOption?.placeholder}
             onFocus={() => {
               activate('specs', 'edit')
