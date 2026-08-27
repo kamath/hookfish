@@ -192,8 +192,11 @@ export function ResponsePane({
   const [copiedId, setCopiedId] = useState<string>()
   const [wrapped, setWrapped] = useState<Set<string>>(new Set())
   const [clipped, setClipped] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [descriptionClipped, setDescriptionClipped] = useState(false)
   const treeRef = useRef<HTMLDivElement>(null)
   const selectedTextRef = useRef<HTMLSpanElement>(null)
+  const descriptionRef = useRef<HTMLParagraphElement>(null)
   const rows = useMemo(
     () =>
       body.root
@@ -235,6 +238,16 @@ export function ResponsePane({
 
   useLayoutEffect(measureSelected)
 
+  const measureDescription = useCallback(() => {
+    const description = descriptionRef.current
+    if (!description || descriptionExpanded) {
+      return
+    }
+    setDescriptionClipped(description.scrollHeight > description.clientHeight + 1)
+  }, [descriptionExpanded])
+
+  useLayoutEffect(measureDescription, [inspection?.description, measureDescription])
+
   useEffect(() => {
     const tree = treeRef.current
     if (!tree || typeof ResizeObserver === 'undefined') {
@@ -244,6 +257,21 @@ export function ResponsePane({
     observer.observe(tree)
     return () => observer.disconnect()
   }, [measureSelected])
+
+  useEffect(() => {
+    const description = descriptionRef.current
+    if (!description || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(measureDescription)
+    observer.observe(description)
+    return () => observer.disconnect()
+  }, [measureDescription])
+
+  useEffect(() => {
+    setDescriptionExpanded(false)
+    setDescriptionClipped(false)
+  }, [inspection?.description])
 
   useEffect(() => {
     if (!copiedId) {
@@ -353,8 +381,10 @@ export function ResponsePane({
   const activeRow = rows[selected]
   const firstActiveChildId = activeRow?.children?.[0]?.id
   const canToggleChildren = Boolean(activeRow?.collection)
+  const canToggleDescription = descriptionClipped || descriptionExpanded
   usePaneFlags(pane, {
     canToggleChildren,
+    hasDescription: canToggleDescription,
     hasDetails: Boolean(result.details?.items.length),
     hasJson: Boolean(body.root),
   })
@@ -376,6 +406,7 @@ export function ResponsePane({
     },
     details: () => setDetailsVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
+    description: () => setDescriptionExpanded((expanded) => !expanded),
   })
 
   return (
@@ -438,9 +469,28 @@ export function ResponsePane({
               {inspection.summary ? (
                 <p className="text-sm text-ink">{inspection.summary}</p>
               ) : null}
-              <p className="whitespace-pre-wrap text-sm text-mute">
-                {inspection.description ?? (inspection.summary ? null : 'Not advertised.')}
-              </p>
+              {inspection.description ? (
+                <p
+                  ref={descriptionRef}
+                  className={`whitespace-pre-wrap text-sm text-mute ${
+                    descriptionExpanded ? '' : 'line-clamp-3'
+                  }`}
+                >
+                  {inspection.description}
+                </p>
+              ) : inspection.summary ? null : (
+                <p className="text-sm text-mute">Not advertised.</p>
+              )}
+              {canToggleDescription ? (
+                <button
+                  type="button"
+                  className="mt-2 inline-flex items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-ink hover:bg-ink/15"
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                >
+                  {descriptionExpanded ? 'Collapse' : 'Expand'}
+                  <Kbd hotkey="E" />
+                </button>
+              ) : null}
             </section>
             <h2 className="mb-2 font-mono text-xs text-faint">Output schema</h2>
           </>

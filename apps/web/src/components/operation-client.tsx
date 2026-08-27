@@ -428,12 +428,12 @@ export function ExecutableClient({
               aria-pressed={inspecting}
               className={`inline-flex min-h-8 flex-1 items-center justify-center gap-2 px-3 py-1 text-xs font-medium outline-none md:flex-none ${
                 inspecting
-                  ? 'exec-solid'
-                  : 'bg-ink/10 text-mute hover:bg-ink/15 hover:text-ink'
+                  ? 'exec-active exec-ink'
+                  : 'bg-ink/10 text-ink hover:bg-ink/15'
               }`}
               onClick={toggleInspect}
             >
-              {inspecting ? 'Call' : 'Inspect'}
+              {inspecting ? 'Back to call' : 'Inspect'}
               <KeyHints>
                 <Kbd hotkey="V" />
               </KeyHints>
