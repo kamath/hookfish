@@ -555,10 +555,16 @@ function FieldTemplate(props: FieldTemplateProps) {
         {errors}
         {help}
         {!nest ? (
-          <span data-oc-insert-hint className="items-center gap-1.5 text-xs text-faint">
-            <Kbd hotkey="I" />
-            to focus input
-          </span>
+          <>
+            <span data-oc-hint="insert" className="items-center gap-1.5 text-xs text-faint">
+              <Kbd hotkey="I" />
+              to focus input
+            </span>
+            <span data-oc-hint="escape" className="items-center gap-1.5 text-xs text-faint">
+              <Kbd hotkey="Escape" />
+              to activate keybindings
+            </span>
+          </>
         ) : null}
       </div>
     </WrapIfAdditionalTemplate>

@@ -165,17 +165,26 @@ html[data-oc-mode='edit'] .oc-key-hints {
   background-color: var(--paper);
 }
 
-[data-oc-insert-hint] {
+[data-oc-hint] {
   display: none;
 }
 
-[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='insert'] {
   display: flex;
 }
 
-/* Once the field is being typed in, the prompt to focus it is stale. */
-html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+/* Once the field is being typed in, the prompt flips to the way back out of it. */
+html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='insert'] {
   display: none;
+}
+
+html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-hint='escape'] {
+  display: flex;
+}
+
+/* Edit mode hides key chips everywhere else, but this hint is only shown there. */
+html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
+  display: inline-flex;
 }
 
 [data-oc-mode='insert'] [data-oc-current='true'] {
