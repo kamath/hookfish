@@ -161,8 +161,15 @@ html[data-oc-mode='edit'] .oc-key-hints {
 }
 
 [data-oc-command-helper],
-[data-oc-insert-helper] {
+[data-oc-insert-helper],
+[data-oc-entry-helper],
+[data-oc-choice-helper] {
   display: none;
+}
+
+[data-oc-nav='field']:has([data-oc-input-kind='entry']) [data-oc-entry-helper],
+[data-oc-nav='field']:has([data-oc-input-kind='choice']) [data-oc-choice-helper] {
+  display: inline;
 }
 
 [data-oc-mode='command']

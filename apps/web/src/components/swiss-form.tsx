@@ -284,6 +284,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
+        data-oc-input-kind="entry"
         className={`${formInputClass} ${invalid ? 'border-error' : ''}`}
         readOnly={readonly}
         disabled={disabled}
@@ -324,6 +325,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
+      data-oc-input-kind="entry"
       className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-error' : ''}`}
       value={value || ''}
       placeholder={placeholder}
@@ -377,6 +379,7 @@ function SelectWidget(props: WidgetProps) {
     <select
       id={id}
       name={htmlName || id}
+      data-oc-input-kind="choice"
       multiple={multiple}
       className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-error' : ''}`}
       value={selectValue}
@@ -479,6 +482,7 @@ function CheckboxWidget(props: WidgetProps) {
           type="checkbox"
           id={id}
           name={htmlName || id}
+          data-oc-input-kind="choice"
           checked={typeof value === 'undefined' ? false : Boolean(value)}
           required={required}
           disabled={disabled || readonly}
@@ -559,7 +563,12 @@ function FieldTemplate(props: FieldTemplateProps) {
         {!nest ? (
           <p data-oc-input-helper className="text-xs text-mute">
             <span data-oc-command-helper>
-              <Kbd hotkey="I" /> to insert text.
+              <span data-oc-entry-helper>
+                <Kbd hotkey="I" /> to insert text.
+              </span>
+              <span data-oc-choice-helper>
+                <Kbd hotkey="Enter" /> to edit value.
+              </span>
             </span>
             <span data-oc-insert-helper>
               <Kbd hotkey="Escape" />/<Kbd hotkey="Enter" /> to activate keybindings.
