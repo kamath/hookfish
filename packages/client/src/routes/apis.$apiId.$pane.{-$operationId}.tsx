@@ -1,6 +1,6 @@
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
+import { Link, createRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
 import {
   useDeferredValue,
   useEffect,
@@ -40,13 +40,15 @@ import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
 import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+import { rootRoute } from './root'
 
 type Search = {
   q?: string
 }
 
-export const Route = createFileRoute('/apis/$apiId/$pane/{-$operationId}')({
-  ssr: false,
+export const apiClientRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/apis/$apiId/$pane/{-$operationId}',
   validateSearch: (search: Record<string, unknown>): Search => ({
     q: typeof search.q === 'string' ? search.q : undefined,
   }),
@@ -134,7 +136,7 @@ function hasAuthFields(schema: JsonSchema | undefined) {
 }
 
 function ApiClientPage() {
-  const { apiId } = Route.useParams()
+  const { apiId } = apiClientRoute.useParams()
   const navigate = useNavigate()
   const apiQuery = useQuery(apiQueryOptions(apiId))
   const queryClient = useQueryClient()
@@ -252,10 +254,10 @@ function ApiWorkbench({
   authPending: boolean
   authError: unknown
 }) {
-  const { operationId, pane: paneParam } = Route.useParams()
+  const { operationId, pane: paneParam } = apiClientRoute.useParams()
   const routePane = readPane(paneParam, operationId)
-  const search = Route.useSearch()
-  const navigate = Route.useNavigate()
+  const search = apiClientRoute.useSearch()
+  const navigate = apiClientRoute.useNavigate()
   const home = useNavigate()
   const queryClient = useQueryClient()
   const activePane = usePane()

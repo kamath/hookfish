@@ -9,65 +9,83 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientRouteImport } from './routes/_client'
+import { Route as ClientIndexRouteImport } from './routes/_client.index'
+import { Route as ClientSplatRouteImport } from './routes/_client.$'
 import { Route as ApiSplatRouteImport } from './routes/api.$'
-import { Route as ApisApiIdPaneChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.$pane.{-$operationId}'
 
-const IndexRoute = IndexRouteImport.update({
+const ClientRoute = ClientRouteImport.update({
+  id: '/_client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientIndexRoute = ClientIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientSplatRoute = ClientSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ClientRoute,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
   id: '/api/$',
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApisApiIdPaneChar123OperationIdChar125Route =
-  ApisApiIdPaneChar123OperationIdChar125RouteImport.update({
-    id: '/apis/$apiId/$pane/{-$operationId}',
-    path: '/apis/$apiId/$pane/{-$operationId}',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof ClientIndexRoute
+  '/$': typeof ClientSplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/$': typeof ClientSplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
+  '/': typeof ClientIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_client': typeof ClientRouteWithChildren
+  '/_client/$': typeof ClientSplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
+  '/_client/': typeof ClientIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
+  fullPaths: '/' | '/$' | '/api/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
-  id: '__root__' | '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
+  to: '/$' | '/api/$' | '/'
+  id: '__root__' | '/_client' | '/_client/$' | '/api/$' | '/_client/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  ClientRoute: typeof ClientRouteWithChildren
   ApiSplatRoute: typeof ApiSplatRoute
-  ApisApiIdPaneChar123OperationIdChar125Route: typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_client': {
+      id: '/_client'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_client/': {
+      id: '/_client/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ClientIndexRouteImport
+      parentRoute: typeof ClientRoute
+    }
+    '/_client/$': {
+      id: '/_client/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof ClientSplatRouteImport
+      parentRoute: typeof ClientRoute
     }
     '/api/$': {
       id: '/api/$'
@@ -76,21 +94,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apis/$apiId/$pane/{-$operationId}': {
-      id: '/apis/$apiId/$pane/{-$operationId}'
-      path: '/apis/$apiId/$pane/{-$operationId}'
-      fullPath: '/apis/$apiId/$pane/{-$operationId}'
-      preLoaderRoute: typeof ApisApiIdPaneChar123OperationIdChar125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
+interface ClientRouteChildren {
+  ClientSplatRoute: typeof ClientSplatRoute
+  ClientIndexRoute: typeof ClientIndexRoute
+}
+
+const ClientRouteChildren: ClientRouteChildren = {
+  ClientSplatRoute: ClientSplatRoute,
+  ClientIndexRoute: ClientIndexRoute,
+}
+
+const ClientRouteWithChildren =
+  ClientRoute._addFileChildren(ClientRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  ClientRoute: ClientRouteWithChildren,
   ApiSplatRoute: ApiSplatRoute,
-  ApisApiIdPaneChar123OperationIdChar125Route:
-    ApisApiIdPaneChar123OperationIdChar125Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,12 +1,8 @@
 import { atom, useAtomValue } from 'jotai'
 import { store } from './chrome'
+import { THEME_COLORS, THEME_KEY } from '../head'
 
-export const THEME_KEY = 'oc:theme'
-
-export const THEME_COLORS = {
-  light: '#f7f6f3',
-  dark: '#141311',
-} as const
+export { THEME_COLORS, THEME_INIT_SCRIPT, THEME_KEY } from '../head'
 
 export const THEME_PREFERENCES = ['system', 'light', 'dark'] as const
 
@@ -94,5 +90,3 @@ export function bindTheme() {
 export function useTheme() {
   return [useAtomValue(themeAtom), setTheme] as const
 }
-
-export const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t!=='light'&&t!=='dark')t='system';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='system'}})()`
