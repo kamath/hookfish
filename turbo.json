@@ -6,6 +6,7 @@
       "outputs": ["dist/**", "web/**"]
     },
     "@hookfish/web#build:node": {
+      "dependsOn": ["^build"],
       "outputs": ["dist-node/**"]
     },
     "hookfish#build": {
