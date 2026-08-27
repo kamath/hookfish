@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
-import { GITHUB_REPO_URL } from '../components/github-link'
+import { GITHUB_LICENSE_URL, GITHUB_REPO_URL } from '../components/github-link'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -428,14 +428,22 @@ function Home() {
           ) : null}
           {!showSubmitButtons && !url.trim() ? (
             <p className="mt-2 text-center text-sm text-mute">
-              100% OSS MIT Licensed.{' '}
               <a
                 href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium text-signal underline underline-offset-2"
               >
-                Ask your coding agent about Hookfish
+                Hookfish is fully open source
+              </a>
+              {' '}and{' '}
+              <a
+                href={GITHUB_LICENSE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-signal underline underline-offset-2"
+              >
+                MIT Licensed
               </a>
             </p>
           ) : null}
