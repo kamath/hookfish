@@ -1,15 +1,16 @@
 import { type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
-  Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useNavigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
+import { QueryStatus } from '../components/query-status'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
@@ -190,20 +191,26 @@ function GlobalKeybindings() {
 }
 
 function ErrorPage({ error }: { error: Error }) {
+  const navigate = useNavigate()
   return (
-    <main id="main" className="px-4 py-10">
-      <p className="text-sm text-signal">{error.message || 'Reload and try again.'}</p>
-    </main>
+    <QueryStatus
+      error={error}
+      onRetry={() => window.location.reload()}
+      onBack={() => {
+        void navigate({ to: '/' })
+      }}
+    />
   )
 }
 
 function NotFound() {
+  const navigate = useNavigate()
   return (
-    <main id="main" className="px-4 py-10">
-      <p className="text-sm text-mute">Nothing here.</p>
-      <Link to="/" className="mt-4 inline-flex min-h-11 items-center text-sm text-signal">
-        Home
-      </Link>
-    </main>
+    <QueryStatus
+      label="Nothing here."
+      onBack={() => {
+        void navigate({ to: '/' })
+      }}
+    />
   )
 }

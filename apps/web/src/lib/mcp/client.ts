@@ -2,6 +2,7 @@ import {
   Client,
   SdkHttpError,
   StreamableHTTPClientTransport,
+  UnauthorizedError,
 } from '@modelcontextprotocol/client'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
@@ -120,36 +121,30 @@ function askForJson(label: string, request: unknown, fallback: unknown) {
   }
 }
 
-export async function getMcpConnection(
+function isProbeAccessDenied(error: unknown) {
+  return (
+    SdkHttpError.isInstance(error) &&
+    error.status === 403 &&
+    /version negotiation failed/i.test(error.message)
+  )
+}
+
+async function openMcpTransport(
   sourceId: string,
   endpoint: string,
+  pending: TraceSink,
+  cloudProxy: boolean,
+  mode: 'auto' | 'legacy',
+  authProvider: BrowserMcpOAuthProvider,
+  callbackParameters: URLSearchParams | undefined,
+  finishAuth: boolean,
 ) {
-  const cloudProxy = getCloudProxy()
-  const current = connections.get(sourceId)
-  if (
-    current &&
-    current.endpoint === endpoint &&
-    current.cloudProxy === cloudProxy
-  ) {
-    return current
-  }
-  if (current) {
-    await current.transport.terminateSession().catch(() => {})
-    await current.client.close().catch(() => {})
-  }
-
-  const pending: TraceSink = {
-    sourceId,
-    trace: [] as ProtocolTraceEntry[],
-    startedAt: Date.now(),
-  }
-  const authProvider = new BrowserMcpOAuthProvider(sourceId)
   const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
     authProvider,
     fetch: upstreamFetch(pending, cloudProxy),
   })
   const client = new Client(CLIENT_INFO, {
-    versionNegotiation: { mode: 'auto' },
+    versionNegotiation: { mode },
     inputRequired: { autoFulfill: false },
     capabilities: {
       roots: { listChanged: false },
@@ -176,16 +171,81 @@ export async function getMcpConnection(
       stopReason: 'endTurn',
     }) as never,
   )
-  const callbackParameters = authProvider.callbackParameters()
-  if (callbackParameters) {
-    try {
+  try {
+    if (finishAuth && callbackParameters) {
       await transport.finishAuth(callbackParameters)
-    } finally {
+    }
+    await client.connect(transport)
+    return { client, transport }
+  } catch (error) {
+    await client.close().catch(() => {})
+    throw error
+  }
+}
+
+export async function getMcpConnection(
+  sourceId: string,
+  endpoint: string,
+) {
+  const cloudProxy = getCloudProxy()
+  const current = connections.get(sourceId)
+  if (
+    current &&
+    current.endpoint === endpoint &&
+    current.cloudProxy === cloudProxy
+  ) {
+    return current
+  }
+  if (current) {
+    await current.transport.terminateSession().catch(() => {})
+    await current.client.close().catch(() => {})
+  }
+
+  const pending: TraceSink = {
+    sourceId,
+    trace: [] as ProtocolTraceEntry[],
+    startedAt: Date.now(),
+  }
+  const authProvider = new BrowserMcpOAuthProvider(sourceId)
+  const callbackParameters = authProvider.callbackParameters()
+  const opened = await (async () => {
+    try {
+      return await openMcpTransport(
+        sourceId,
+        endpoint,
+        pending,
+        cloudProxy,
+        'auto',
+        authProvider,
+        callbackParameters,
+        Boolean(callbackParameters),
+      )
+    } catch (error) {
+      if (!isProbeAccessDenied(error)) {
+        throw error
+      }
+      try {
+        return await openMcpTransport(
+          sourceId,
+          endpoint,
+          pending,
+          cloudProxy,
+          'legacy',
+          authProvider,
+          callbackParameters,
+          false,
+        )
+      } catch (legacyError) {
+        throw UnauthorizedError.isInstance(legacyError) ? legacyError : error
+      }
+    }
+  })().finally(() => {
+    if (callbackParameters) {
       authProvider.finishCallback()
       authProvider.cleanCallbackUrl()
     }
-  }
-  await client.connect(transport)
+  })
+  const { client, transport } = opened
   const connection: McpConnection = {
     client,
     transport,
