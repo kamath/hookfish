@@ -8,7 +8,7 @@ export function Kbd({ hotkey }: { hotkey: RegisterableHotkey | string }) {
   )
 
   useEffect(() => {
-    setLabel(formatForDisplay(hotkey))
+    setLabel(hotkey === 'Tab' ? 'Tab' : formatForDisplay(hotkey))
   }, [hotkey])
 
   if (!label) {
