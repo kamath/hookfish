@@ -711,7 +711,13 @@ function ApiWorkbench({
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >
             {orderedOperations.length === 0 ? (
-              <p className="px-3 py-3 text-sm text-mute">No matches.</p>
+              <p
+                className={`py-3 pr-3 text-sm text-mute ${
+                  activePane === 'routes' ? 'pl-14' : 'pl-3'
+                }`}
+              >
+                No matches.
+              </p>
             ) : ranked ? (
               <ol>{orderedOperations.map((operation) => renderOperation(operation))}</ol>
             ) : (
@@ -721,7 +727,11 @@ function ApiWorkbench({
                 return (
                   <section key={group.name ?? 'untagged'} className="pb-2">
                     {title ? (
-                      <header className="px-3 pb-1 pt-3">
+                      <header
+                        className={`pb-1 pr-3 pt-3 ${
+                          activePane === 'routes' ? 'pl-14' : 'pl-3'
+                        }`}
+                      >
                         <p className="truncate text-[11px] text-mute">{title}</p>
                         {groupDescription ? (
                           <p className="truncate text-[11px] text-faint">{groupDescription}</p>
