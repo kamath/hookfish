@@ -75,6 +75,30 @@ export function groupProtocolTrace(entries: ProtocolTraceEntry[]): ProtocolRpc[]
   return groups
 }
 
+export function rpcAccent(summary: string): string {
+  const method = summary.toLowerCase()
+  if (method.includes('tool')) {
+    return 'var(--accent-mcp-tool)'
+  }
+  if (method.includes('resource')) {
+    return 'var(--accent-mcp-resource)'
+  }
+  if (method.includes('prompt')) {
+    return 'var(--accent-mcp-prompt)'
+  }
+  if (
+    method.includes('initialize') ||
+    method.startsWith('server/') ||
+    method === 'ping'
+  ) {
+    return 'var(--signal)'
+  }
+  if (method.startsWith('notifications/') || method === 'notification') {
+    return 'var(--accent-mcp-template)'
+  }
+  return 'var(--ink)'
+}
+
 export function useMcpTrace(sourceId: string) {
   const [entries, setEntries] = useState<ProtocolTraceEntry[]>(() => getMcpTrace(sourceId))
   useEffect(() => {

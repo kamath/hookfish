@@ -57,6 +57,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', label: 'next' },
       { id: 'previous', hotkey: 'K', label: 'previous' },
       { id: 'input', hotkey: 'Enter', label: 'input' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',
@@ -130,6 +131,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'manyServers',
       },
       { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },
@@ -154,6 +156,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canToggleChildren',
       },
       { id: 'parent', hotkey: 'Escape', label: 'input' },
+      { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
     ],
   },
   trace: {
@@ -162,6 +165,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     bindings: [
       { id: 'next', hotkey: 'J', label: 'next rpc' },
       { id: 'previous', hotkey: 'K', label: 'previous rpc' },
+      { id: 'expand', hotkey: 'Enter', label: 'expand' },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',

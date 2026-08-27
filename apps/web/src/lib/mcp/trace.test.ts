@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
-import { groupProtocolTrace } from './trace'
+import { groupProtocolTrace, rpcAccent } from './trace'
 
 function entry(
   partial: Pick<ProtocolTraceEntry, 'direction' | 'kind' | 'summary'> &
@@ -117,4 +117,9 @@ assert.deepEqual(
 )
 
 assert.deepEqual(groupProtocolTrace([]), [])
+assert.equal(rpcAccent('tools/call'), 'var(--accent-mcp-tool)')
+assert.equal(rpcAccent('resources/list'), 'var(--accent-mcp-resource)')
+assert.equal(rpcAccent('prompts/get'), 'var(--accent-mcp-prompt)')
+assert.equal(rpcAccent('notifications/initialized'), 'var(--signal)')
+assert.equal(rpcAccent('server/discover'), 'var(--signal)')
 console.log('protocol trace grouping ok')

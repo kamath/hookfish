@@ -1,6 +1,7 @@
 import type { ExecutableSource } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
 import { useMcpTrace } from '../lib/mcp/trace'
+import { Kbd } from './hints'
 
 export function McpServerPanel({
   source,
@@ -87,14 +88,16 @@ function McpServerChrome({
         })}
         <button
           type="button"
+          data-oc-trace-toggle
           data-oc-command-focus="true"
           aria-pressed={traceOpen}
-          className={`px-1.5 py-0.5 font-mono ${
+          className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 font-mono ${
             traceOpen ? 'bg-paper text-ink' : 'bg-paper text-mute hover:text-ink'
           }`}
           onClick={onToggleTrace}
         >
           trace {entries.length}
+          {traceOpen ? null : <Kbd hotkey="T" />}
         </button>
         {capabilities
           .filter(

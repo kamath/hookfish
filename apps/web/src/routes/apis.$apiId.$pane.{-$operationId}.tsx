@@ -474,11 +474,11 @@ function ApiWorkbench({
   }
 
   function openTrace() {
-    if (getPane() === 'trace') {
+    if (routePane === 'trace') {
       stepBack()
       return
     }
-    const fromList = getPane() === 'routes'
+    const fromList = routePane === 'routes'
     activate('trace', 'command')
     void navigate({
       to: '/apis/$apiId/$pane/{-$operationId}',
@@ -504,15 +504,21 @@ function ApiWorkbench({
   }
 
   const canClear = Boolean(onClearAuth)
+  const hasTrace = api.kind === 'mcp'
   usePaneFlags('routes', {
     canClear,
     manyServers,
+    hasTrace,
   })
   usePaneFlags('input', {
     canClear,
     canNextRoute: canNextOperation,
     canPreviousRoute: canPreviousOperation,
     manyServers,
+    hasTrace,
+  })
+  usePaneFlags('response', {
+    hasTrace,
   })
   usePaneFlags('trace', {
     canClear,
@@ -545,6 +551,9 @@ function ApiWorkbench({
       blurActive()
       activate('routes', 'command')
     },
+    trace: () => {
+      openTrace()
+    },
   })
 
   usePaneActions('input', {
@@ -563,6 +572,15 @@ function ApiWorkbench({
     },
     prevServer: () => cycleServer(-1),
     nextServer: () => cycleServer(1),
+    trace: () => {
+      openTrace()
+    },
+  })
+
+  usePaneActions('response', {
+    trace: () => {
+      openTrace()
+    },
   })
 
   usePaneActions('trace', {
@@ -686,7 +704,7 @@ function ApiWorkbench({
               className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink"
               onClick={stepBack}
             >
-              {activePane === 'trace'
+              {routePane === 'trace'
                 ? operationId
                   ? 'Input'
                   : api.labels.executablePlural
@@ -714,12 +732,12 @@ function ApiWorkbench({
         </div>
         <McpServerPanel
           source={api}
-          traceOpen={activePane === 'trace'}
+          traceOpen={routePane === 'trace' || activePane === 'trace'}
           onToggleTrace={openTrace}
         />
       </div>
 
-      {activePane === 'trace' ? (
+      {routePane === 'trace' || activePane === 'trace' ? (
         <ProtocolTrace sourceId={api.id} />
       ) : (
         <div

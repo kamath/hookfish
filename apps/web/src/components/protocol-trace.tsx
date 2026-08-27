@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { ProtocolTraceEntry } from '../lib/client-types'
-import { useStepKeys } from '../lib/keys'
-import { groupProtocolTrace, useMcpTrace, type ProtocolRpc } from '../lib/mcp/trace'
+import { consumePointerIntent, usePaneActions, useStepKeys } from '../lib/keys'
+import { activate, getPane } from '../lib/mode'
+import { groupProtocolTrace, rpcAccent, useMcpTrace, type ProtocolRpc } from '../lib/mcp/trace'
 import { Kbd } from './hints'
 
 function moveSelection(
@@ -23,7 +24,7 @@ function moveSelection(
 
 function JsonBlock({ value }: { value: unknown }) {
   return (
-    <pre className="mt-1 overflow-auto whitespace-pre-wrap pl-[4.75rem] font-mono text-[11px] leading-relaxed text-faint">
+    <pre className="mt-1 overflow-auto whitespace-pre-wrap pl-[5.75rem] font-mono text-[11px] leading-relaxed text-faint">
       {JSON.stringify(value, null, 2)}
     </pre>
   )
@@ -34,7 +35,7 @@ function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
     <ol className="mt-1 space-y-2 pb-3">
       {frames.map((frame, index) => (
         <li key={`${frame.atMs}:${frame.summary}:${index}`}>
-          <div className="flex gap-3 pl-8 font-mono text-xs text-mute">
+          <div className="flex gap-3 pl-12 font-mono text-xs text-mute">
             <span className="w-5 shrink-0">{frame.direction === 'out' ? '→' : '←'}</span>
             <span className="w-20 shrink-0 text-faint">{frame.kind}</span>
             <span className="min-w-0 text-ink">{frame.summary}</span>
@@ -46,12 +47,23 @@ function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
   )
 }
 
+function claimTracePane() {
+  if (getPane() !== 'trace') {
+    activate('trace', 'command')
+  }
+}
+
 export function ProtocolTrace({ sourceId }: { sourceId: string }) {
   const entries = useMcpTrace(sourceId)
   const groups = useMemo(() => groupProtocolTrace(entries), [entries])
   const [selectedId, setSelectedId] = useState<string>()
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const followLatest = useRef(true)
   const listRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    claimTracePane()
+  }, [])
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -68,18 +80,44 @@ export function ProtocolTrace({ sourceId }: { sourceId: string }) {
   }, [groups])
 
   function move(delta: number) {
+    claimTracePane()
     const next = moveSelection(groups, selectedId, delta)
     followLatest.current = next.followLatest
     setSelectedId(next.id)
   }
 
+  function toggleExpanded(id: string) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleSelected() {
+    if (!selectedId) {
+      return
+    }
+    toggleExpanded(selectedId)
+  }
+
   useStepKeys('trace', move, groups.length > 0)
+  usePaneActions('trace', {
+    expand: (event) => {
+      event.preventDefault()
+      toggleSelected()
+    },
+  })
 
   useEffect(() => {
     listRef.current
       ?.querySelector<HTMLElement>('[data-oc-current="true"]')
       ?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId, groups])
+  }, [selectedId, groups, expanded])
 
   const found = groups.findIndex((group) => group.id === selectedId)
   const activeIndex = found === -1 ? Math.max(groups.length - 1, 0) : found
@@ -90,6 +128,12 @@ export function ProtocolTrace({ sourceId }: { sourceId: string }) {
       ref={listRef}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
       aria-label="Protocol trace"
+      onPointerEnter={() => {
+        if (!consumePointerIntent()) {
+          return
+        }
+        claimTracePane()
+      }}
     >
       <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
         {groups.length === 0 ? (
@@ -98,31 +142,42 @@ export function ProtocolTrace({ sourceId }: { sourceId: string }) {
           <ol className="w-max min-w-full font-mono text-sm leading-relaxed">
             {groups.map((group, index) => {
               const active = group.id === selectedId
+              const isExpanded = expanded.has(group.id)
+              const accent = rpcAccent(group.summary)
               const navigationHint = active
-                ? undefined
+                ? 'Enter'
                 : index === activeIndex - 1
                   ? 'K'
                   : index === activeIndex + 1
                     ? 'J'
                     : undefined
               return (
-                <li key={group.id}>
+                <li
+                  key={group.id}
+                  className="exec-context"
+                  style={{ '--exec-color': accent } as CSSProperties}
+                >
                   <button
                     type="button"
                     data-oc-command-focus="true"
                     data-oc-current={active ? 'true' : undefined}
                     aria-current={active ? 'true' : undefined}
-                    aria-expanded={active}
+                    aria-expanded={isExpanded}
                     className={`flex min-h-7 w-full items-center gap-3 py-1 text-left outline-none ${
                       active ? 'exec-active' : ''
                     }`}
                     onClick={() => {
+                      claimTracePane()
                       followLatest.current = index === groups.length - 1
                       setSelectedId(group.id)
+                      toggleExpanded(group.id)
                     }}
                   >
                     <span className="inline-flex w-8 shrink-0 justify-end">
                       {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+                    </span>
+                    <span className="inline-block w-4 shrink-0 text-faint">
+                      {isExpanded ? '▾' : '▸'}
                     </span>
                     <span className="w-14 shrink-0 text-right tabular-nums text-mute">
                       {group.atMs} ms
@@ -130,14 +185,14 @@ export function ProtocolTrace({ sourceId }: { sourceId: string }) {
                     <span className="w-5 shrink-0 text-mute">
                       {group.direction === 'out' ? '→' : '←'}
                     </span>
-                    <span className="min-w-0 truncate text-ink">{group.summary}</span>
+                    <span className="min-w-0 truncate exec-ink">{group.summary}</span>
                     <span className="ml-auto shrink-0 text-xs text-faint">
                       {group.frames.length === 1
                         ? group.kind
                         : `${group.frames.length} frames`}
                     </span>
                   </button>
-                  {active ? <RpcFrames frames={group.frames} /> : null}
+                  {isExpanded ? <RpcFrames frames={group.frames} /> : null}
                 </li>
               )
             })}
