@@ -1,5 +1,4 @@
 export const GITHUB_REPO_URL = 'https://github.com/kamath/hookfish'
-export const GITHUB_LICENSE_URL = `${GITHUB_REPO_URL}/blob/main/LICENSE`
 
 export function GitHubLink() {
   return (
