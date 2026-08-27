@@ -14,6 +14,16 @@ assert.deepEqual(
   hotkeysFor({ id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next' }),
   ['J', 'ArrowDown'],
 )
+assert.deepEqual(
+  hotkeysFor({ id: 'previous', hotkey: 'H', label: 'previous' }),
+  ['H', 'ArrowLeft'],
+)
+assert.deepEqual(hotkeysFor({ id: 'next', hotkey: 'L', label: 'next' }), ['L', 'ArrowRight'])
+assert.deepEqual(
+  hotkeysFor({ id: 'edit', hotkey: 'H', label: 'edit', modes: ['edit'] }),
+  ['H'],
+  'arrow aliases only apply in command mode',
+)
 
 for (const [pane, config] of Object.entries(paneConfig)) {
   const next = config.bindings.find((binding) => binding.id === 'next')
