@@ -1,3 +1,4 @@
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
 import {
@@ -8,6 +9,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
+import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
@@ -28,7 +30,7 @@ import { activate, enterEdit, getPane, usePane, type Pane } from '../lib/mode'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
-import { clearMcpOAuth } from '../lib/mcp/oauth'
+import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
 
 type Search = {
   q?: string
@@ -147,19 +149,43 @@ function ApiClientPage() {
       })
     },
   })
+  const [authDismissed, setAuthDismissed] = useState(false)
 
   if (apiQuery.isPending) {
-    return <QueryStatus label="Reading the source…" />
+    return isMcpOAuthCallback() ? (
+      <AuthCallback />
+    ) : (
+      <QueryStatus label="Reading the source…" />
+    )
   }
 
   if (apiQuery.isError) {
     if (isNotFound(apiQuery.error)) {
       throw notFound()
     }
+    const authorizationUrl = pendingMcpAuthorizationUrl()
+    if (
+      !authDismissed &&
+      UnauthorizedError.isInstance(apiQuery.error) &&
+      authorizationUrl
+    ) {
+      return (
+        <main id="main" className="flex h-full items-center justify-center px-4">
+          <AuthRedirect
+            href={authorizationUrl}
+            onCancel={() => {
+              clearPendingMcpAuthorization()
+              setAuthDismissed(true)
+            }}
+          />
+        </main>
+      )
+    }
     return (
       <QueryStatus
         error={apiQuery.error}
         onRetry={() => {
+          setAuthDismissed(false)
           void apiQuery.refetch()
         }}
       />
