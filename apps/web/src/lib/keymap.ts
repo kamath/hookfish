@@ -40,6 +40,13 @@ export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
   if (binding.hotkey === 'Escape' && modes.includes('command') && !keys.includes('Backspace')) {
     keys.push('Backspace')
   }
+  // Command-mode horizontal movement also supports the matching arrow keys.
+  if (modes.includes('command')) {
+    const arrow = binding.hotkey === 'H' ? 'ArrowLeft' : binding.hotkey === 'L' ? 'ArrowRight' : undefined
+    if (arrow && !keys.includes(arrow)) {
+      keys.push(arrow)
+    }
+  }
   return keys
 }
 
