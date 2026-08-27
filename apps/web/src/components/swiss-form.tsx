@@ -284,6 +284,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
+        data-oc-input-kind="entry"
         className={`${formInputClass} ${invalid ? 'border-error' : ''}`}
         readOnly={readonly}
         disabled={disabled}
@@ -324,6 +325,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
+      data-oc-input-kind="entry"
       className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-error' : ''}`}
       value={value || ''}
       placeholder={placeholder}
@@ -377,6 +379,7 @@ function SelectWidget(props: WidgetProps) {
     <select
       id={id}
       name={htmlName || id}
+      data-oc-input-kind="choice"
       multiple={multiple}
       className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-error' : ''}`}
       value={selectValue}
@@ -479,6 +482,7 @@ function CheckboxWidget(props: WidgetProps) {
           type="checkbox"
           id={id}
           name={htmlName || id}
+          data-oc-input-kind="choice"
           checked={typeof value === 'undefined' ? false : Boolean(value)}
           required={required}
           disabled={disabled || readonly}
@@ -532,16 +536,16 @@ function FieldTemplate(props: FieldTemplateProps) {
         data-oc-nav={nest ? undefined : 'field'}
         data-oc-required={required && !nest ? 'true' : undefined}
       >
-        {!nest ? (
-          <span
-            data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
-          >
-            <Kbd hotkey="I" />
-          </span>
-        ) : null}
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}
+          >
+            {!nest ? (
+              <span data-oc-tab-hint className="shrink-0">
+                <Kbd hotkey="Tab" />
+              </span>
+            ) : null}
             <span className="shrink-0">
               {label}
               {required ? (
@@ -556,6 +560,21 @@ function FieldTemplate(props: FieldTemplateProps) {
         ) : null}
         {displayLabel && isCheckbox ? description : null}
         {children}
+        {!nest ? (
+          <p data-oc-input-helper className="text-xs text-mute">
+            <span data-oc-command-helper>
+              <span data-oc-entry-helper>
+                <Kbd hotkey="I" /> to insert text.
+              </span>
+              <span data-oc-choice-helper>
+                <Kbd hotkey="Enter" /> to edit value.
+              </span>
+            </span>
+            <span data-oc-insert-helper>
+              <Kbd hotkey="Escape" />/<Kbd hotkey="Enter" /> to activate keybindings.
+            </span>
+          </p>
+        ) : null}
         {errors}
         {help}
       </div>
@@ -983,6 +1002,9 @@ function TextButton(props: IconButtonProps & { children: string }) {
 
   return (
     <button type="button" className={formGhostButtonClass} data-oc-nav="action" {...rest}>
+      <span data-oc-tab-hint>
+        <Kbd hotkey="Tab" />
+      </span>
       {children}
     </button>
   )

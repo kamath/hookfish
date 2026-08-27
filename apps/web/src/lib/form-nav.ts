@@ -150,12 +150,41 @@ function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
   }
+  for (const element of root.querySelectorAll('[data-oc-tab-target]')) {
+    element.removeAttribute('data-oc-tab-target')
+  }
+}
+
+function itemMark(item: HTMLElement): HTMLElement {
+  return item.closest<HTMLElement>('[data-oc-nav="field"]') ?? item
+}
+
+function nextDistinctItem(
+  items: HTMLElement[],
+  currentIndex: number,
+  delta: number,
+): HTMLElement | undefined {
+  const current = items[currentIndex]
+  const currentMark = current ? itemMark(current) : undefined
+  for (let step = 1; step <= items.length; step += 1) {
+    const index = (currentIndex + delta * step + items.length * 2) % items.length
+    const candidate = items[index]
+    if (candidate && (!currentMark || itemMark(candidate) !== currentMark)) {
+      return candidate
+    }
+  }
+  return undefined
 }
 
 function markItem(root: HTMLElement, item: HTMLElement) {
   clearCurrent(root)
-  const field = item.closest<HTMLElement>('[data-oc-nav="field"]')
-  ;(field ?? item).dataset.ocCurrent = 'true'
+  itemMark(item).dataset.ocCurrent = 'true'
+  const items = listFormInputs(root.id)
+  const index = indexOfItem(items, item)
+  const next = nextDistinctItem(items, index, 1)
+  if (next) {
+    itemMark(next).dataset.ocTabTarget = 'true'
+  }
 }
 
 function indexOfItem(items: HTMLElement[], target: Element | null): number {
@@ -321,8 +350,7 @@ export function moveFormTab(rootId: string, delta: number): boolean {
   }
 
   const current = indexOfCurrent(root, items, delta)
-  const index = (current + delta + items.length) % items.length
-  const next = items[index]
+  const next = nextDistinctItem(items, current, delta)
   if (!next) {
     return false
   }
@@ -369,13 +397,13 @@ export function selectDefaultInput(rootId: string): boolean {
     return false
   }
 
-  const required = firstRequiredInput(root)
-  if (required) {
-    markItem(root, required)
+  const input = firstRequiredInput(root) ?? items.find(isEditableControl)
+  if (input) {
+    markItem(root, input)
     enterEdit()
     syncMode(root)
-    scrollMark(required)
-    scheduleInsertFocus(required)
+    scrollMark(input)
+    scheduleInsertFocus(input)
     return true
   }
 
@@ -422,20 +450,6 @@ export function useFormPaneNavigation(
   options?: { stepKeys?: boolean },
 ) {
   usePaneActions(pane, {
-    next: {
-      callback: () => {
-        moveFormTab(formId, 1)
-      },
-      enabled: options?.stepKeys !== false,
-      ignoreInputs: false,
-    },
-    previous: {
-      callback: () => {
-        moveFormTab(formId, -1)
-      },
-      enabled: options?.stepKeys !== false,
-      ignoreInputs: false,
-    },
     nextTab: {
       callback: () => {
         moveFormTab(formId, 1)

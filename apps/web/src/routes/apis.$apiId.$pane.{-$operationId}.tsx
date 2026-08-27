@@ -536,8 +536,7 @@ function ApiWorkbench({
               return
             }
             if (activePane !== 'routes') {
-              blurActive()
-              activate('routes', 'command')
+              return
             }
             if (heldOpRef.current !== operation.id) {
               holdOp(operation.id)
@@ -548,11 +547,11 @@ function ApiWorkbench({
           className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
           style={{ '--exec-color': operation.accent } as CSSProperties}
         >
-          <span className="inline-flex w-8 shrink-0 justify-end">
+          <span className="inline-flex shrink-0 items-baseline gap-1">
             {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-          </span>
-          <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
-            {operation.badge}
+            <span data-oc-executable-badge className="w-12 font-mono text-xs tabular-nums">
+              {operation.badge}
+            </span>
           </span>
           <span className="min-w-0 truncate font-mono text-xs">{operation.name}</span>
           {description ? (
@@ -651,52 +650,79 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div className="relative w-full max-w-[26rem]">
-              <label htmlFor="operation-filter" className="sr-only">
-                Filter {api.labels.executablePlural}
-              </label>
-              <input
-                id="operation-filter"
-                name="operation-filter"
-                type="search"
-                autoComplete="off"
-                spellCheck={false}
-                className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
-                  filterValue ? 'pr-16' : 'pr-9'
-                }`}
-                value={filterValue}
-                onFocus={() => {
-                  activate('routes', 'edit')
-                }}
-                onChange={(event) => setFilterValue(event.target.value)}
-                placeholder={`Filter ${api.labels.executablePlural}`}
-              />
-              {filterValue ? (
+            {activePane === 'input' ? (
+              <div className="flex w-full gap-2">
                 <button
                   type="button"
-                aria-label={`Clear ${api.labels.executable} filter`}
-                  className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
-                  onClick={() => {
-                    setFilterValue('')
-                    document.getElementById('operation-filter')?.focus()
-                  }}
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => navigateOperation(-1)}
                 >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M3 3l10 10M13 3L3 13" />
-                  </svg>
+                  {selectedIndex > 0 ? <Kbd hotkey="K" /> : null}
+                  Previous
                 </button>
-              ) : null}
-              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                <Kbd hotkey="/" />
-              </span>
-            </div>
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={
+                    selectedIndex < 0 || selectedIndex >= orderedOperations.length - 1
+                  }
+                  onClick={() => navigateOperation(1)}
+                >
+                  Next
+                  {selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1 ? (
+                    <Kbd hotkey="J" />
+                  ) : null}
+                </button>
+              </div>
+            ) : (
+              <div className="relative w-full max-w-[26rem]">
+                <label htmlFor="operation-filter" className="sr-only">
+                  Filter {api.labels.executablePlural}
+                </label>
+                <input
+                  id="operation-filter"
+                  name="operation-filter"
+                  type="search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                    filterValue ? 'pr-16' : 'pr-9'
+                  }`}
+                  value={filterValue}
+                  onFocus={() => {
+                    activate('routes', 'edit')
+                  }}
+                  onChange={(event) => setFilterValue(event.target.value)}
+                  placeholder={`Filter ${api.labels.executablePlural}`}
+                />
+                {filterValue ? (
+                  <button
+                    type="button"
+                    aria-label={`Clear ${api.labels.executable} filter`}
+                    className="absolute inset-y-0 right-8 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink"
+                    onClick={() => {
+                      setFilterValue('')
+                      document.getElementById('operation-filter')?.focus()
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M3 3l10 10M13 3L3 13" />
+                    </svg>
+                  </button>
+                ) : null}
+                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                  <Kbd hotkey="/" />
+                </span>
+              </div>
+            )}
           </div>
           <nav
             aria-label={api.labels.executablePlural}

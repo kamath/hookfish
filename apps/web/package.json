@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "vite build",
+    "build:cloudflare": "CLOUDFLARE_BUILD=1 vite build",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/mcp/client.test.ts",
@@ -33,6 +34,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.0",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/router-cli": "^1.132.0",
     "@types/node": "^22.10.2",

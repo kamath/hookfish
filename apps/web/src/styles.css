@@ -115,6 +115,12 @@ kbd {
   box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 12%, var(--paper));
 }
 
+[data-oc-tab-hint] .oc-key-hint {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--signal) 14%, var(--paper));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--signal) 28%, var(--paper));
+}
+
 html[data-oc-mode='edit'] .oc-key-hint,
 html[data-oc-mode='edit'] .oc-key-hints {
   display: none;
@@ -122,6 +128,10 @@ html[data-oc-mode='edit'] .oc-key-hints {
 
 [data-oc-nav] {
   outline: none;
+}
+
+[data-oc-tab-target='true'] {
+  background-color: color-mix(in srgb, var(--signal) 6%, var(--paper));
 }
 
 [data-oc-current='true'] {
@@ -132,11 +142,51 @@ html[data-oc-mode='edit'] .oc-key-hints {
   background-color: var(--paper);
 }
 
-[data-oc-insert-hint] {
+[data-oc-tab-hint],
+[data-oc-input-helper] {
   display: none;
 }
 
-[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+[data-oc-nav='field'][data-oc-tab-target='true'] > label [data-oc-tab-hint] {
+  display: inline-flex;
+}
+
+[data-oc-nav='action'][data-oc-tab-target='true'] > [data-oc-tab-hint] {
+  display: inline-flex;
+  margin-inline-end: 0.5rem;
+}
+
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-input-helper] {
+  display: block;
+}
+
+[data-oc-command-helper],
+[data-oc-insert-helper],
+[data-oc-entry-helper],
+[data-oc-choice-helper] {
+  display: none;
+}
+
+[data-oc-nav='field']:has([data-oc-input-kind='entry']) [data-oc-entry-helper],
+[data-oc-nav='field']:has([data-oc-input-kind='choice']) [data-oc-choice-helper] {
+  display: inline;
+}
+
+[data-oc-mode='command']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  > [data-oc-command-helper],
+[data-oc-mode='insert']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  > [data-oc-insert-helper] {
+  display: inline;
+}
+
+html[data-oc-mode='edit']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  .oc-key-hint {
   display: inline-flex;
 }
 

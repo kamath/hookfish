@@ -6,18 +6,23 @@ import type {
   Executable,
   ExecutableSource,
   FormUiSchema,
-  ExecutionResult,
   JsonSchema,
 } from '../lib/client-types'
 import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord } from '../lib/build-request'
 import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
-import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
+import {
+  bindFormTabSync,
+  selectDefaultFormItem,
+  selectDefaultInput,
+  selectMatchingFormItem,
+} from '../lib/form-nav'
 import { validatorForSchema } from '../lib/form-validator'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, usePane } from '../lib/mode'
+import { useOperationProgress } from '../lib/operation-progress'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
@@ -122,11 +127,10 @@ export function ExecutableClient({
   onNextOperation?: () => void
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
 }) {
-  const [formData, setFormData] = useState<unknown>({})
-  const [lastSubmission, setLastSubmission] = useState<unknown>({})
-  const [lastInvocation, setLastInvocation] = useState<unknown>()
-  const [result, setResult] = useState<ExecutionResult | null>(null)
-  const [askingAuth, setAskingAuth] = useState(false)
+  const [
+    { formData, lastSubmission, lastInvocation, result, askingAuth },
+    updateProgress,
+  ] = useOperationProgress(api.id, operation.id)
   const [copied, setCopied] = useState(false)
   const formDataRef = useRef(formData)
   formDataRef.current = formData
@@ -152,7 +156,7 @@ export function ExecutableClient({
           )
         : adapter.execute(invocation),
     onSuccess: (nextResult) => {
-      setResult(nextResult)
+      updateProgress({ result: nextResult })
       showResponse()
     },
   })
@@ -161,9 +165,8 @@ export function ExecutableClient({
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
 
   useEffect(() => {
-    setAskingAuth(false)
     setCopied(false)
-    const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 
@@ -251,11 +254,10 @@ export function ExecutableClient({
   })
 
   function onSubmit({ formData: next }: IChangeEvent) {
-    setFormData(next)
     const request = withoutAuth(next)
-    setLastSubmission(request)
+    updateProgress({ formData: next, lastSubmission: request })
     if (needsAuth && !askingAuth) {
-      setAskingAuth(true)
+      updateProgress({ askingAuth: true })
       return
     }
     if (needsAuth) {
@@ -267,7 +269,7 @@ export function ExecutableClient({
 
   async function onAuthContinue(value: Record<string, unknown>, request: unknown) {
     await onSaveAuth(value)
-    setAskingAuth(false)
+    updateProgress({ askingAuth: false })
     executeForm(request)
   }
 
@@ -279,7 +281,7 @@ export function ExecutableClient({
       formData: value,
       credentials: readApiAuth(api.id),
     })
-    setLastInvocation(invocation)
+    updateProgress({ lastInvocation: invocation })
     invoke.mutate({ invocation })
   }
 
@@ -376,7 +378,7 @@ export function ExecutableClient({
               onClick={onPreviousOperation}
             >
               Previous
-              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
+              {onPreviousOperation ? <Kbd hotkey="K" /> : null}
             </button>
             <button
               type="button"
@@ -385,7 +387,7 @@ export function ExecutableClient({
               onClick={onNextOperation}
             >
               Next
-              {onNextOperation ? <Kbd hotkey="L" /> : null}
+              {onNextOperation ? <Kbd hotkey="J" /> : null}
             </button>
             {result ? (
               <button
@@ -457,7 +459,7 @@ export function ExecutableClient({
                 : operation.inputSchema,
             )}
             formData={formData}
-            onChange={(event: IChangeEvent) => setFormData(event.formData)}
+            onChange={(event: IChangeEvent) => updateProgress({ formData: event.formData })}
             onSubmit={onSubmit}
             showErrorList={false}
             omitExtraData
