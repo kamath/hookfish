@@ -11,6 +11,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from '../components/brand'
+import { GitHubLink } from '../components/github-link'
 import { QueryStatus } from '../components/query-status'
 import { ThemeToggle } from '../components/theme-toggle'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
@@ -147,14 +148,14 @@ function CloudProxyToggle() {
         className="inline-flex min-h-8 shrink-0 items-center gap-2 bg-ink/10 px-2.5 py-1 font-medium text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
         aria-label={
           cloudProxy
-            ? 'Turn off cloud proxy and run locally'
+            ? 'Run browser-first'
             : 'Turn on cloud proxy'
         }
         aria-pressed={cloudProxy}
         title={
           cloudProxy
-            ? 'Cloud proxy on. Click to run locally.'
-            : 'Local mode. Click to use the cloud proxy.'
+            ? 'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
+            : 'Requests originate from this browser. Click to use the cloud proxy.'
         }
         onClick={() => setCloudProxy(!cloudProxy)}
       >
@@ -163,10 +164,11 @@ function CloudProxyToggle() {
       </button>
       <p className="min-w-0 flex-1 truncate max-md:sr-only" role="status">
         {cloudProxy ? (
-          'Remote services that local mode cannot reach.'
+          'Hookfish is securely connecting you to remote servers. Click to run browser-first.'
         ) : (
           <>
-            This computer. Remote hosts may block the browser (
+            Requests originate from this browser, so you can safely access
+            localhost/internal URLs. You&apos;ll likely get blocked by{' '}
             <a
               href="https://www.google.com/search?q=what+is+cors"
               target="_blank"
@@ -175,11 +177,14 @@ function CloudProxyToggle() {
             >
               CORS
             </a>
-            ).
+            .
           </>
         )}
       </p>
-      <ThemeToggle />
+      <div className="ml-auto flex shrink-0 items-center">
+        <GitHubLink />
+        <ThemeToggle />
+      </div>
     </div>
   )
 }

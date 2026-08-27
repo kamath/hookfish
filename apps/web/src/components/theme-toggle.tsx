@@ -69,7 +69,7 @@ export function ThemeToggle() {
   const [theme, setTheme] = useTheme()
 
   return (
-    <div role="radiogroup" aria-label="Color theme" className="ml-auto flex shrink-0">
+    <div role="radiogroup" aria-label="Color theme" className="flex shrink-0">
       {THEME_PREFERENCES.map((preference) => {
         const selected = theme === preference
         const Icon = ICONS[preference]

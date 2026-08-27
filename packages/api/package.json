@@ -1,6 +1,7 @@
 {
   "name": "@hookfish/api",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

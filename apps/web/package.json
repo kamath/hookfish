@@ -1,6 +1,7 @@
 {
   "name": "@hookfish/web",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
