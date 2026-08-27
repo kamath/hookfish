@@ -264,7 +264,7 @@ function Home() {
                     type="button"
                     className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
                       added
-                        ? 'bg-[color-mix(in_srgb,var(--ink)_7%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
+                        ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
                         : 'hover:bg-ink/10 focus-visible:bg-ink/10'
                     }`}
                     disabled={openSource.isPending || Boolean(pendingAuth)}
