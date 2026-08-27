@@ -115,6 +115,12 @@ kbd {
   box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 12%, var(--paper));
 }
 
+[data-oc-tab-hint] .oc-key-hint {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--signal) 14%, var(--paper));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--signal) 28%, var(--paper));
+}
+
 html[data-oc-mode='edit'] .oc-key-hint,
 html[data-oc-mode='edit'] .oc-key-hints {
   display: none;
