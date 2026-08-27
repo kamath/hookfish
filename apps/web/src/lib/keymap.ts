@@ -254,18 +254,14 @@ type Registration = {
 export const KEYBINDINGS_MEDIA = '(hover: hover) and (pointer: fine)'
 
 export function keybindingsEnabled() {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia(KEYBINDINGS_MEDIA).matches
-  )
+  return typeof globalThis.matchMedia === 'function' && globalThis.matchMedia(KEYBINDINGS_MEDIA).matches
 }
 
 function subscribeKeybindingsEnabled(onChange: () => void) {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (typeof globalThis.matchMedia !== 'function') {
     return () => {}
   }
-  const media = window.matchMedia(KEYBINDINGS_MEDIA)
+  const media = globalThis.matchMedia(KEYBINDINGS_MEDIA)
   media.addEventListener('change', onChange)
   return () => media.removeEventListener('change', onChange)
 }
