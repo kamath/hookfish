@@ -4,6 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "cli": "pnpm build && pnpm --filter hookfish start",
+    "deploy": "pnpm --filter @hookfish/web deploy",
     "dev": "turbo run dev --filter=@hookfish/web",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
