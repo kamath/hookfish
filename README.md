@@ -72,10 +72,10 @@ pnpm build
 pnpm cli
 ```
 
-CLI options are forwarded after `--`:
+CLI options are forwarded directly:
 
 ```bash
-pnpm cli -- --host 127.0.0.1 --port 4000
+pnpm cli --host 127.0.0.1 --port 4000
 ```
 
 To inspect the independently publishable npm tarball:
