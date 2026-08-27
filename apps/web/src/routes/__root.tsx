@@ -149,8 +149,8 @@ function CloudProxyToggle() {
         aria-pressed={cloudProxy}
         title={
           cloudProxy
-            ? 'Cloud proxy on — click to run locally'
-            : 'Local mode — click to use the cloud proxy'
+            ? 'Cloud proxy on. Click to run locally.'
+            : 'Local mode. Click to use the cloud proxy.'
         }
         onClick={() => setCloudProxy(!cloudProxy)}
       >
@@ -159,7 +159,10 @@ function CloudProxyToggle() {
       </button>
       <p className="min-w-0 flex-1" role="status">
         {cloudProxy ? (
-          <>Cloud proxy is on. Upstream requests run through the server.</>
+          <>
+            <strong className="font-medium">Cloud mode.</strong> Hookfish brokers requests
+            to remote services for you.
+          </>
         ) : (
           <>
             <strong className="font-medium">Local mode.</strong> Connect to services on this
