@@ -303,7 +303,9 @@ export function ProtocolTrace({
       }}
     >
       <div className="oc-bar flex shrink-0 flex-wrap items-center gap-3 px-3 py-2 md:px-4">
-        <PaneBackButton label="Close traces" onClick={onClose} />
+        <PaneBackButton label="Close traces" onClick={onClose}>
+          Close traces
+        </PaneBackButton>
         <p className="font-mono text-xs text-ink">{count}</p>
       </div>
       <div

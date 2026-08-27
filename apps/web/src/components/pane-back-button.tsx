@@ -1,14 +1,25 @@
+import type { ReactNode } from 'react'
 import { paneBarButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
+
+export function BackCaret() {
+  return (
+    <span aria-hidden="true" className="text-base leading-none">
+      ‹
+    </span>
+  )
+}
 
 export function PaneBackButton({
   label,
   onClick,
   className,
+  children,
 }: {
   label: string
   onClick: () => void
   className?: string
+  children?: ReactNode
 }) {
   return (
     <button
@@ -18,7 +29,7 @@ export function PaneBackButton({
       aria-label={label}
       onClick={onClick}
     >
-      {label}
+      {children ?? <BackCaret />}
       <KeyHints>
         <Kbd hotkey="Escape" />
       </KeyHints>

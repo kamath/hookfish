@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
-import { PaneBackButton } from '../components/pane-back-button'
+import { BackCaret, PaneBackButton } from '../components/pane-back-button'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { Brand } from '../components/brand'
 import { ExecutableClient } from '../components/operation-client'
@@ -766,10 +766,16 @@ function ApiWorkbench({
               aria-label={backLabel}
               onClick={stepBack}
             >
-              <span className="oc-bar-action-icon" aria-hidden="true">
-                <BackIcon />
-              </span>
-              <span className="min-w-0 truncate">{backLabel}</span>
+              {routePane === 'trace' ? (
+                <>
+                  <span className="oc-bar-action-icon" aria-hidden="true">
+                    <BackCaret />
+                  </span>
+                  <span className="min-w-0 truncate">Close traces</span>
+                </>
+              ) : (
+                <BackCaret />
+              )}
               <Kbd hotkey="Escape" />
             </button>
             {onClearAuth ? (
@@ -953,24 +959,6 @@ function ApiWorkbench({
         </div>
       )}
     </main>
-  )
-}
-
-function BackIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M19 12H5" />
-      <path d="m12 19-7-7 7-7" />
-    </svg>
   )
 }
 
