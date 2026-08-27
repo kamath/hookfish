@@ -399,7 +399,7 @@ export function ResponsePane({
           {rows.map((node, index) => {
             const isExpanded = expanded.has(node.id)
             const navigationHint =
-              index === selected && (node.collection || node.toggleId)
+              index === selected && node.collection
                 ? 'Enter'
                 : index === selected - 1
                   ? 'K'
