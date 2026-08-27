@@ -152,6 +152,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next line' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous line' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
+      { id: 'copy', hotkey: 'Y', label: 'copy JSON', flag: 'hasJson' },
       {
         id: 'resend',
         hotkey: 'Mod+Enter',
