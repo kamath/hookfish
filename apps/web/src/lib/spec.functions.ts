@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { parse as parseYaml } from 'yaml'
 import { isHttpUrl } from './build-request'
 
-const MAX_SPEC_BYTES = 2_000_000
+const MAX_SPEC_BYTES = 16_000_000
 
 async function loadSpec(specUrl: string): Promise<unknown> {
   if (!isHttpUrl(specUrl)) {
@@ -23,7 +23,7 @@ async function loadSpec(specUrl: string): Promise<unknown> {
 
   const buffer = await response.arrayBuffer()
   if (buffer.byteLength > MAX_SPEC_BYTES) {
-    throw new Error('The spec is larger than 2 MB.')
+    throw new Error('The spec is larger than 16 MB.')
   }
 
   const text = new TextDecoder().decode(buffer).trim()
