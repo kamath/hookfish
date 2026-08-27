@@ -397,6 +397,44 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
+            {adapter.exportSnippet && api.labels.export ? (
+              <button
+                type="button"
+                data-oc-nav="action"
+                className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
+                aria-live="polite"
+                aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
+                onClick={() => {
+                  void copyExport()
+                }}
+              >
+                {copied ? 'Copied' : api.labels.export}
+                <KeyHints>
+                  <Kbd hotkey="Y" />
+                </KeyHints>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              data-oc-nav="action"
+              className={`${formPrimaryButtonClass} exec-solid`}
+              disabled={pending || authPending}
+              onClick={() => submitForm('call-form')}
+            >
+              {pending ? (
+                api.labels.executing
+              ) : authPending ? (
+                'Saving…'
+              ) : (
+                <>
+                  <KeyHints className="mr-2 inline-flex gap-1">
+                    <Kbd hotkey="Mod" />
+                    <Kbd hotkey="Enter" />
+                  </KeyHints>
+                  {showAuth ? 'Continue' : api.labels.execute}
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -437,45 +475,6 @@ export function ExecutableClient({
                   {queryErrorMessage(authError, 'Could not save those keys.')}
                 </p>
               ) : null}
-              <div className="flex flex-wrap items-center gap-2">
-                {adapter.exportSnippet && api.labels.export ? (
-                  <button
-                    type="button"
-                    data-oc-nav="action"
-                    className="inline-flex min-h-8 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none"
-                    aria-live="polite"
-                    aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
-                    onClick={() => {
-                      void copyExport()
-                    }}
-                  >
-                    {copied ? 'Copied' : api.labels.export}
-                    <KeyHints>
-                      <Kbd hotkey="Y" />
-                    </KeyHints>
-                  </button>
-                ) : null}
-                <button
-                  type="submit"
-                  data-oc-nav="action"
-                  className={`${formPrimaryButtonClass} exec-solid`}
-                  disabled={pending || authPending}
-                >
-                  {pending ? (
-                    api.labels.executing
-                  ) : authPending ? (
-                    'Saving…'
-                  ) : (
-                    <>
-                      <KeyHints className="mr-2 inline-flex gap-1">
-                        <Kbd hotkey="Mod" />
-                        <Kbd hotkey="Enter" />
-                      </KeyHints>
-                      {showAuth ? 'Continue' : api.labels.execute}
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           </SwissForm>
         </div>
