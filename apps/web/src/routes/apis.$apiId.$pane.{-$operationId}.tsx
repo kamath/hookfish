@@ -509,9 +509,8 @@ function ApiWorkbench({
   function renderOperation(operation: Executable) {
     const active = operation.id === selected?.id
     const index = operationIndexById.get(operation.id) ?? -1
-    const showNavigationGutter = activePane === 'routes'
     const navigationHint =
-      !showNavigationGutter
+      activePane !== 'routes'
         ? undefined
         : active
           ? 'Enter'
@@ -546,12 +545,12 @@ function ApiWorkbench({
           }}
           data-oc-executable
           data-oc-active={active || undefined}
-          className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
+          className="relative flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
           style={{ '--exec-color': operation.accent } as CSSProperties}
         >
-          {showNavigationGutter ? (
-            <span className="inline-flex w-8 shrink-0 justify-end">
-              {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+          {navigationHint ? (
+            <span className="absolute right-3 top-1/2 inline-flex -translate-y-1/2">
+              <Kbd hotkey={navigationHint} />
             </span>
           ) : null}
           <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
@@ -654,11 +653,7 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div
-              className={`relative max-w-[26rem] ${
-                activePane === 'routes' ? 'ml-11 w-[calc(100%-2.75rem)]' : 'w-full'
-              }`}
-            >
+            <div className="relative w-full max-w-[26rem]">
               <label htmlFor="operation-filter" className="sr-only">
                 Filter {api.labels.executablePlural}
               </label>
@@ -711,13 +706,7 @@ function ApiWorkbench({
             className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
           >
             {orderedOperations.length === 0 ? (
-              <p
-                className={`py-3 pr-3 text-sm text-mute ${
-                  activePane === 'routes' ? 'pl-14' : 'pl-3'
-                }`}
-              >
-                No matches.
-              </p>
+              <p className="px-3 py-3 text-sm text-mute">No matches.</p>
             ) : ranked ? (
               <ol>{orderedOperations.map((operation) => renderOperation(operation))}</ol>
             ) : (
@@ -727,11 +716,7 @@ function ApiWorkbench({
                 return (
                   <section key={group.name ?? 'untagged'} className="pb-2">
                     {title ? (
-                      <header
-                        className={`pb-1 pr-3 pt-3 ${
-                          activePane === 'routes' ? 'pl-14' : 'pl-3'
-                        }`}
-                      >
+                      <header className="px-3 pb-1 pt-3">
                         <p className="truncate text-[11px] text-mute">{title}</p>
                         {groupDescription ? (
                           <p className="truncate text-[11px] text-faint">{groupDescription}</p>
