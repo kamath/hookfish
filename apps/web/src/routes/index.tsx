@@ -54,6 +54,7 @@ function Home() {
   const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
   const [url, setUrl] = useState('')
+  const [urlFocused, setUrlFocused] = useState(false)
   const [selected, setSelected] = useState(0)
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
@@ -103,7 +104,12 @@ function Home() {
       }
     },
   })
-  const compactLauncher = showKeybindings && !openSource.isPending
+  const submittingUrl = openSource.isPending && !openSource.variables?.entryId
+  const showSubmitButtons = urlFocused || submittingUrl
+  const urlError =
+    openSource.isError && !openSource.variables?.entryId && !pendingAuth
+      ? queryErrorMessage(openSource.error, 'Could not read that source.')
+      : undefined
   const canStepDown = selected < apis.length - 1
   const canStepUp = selected > 0
 
@@ -349,27 +355,31 @@ function Home() {
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
-      <div className="mx-auto my-auto flex w-full max-w-3xl flex-col gap-6 py-10">
-        <div className={compactLauncher ? 'mx-auto' : undefined}>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 py-10">
+        <div className="mx-auto">
           <Brand hero />
         </div>
-        <div>
+        <div className="mx-auto w-full max-w-xl">
           <form
             ref={formRef}
             data-oc-enter-submit="true"
             onSubmit={(event) => {
               event.preventDefault()
             }}
-            className={
-              compactLauncher
-                ? 'mx-auto w-full max-w-xl'
-                : 'flex w-full min-w-0 flex-row items-stretch gap-2'
-            }
+            onFocus={() => setUrlFocused(true)}
+            onBlur={(event) => {
+              const next = event.relatedTarget
+              if (next instanceof Node && event.currentTarget.contains(next)) {
+                return
+              }
+              setUrlFocused(false)
+            }}
+            className="w-full"
           >
           <label htmlFor="url" className="sr-only">
             MCP endpoint or OpenAPI document URL
           </label>
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-0 w-full">
             <input
               ref={urlRef}
               id="url"
@@ -394,21 +404,18 @@ function Home() {
               </span>
             ) : null}
           </div>
-          {compactLauncher ? null : (
-            <div
-              className={`flex shrink-0 gap-2 ${url.trim() ? '' : 'max-md:hidden'}`}
-            >
+          {showSubmitButtons ? (
+            <div className="mt-2 flex gap-2">
               {sourceOptions.map((option, index) => {
                 const pending =
-                  openSource.isPending &&
-                  !openSource.variables?.entryId &&
-                  openSource.variables?.kind === option.kind
+                  submittingUrl && openSource.variables?.kind === option.kind
                 return (
                   <button
                     key={option.kind}
                     type="button"
-                    className={`${index === 0 ? primaryButtonClass : softButtonClass} whitespace-nowrap max-md:px-3`}
+                    className={`${index === 0 ? primaryButtonClass : softButtonClass} min-w-0 flex-1 whitespace-nowrap`}
                     disabled={openSource.isPending || dialogOpen}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => submit(option.kind)}
                   >
                     {pending ? 'Reading…' : option.label}
@@ -417,18 +424,13 @@ function Home() {
                 )
               })}
             </div>
-          )}
+          ) : null}
+          {urlError ? (
+            <p className="mt-2 line-clamp-3 break-words text-sm text-error" role="alert">
+              {urlError}
+            </p>
+          ) : null}
         </form>
-        {openSource.isError && !openSource.variables?.entryId && !pendingAuth ? (
-          <p
-            className={`mt-3 line-clamp-3 break-words text-sm text-error ${
-              compactLauncher ? 'mx-auto max-w-xl' : ''
-            }`}
-            role="alert"
-          >
-            {queryErrorMessage(openSource.error, 'Could not read that source.')}
-          </p>
-        ) : null}
         </div>
 
         <div className="space-y-6">
