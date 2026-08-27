@@ -15,7 +15,7 @@ import { CloudToggle } from '../components/cloud-toggle'
 import { GitHubLink } from '../components/github-link'
 import { QueryStatus } from '../components/query-status'
 import { ThemeToggle } from '../components/theme-toggle'
-import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
+import { hydrateCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
 import { THEME_COLORS, THEME_INIT_SCRIPT, bindTheme } from '../lib/theme'
@@ -123,28 +123,9 @@ function AppShell() {
 }
 
 function AppToolbar() {
-  const [cloudProxy] = useCloudProxy()
   return (
-    <div className="flex shrink-0 items-center gap-2 bg-ink/5 px-3 py-1.5 text-xs text-mute md:gap-3 md:px-4">
-      {cloudProxy ? null : (
-        <p className="min-w-0 flex-1 truncate" role="status">
-          <span className="font-medium text-ink">Browser mode.</span>{' '}
-          <span className="max-md:sr-only">
-            Requests originate from this browser, so you can safely access
-            localhost/internal URLs. You&apos;ll likely get blocked by{' '}
-            <a
-              href="https://www.google.com/search?q=what+is+cors"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-signal underline underline-offset-2"
-            >
-              CORS
-            </a>
-            .
-          </span>
-        </p>
-      )}
-      <div className="ml-auto flex shrink-0 items-center">
+    <div className="flex shrink-0 items-center px-3 py-1.5 md:px-4">
+      <div className="ml-auto flex min-w-0 items-center">
         <CloudToggle />
         <GitHubLink />
         <ThemeToggle />

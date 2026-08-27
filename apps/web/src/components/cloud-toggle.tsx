@@ -4,20 +4,45 @@ export function CloudToggle() {
   const [cloudProxy, setCloudProxy] = useCloudProxy()
 
   return (
-    <button
-      type="button"
-      className="inline-flex size-8 items-center justify-center text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
-      aria-label={cloudProxy ? 'Switch to browser mode' : 'Turn on cloud proxy'}
-      aria-pressed={cloudProxy}
-      title={
-        cloudProxy
-          ? 'Cloud proxy on. Click to run in browser mode.'
-          : 'Browser mode. Click to use the cloud proxy.'
-      }
-      onClick={() => setCloudProxy(!cloudProxy)}
-    >
-      <CloudIcon disabled={!cloudProxy} />
-    </button>
+    <div className="flex min-w-0 items-center">
+      {cloudProxy ? null : (
+        <p
+          className="mr-1 flex h-8 min-w-0 items-center overflow-hidden bg-error/10 px-2 text-[11px] leading-none text-error"
+          role="status"
+        >
+          <span className="truncate">
+            <span className="font-medium">Browser mode.</span>{' '}
+            <span className="max-md:sr-only">
+              Requests originate from this browser, so you can safely access
+              localhost/internal URLs. You&apos;ll likely get blocked by{' '}
+              <a
+                href="https://www.google.com/search?q=what+is+cors"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-2"
+              >
+                CORS
+              </a>
+              .
+            </span>
+          </span>
+        </p>
+      )}
+      <button
+        type="button"
+        className="inline-flex size-8 shrink-0 items-center justify-center text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
+        aria-label={cloudProxy ? 'Switch to browser mode' : 'Turn on cloud proxy'}
+        aria-pressed={cloudProxy}
+        title={
+          cloudProxy
+            ? 'Cloud proxy on. Click to run in browser mode.'
+            : 'Browser mode. Click to use the cloud proxy.'
+        }
+        onClick={() => setCloudProxy(!cloudProxy)}
+      >
+        <CloudIcon disabled={!cloudProxy} />
+      </button>
+    </div>
   )
 }
 
