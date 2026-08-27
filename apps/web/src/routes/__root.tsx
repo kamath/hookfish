@@ -161,7 +161,7 @@ function CloudProxyToggle() {
         {cloudProxy ? (
           <>
             <strong className="font-medium">Cloud mode.</strong> Connect to remote services
-            that browsers may otherwise block.
+            that may be blocked in local mode.
           </>
         ) : (
           <>
