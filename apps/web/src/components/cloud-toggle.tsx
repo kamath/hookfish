@@ -9,6 +9,7 @@ export function CloudToggle() {
         <p
           className="mr-1 flex h-8 w-max max-w-full shrink items-center overflow-hidden bg-error/10 px-2 text-[11px] leading-none text-error"
           role="status"
+          aria-live="polite"
         >
           <span className="truncate">
             <span className="font-medium">Browser mode.</span> Remote hosts
