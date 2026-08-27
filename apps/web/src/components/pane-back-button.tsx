@@ -15,6 +15,7 @@ export function PaneBackButton({
   return (
     <button
       type="button"
+      data-oc-pane-back
       className={`${paneBarButtonClass}${className ? ` ${className}` : ''}`}
       aria-label={label}
       onClick={onClick}
