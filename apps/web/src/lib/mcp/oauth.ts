@@ -1,3 +1,4 @@
+import { mcpOAuthClientMetadata } from '@hookfish/api'
 import type {
   OAuthClientInformationContext,
   OAuthClientMetadata,
@@ -6,6 +7,7 @@ import type {
   StoredOAuthClientInformation,
   StoredOAuthTokens,
 } from '@modelcontextprotocol/client'
+import { getApi } from '../api'
 
 type OAuthStore = {
   clients?: Record<string, StoredOAuthClientInformation>
@@ -60,23 +62,11 @@ function callbackUrl(sourceId: string, origin = window.location.origin) {
   return new URL(`/apis/${encodeURIComponent(sourceId)}/routes`, origin)
 }
 
-function clientMetadata(sourceId: string, origin = window.location.origin): OAuthClientMetadata {
-  return {
-    client_name: 'Hookfish MCP Inspector',
-    client_uri: origin,
-    redirect_uris: [callbackUrl(sourceId, origin).toString()],
-    response_types: ['code'],
-    grant_types: ['authorization_code', 'refresh_token'],
-    token_endpoint_auth_method: 'none',
-  }
-}
-
 export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   readonly clientMetadataUrl: string | undefined
 
   constructor(readonly sourceId: string) {
-    const metadataUrl = new URL('/api/mcp-oauth-client', window.location.origin)
-    metadataUrl.searchParams.set('sourceId', sourceId)
+    const metadataUrl = getApi()['mcp-oauth-client'].$url({ query: { sourceId } })
     this.clientMetadataUrl =
       metadataUrl.protocol === 'https:' ? metadataUrl.toString() : undefined
   }
@@ -85,8 +75,8 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
     return callbackUrl(this.sourceId)
   }
 
-  get clientMetadata() {
-    return clientMetadata(this.sourceId)
+  get clientMetadata(): OAuthClientMetadata {
+    return mcpOAuthClientMetadata(this.sourceId, window.location.origin)
   }
 
   state() {
@@ -239,9 +229,7 @@ export function hasMcpOAuthTokens(sourceId: string) {
   return Boolean(readStore(sourceId).latestTokenIssuer)
 }
 
-export function mcpOAuthClientMetadata(sourceId: string, origin: string) {
-  return clientMetadata(sourceId, origin)
-}
+export { mcpOAuthClientMetadata }
 
 export function pendingMcpAuthorization() {
   return pendingAuthorization

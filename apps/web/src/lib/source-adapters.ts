@@ -1,9 +1,10 @@
+import { fetchUpstreamSpec } from '@hookfish/api'
+import { apiJson, getApi } from './api'
 import type { ExecutableSource } from './client-types'
 import { getCloudProxy } from './cloud'
 import { loadMcpSource } from './mcp/source'
 import { specToClient } from './openapi'
-import { fetchSpec } from './spec.functions'
-import { fetchUpstreamSpec, localUpstreamFetch } from './upstream'
+import { localUpstreamFetch } from './upstream'
 
 export type SourceSubmitHotkey = 'Enter' | 'Mod+Enter'
 
@@ -61,7 +62,7 @@ registerSourceAdapter({
   submitHotkey: 'Mod+Enter',
   load: async (sourceUrl, id) => {
     const document = getCloudProxy()
-      ? await fetchSpec({ data: { url: sourceUrl } })
+      ? await apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
       : await fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
     return specToClient(document, sourceUrl, id)
   },

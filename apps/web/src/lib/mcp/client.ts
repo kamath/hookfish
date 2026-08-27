@@ -2,6 +2,7 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client'
+import { getApi } from '../api'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
 import { localUpstreamFetch } from '../upstream'
@@ -71,9 +72,7 @@ function upstreamFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>, c
     })
     let fetchInput: string | URL | Request = input
     if (cloudProxy) {
-      const proxyUrl = new URL('/api/mcp-proxy', window.location.origin)
-      proxyUrl.searchParams.set('url', target)
-      fetchInput = proxyUrl
+      fetchInput = getApi()['mcp-proxy'].$url({ query: { url: target } })
     }
     const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, init)
     traceEntry(connection, {

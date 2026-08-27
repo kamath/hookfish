@@ -5,6 +5,7 @@ A fully local [TanStack Start](https://tanstack.com/start) app for browsing, con
 This repository is a pnpm/Turborepo workspace:
 
 - `apps/web` contains the TanStack Start app.
+- `packages/api` is a mountable Hono API with OpenAPI docs and Hono RPC. TanStack Start forwards `/api/*` into it.
 - `packages/cli` builds the `hookfish` npm package and bundles the production web app.
 
 ```bash
@@ -30,7 +31,7 @@ Register execution behavior with `registerExecutableAdapter()` in
 `apps/web/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
 previews it, executes it, and can optionally export a code snippet. For example, an MCP
 adapter can map tools/resources/prompts to executables, use their names and input schemas
-directly, execute JSON-RPC through an MCP server function, and export client/call setup code.
+directly, execute JSON-RPC through the MCP client and Hono RPC API, and export client/call setup code.
 The list, form, keyboard navigation, theming, and result viewer do not need protocol-specific
 changes.
 
@@ -50,7 +51,8 @@ Hookfish uses the official MCP TypeScript client with automatic protocol negotia
 
 The `/api/mcp-proxy` route streams requests and responses without retaining state. MCP
 connections, OAuth credentials, legacy session identifiers, and cached listings remain in
-the browser.
+the browser. The UI talks to `/api` exclusively through Hono RPC, using a single
+`API_BASE_URL`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
 Build every workspace package:

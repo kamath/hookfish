@@ -10,10 +10,11 @@
     "build:node": "vite build --mode node",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "test": "tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/keymap.test.ts",
+    "test": "tsx src/lib/api.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/keymap.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookfish/api": "workspace:*",
     "@modelcontextprotocol/client": "^2.0.0",
     "@rjsf/core": "^6.8.0",
     "@rjsf/utils": "^6.8.0",
@@ -26,11 +27,11 @@
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-start": "latest",
     "ajv": "^8.20.0",
+    "hono": "^4.11.4",
     "jotai": "^2.20.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
-    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
