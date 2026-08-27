@@ -438,54 +438,48 @@ export function selectFirstInput(rootId: string): boolean {
 export function useFormPaneNavigation(
   pane: Pane,
   formId: string,
-  options?: { stepKeys?: boolean; enabled?: boolean },
+  options?: { stepKeys?: boolean },
 ) {
-  const enabled = options?.enabled !== false
-  usePaneActions(
-    pane,
-    enabled
-      ? {
-          next: {
-            callback: () => {
-              moveFormTab(formId, 1)
-            },
-            enabled: options?.stepKeys !== false,
-            ignoreInputs: false,
-          },
-          previous: {
-            callback: () => {
-              moveFormTab(formId, -1)
-            },
-            enabled: options?.stepKeys !== false,
-            ignoreInputs: false,
-          },
-          nextTab: {
-            callback: () => {
-              moveFormTab(formId, 1)
-            },
-            enabled: options?.stepKeys !== false,
-            ignoreInputs: false,
-          },
-          previousTab: {
-            callback: () => {
-              moveFormTab(formId, -1)
-            },
-            enabled: options?.stepKeys !== false,
-            ignoreInputs: false,
-          },
-          expand: () => {
-            confirmForm(formId)
-          },
-          insert: () => {
-            insertCurrentInput(formId)
-          },
-          command: (event) => {
-            event.preventDefault()
-            exitInsert(formId)
-          },
-        }
-      : {},
-  )
+  usePaneActions(pane, {
+    next: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previous: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    nextTab: {
+      callback: () => {
+        moveFormTab(formId, 1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    previousTab: {
+      callback: () => {
+        moveFormTab(formId, -1)
+      },
+      enabled: options?.stepKeys !== false,
+      ignoreInputs: false,
+    },
+    expand: () => {
+      confirmForm(formId)
+    },
+    insert: () => {
+      insertCurrentInput(formId)
+    },
+    command: (event) => {
+      event.preventDefault()
+      exitInsert(formId)
+    },
+  })
 }
 
 export function insertMatchingInput(

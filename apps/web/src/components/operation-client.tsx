@@ -16,14 +16,12 @@ import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { validatorForSchema } from '../lib/form-validator'
-import { blurActive, submitForm } from '../lib/focus'
+import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
-import { activate, enterCommand, usePane } from '../lib/mode'
+import { activate, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
-import { routeInspectValue, setRouteView, useRouteView } from '../lib/route-view'
 import { formPrimaryButtonClass } from '../lib/ui'
-import { JsonView } from './json-view'
 import { Kbd, KeyHints } from './hints'
 import { PaneBackButton } from './pane-back-button'
 import { ResponsePane } from './response-pane'
@@ -131,8 +129,6 @@ export function ExecutableClient({
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const pane = usePane()
-  const routeView = useRouteView()
-  const inspecting = routeView === 'inspect'
   const navigate = useNavigate()
   const adapter = executableAdapterFor(api)
   const invoke = useMutation({
@@ -165,19 +161,11 @@ export function ExecutableClient({
   useEffect(() => {
     setAskingAuth(false)
     setCopied(false)
-    if (inspecting) {
-      return
-    }
     const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     return () => window.clearTimeout(timer)
-  }, [inspecting, operation.id])
+  }, [operation.id])
 
-  useEffect(() => {
-    if (inspecting) {
-      return
-    }
-    return bindFormTabSync('call-form')
-  }, [inspecting, operation.id])
+  useEffect(() => bindFormTabSync('call-form'), [operation.id])
 
   useEffect(() => {
     if (!showAuth) {
@@ -232,35 +220,21 @@ export function ExecutableClient({
 
   usePaneFlags('input', {
     hasResult: Boolean(result),
-    hasExport: !inspecting && Boolean(adapter.exportSnippet && api.labels.export),
+    hasExport: Boolean(adapter.exportSnippet && api.labels.export),
   })
   usePaneActions('input', {
     send: {
       callback: () => {
-        if (inspecting || pending || authPending) {
+        if (pending || authPending) {
           return
         }
         submitForm('call-form')
       },
-      enabled: !inspecting,
       ignoreInputs: false,
     },
     output: () => showResponse(),
-    export: {
-      callback: () => {
-        void copyExport()
-      },
-      enabled: !inspecting,
-    },
-    invoke: () => {
-      blurActive()
-      enterCommand()
-      setRouteView('invoke')
-    },
-    inspect: () => {
-      blurActive()
-      enterCommand()
-      setRouteView('inspect')
+    export: () => {
+      void copyExport()
     },
   })
   usePaneActions('response', {
@@ -398,7 +372,6 @@ export function ExecutableClient({
               {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
             </div>
           </div>
-          <RouteViewToggle />
           <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
             {onPrevious || onNext ? (
               <>
@@ -432,7 +405,7 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
-            {inspecting ? null : adapter.exportSnippet && api.labels.export ? (
+            {adapter.exportSnippet && api.labels.export ? (
               <button
                 type="button"
                 data-oc-nav="action"
@@ -449,7 +422,6 @@ export function ExecutableClient({
                 </KeyHints>
               </button>
             ) : null}
-            {inspecting ? null : (
             <button
               type="button"
               data-oc-nav="action"
@@ -471,15 +443,9 @@ export function ExecutableClient({
                 </>
               )}
             </button>
-            )}
           </div>
         </div>
 
-        {inspecting ? (
-          <div className="px-3 py-3 md:px-4">
-            <JsonView value={routeInspectValue(operation)} pane="input" enabled={pane === 'input'} />
-          </div>
-        ) : (
         <div className="px-3 py-3 md:px-4">
           <SwissForm
             id="call-form"
@@ -522,46 +488,7 @@ export function ExecutableClient({
             </div>
           </SwissForm>
         </div>
-        )}
       </section>
-    </div>
-  )
-}
-
-function RouteViewToggle() {
-  const view = useRouteView()
-  return (
-    <div className="flex shrink-0 bg-ink/10" role="group" aria-label="Route view">
-      <button
-        type="button"
-        aria-pressed={view === 'invoke'}
-        className={`inline-flex min-h-8 items-center gap-2 px-2.5 py-1 text-xs outline-none ${
-          view === 'invoke' ? 'bg-ink/15 text-ink' : 'text-mute hover:text-ink'
-        }`}
-        onClick={() => {
-          blurActive()
-          enterCommand()
-          setRouteView('invoke')
-        }}
-      >
-        Invoke
-        <Kbd hotkey="1" />
-      </button>
-      <button
-        type="button"
-        aria-pressed={view === 'inspect'}
-        className={`inline-flex min-h-8 items-center gap-2 px-2.5 py-1 text-xs outline-none ${
-          view === 'inspect' ? 'bg-ink/15 text-ink' : 'text-mute hover:text-ink'
-        }`}
-        onClick={() => {
-          blurActive()
-          enterCommand()
-          setRouteView('inspect')
-        }}
-      >
-        Inspect
-        <Kbd hotkey="2" />
-      </button>
     </div>
   )
 }

@@ -53,16 +53,6 @@ const routesNext = paneConfig.routes.bindings.find((binding) => binding.id === '
 const routesNextTab = paneConfig.routes.bindings.find((binding) => binding.id === 'nextTab')
 assert.equal(routesNext?.label, routesNextTab?.label, 'routes J and Tab share a label')
 
-for (const pane of ['routes', 'input', 'response'] as const) {
-  const invoke = paneConfig[pane].bindings.find((binding) => binding.id === 'invoke')
-  const inspect = paneConfig[pane].bindings.find((binding) => binding.id === 'inspect')
-  assert.equal(invoke?.hotkey, '1', `${pane} invoke is 1`)
-  assert.equal(inspect?.hotkey, '2', `${pane} inspect is 2`)
-}
-const inputCopy = paneConfig.input.bindings.find((binding) => binding.id === 'copy')
-assert.equal(inputCopy?.hotkey, 'Y', 'input copy JSON is Y')
-assert.equal(inputCopy?.flag, 'hasJson', 'input copy JSON requires inspect tree')
-
 const submitBindings = paneConfig.specs.bindings.filter((binding) =>
   binding.id.startsWith('submit-'),
 )
