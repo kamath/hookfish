@@ -101,6 +101,8 @@ function Home() {
     },
   })
   const compactLauncher = showKeybindings && !openSource.isPending
+  const canStepDown = selected < apis.length - 1
+  const canStepUp = selected > 0
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -395,12 +397,16 @@ function Home() {
                     <span className="inline-flex items-center gap-1">
                       <Kbd hotkey="Enter" /> open
                     </span>
-                    {apis.length > 1 ? (
+                    {canStepDown ? (
                       <>
                         <span>·</span>
                         <span className="inline-flex items-center gap-1">
                           <Kbd hotkey="J" /> down
                         </span>
+                      </>
+                    ) : null}
+                    {canStepUp ? (
+                      <>
                         <span>·</span>
                         <span className="inline-flex items-center gap-1">
                           <Kbd hotkey="K" /> up
