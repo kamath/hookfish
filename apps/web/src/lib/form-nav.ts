@@ -397,13 +397,13 @@ export function selectDefaultInput(rootId: string): boolean {
     return false
   }
 
-  const required = firstRequiredInput(root)
-  if (required) {
-    markItem(root, required)
+  const input = firstRequiredInput(root) ?? items.find(isEditableControl)
+  if (input) {
+    markItem(root, input)
     enterEdit()
     syncMode(root)
-    scrollMark(required)
-    scheduleInsertFocus(required)
+    scrollMark(input)
+    scheduleInsertFocus(input)
     return true
   }
 

@@ -12,7 +12,12 @@ import { fieldsFromForm, readApiAuth } from '../lib/auth'
 import { asRecord } from '../lib/build-request'
 import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
-import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
+import {
+  bindFormTabSync,
+  selectDefaultFormItem,
+  selectDefaultInput,
+  selectMatchingFormItem,
+} from '../lib/form-nav'
 import { validatorForSchema } from '../lib/form-validator'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
@@ -161,7 +166,7 @@ export function ExecutableClient({
 
   useEffect(() => {
     setCopied(false)
-    const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
+    const timer = window.setTimeout(() => selectDefaultInput('call-form'), 0)
     return () => window.clearTimeout(timer)
   }, [operation.id])
 
