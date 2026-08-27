@@ -150,12 +150,22 @@ function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
   }
+  for (const element of root.querySelectorAll('[data-oc-tab-target]')) {
+    element.removeAttribute('data-oc-tab-target')
+  }
 }
 
 function markItem(root: HTMLElement, item: HTMLElement) {
   clearCurrent(root)
   const field = item.closest<HTMLElement>('[data-oc-nav="field"]')
   ;(field ?? item).dataset.ocCurrent = 'true'
+  const items = listFormInputs(root.id)
+  const index = indexOfItem(items, item)
+  const next = items[(index + 1) % items.length]
+  const nextField = next?.closest<HTMLElement>('[data-oc-nav="field"]')
+  if (nextField) {
+    nextField.dataset.ocTabTarget = 'true'
+  }
 }
 
 function indexOfItem(items: HTMLElement[], target: Element | null): number {
@@ -422,20 +432,6 @@ export function useFormPaneNavigation(
   options?: { stepKeys?: boolean },
 ) {
   usePaneActions(pane, {
-    next: {
-      callback: () => {
-        moveFormTab(formId, 1)
-      },
-      enabled: options?.stepKeys !== false,
-      ignoreInputs: false,
-    },
-    previous: {
-      callback: () => {
-        moveFormTab(formId, -1)
-      },
-      enabled: options?.stepKeys !== false,
-      ignoreInputs: false,
-    },
     nextTab: {
       callback: () => {
         moveFormTab(formId, 1)

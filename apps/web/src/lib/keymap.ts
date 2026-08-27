@@ -77,19 +77,17 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'routes',
     path: '/apis/$apiId/input/$operationId',
     bindings: [
-      { id: 'next', hotkey: 'J', label: 'next control' },
-      { id: 'previous', hotkey: 'K', label: 'previous control' },
       { id: 'nextTab', hotkey: 'Tab', label: 'next control' },
       { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous control' },
       {
         id: 'previousRoute',
-        hotkey: 'H',
+        hotkey: 'K',
         label: 'previous executable',
         flag: 'canPreviousRoute',
       },
       {
         id: 'nextRoute',
-        hotkey: 'L',
+        hotkey: 'J',
         label: 'next executable',
         flag: 'canNextRoute',
       },

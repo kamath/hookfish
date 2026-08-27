@@ -132,11 +132,23 @@ html[data-oc-mode='edit'] .oc-key-hints {
   background-color: var(--paper);
 }
 
-[data-oc-insert-hint] {
+[data-oc-tab-hint],
+[data-oc-input-helper] {
   display: none;
 }
 
-[data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+[data-oc-nav='field'][data-oc-tab-target='true'] > label [data-oc-tab-hint] {
+  display: inline-flex;
+}
+
+[data-oc-nav='field'][data-oc-current='true'] > [data-oc-input-helper] {
+  display: block;
+}
+
+html[data-oc-mode='edit']
+  [data-oc-nav='field'][data-oc-current='true']
+  > [data-oc-input-helper]
+  .oc-key-hint {
   display: inline-flex;
 }
 

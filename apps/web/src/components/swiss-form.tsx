@@ -532,16 +532,16 @@ function FieldTemplate(props: FieldTemplateProps) {
         data-oc-nav={nest ? undefined : 'field'}
         data-oc-required={required && !nest ? 'true' : undefined}
       >
-        {!nest ? (
-          <span
-            data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
-          >
-            <Kbd hotkey="I" />
-          </span>
-        ) : null}
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}
+          >
+            {!nest ? (
+              <span data-oc-tab-hint className="shrink-0">
+                <Kbd hotkey="Tab" />
+              </span>
+            ) : null}
             <span className="shrink-0">
               {label}
               {required ? (
@@ -556,6 +556,12 @@ function FieldTemplate(props: FieldTemplateProps) {
         ) : null}
         {displayLabel && isCheckbox ? description : null}
         {children}
+        {!nest ? (
+          <p data-oc-input-helper className="text-xs text-mute">
+            Press <Kbd hotkey="I" /> to insert text and <Kbd hotkey="Escape" /> to activate
+            keybindings.
+          </p>
+        ) : null}
         {errors}
         {help}
       </div>

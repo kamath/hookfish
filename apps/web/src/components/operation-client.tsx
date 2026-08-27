@@ -376,7 +376,7 @@ export function ExecutableClient({
               onClick={onPreviousOperation}
             >
               Previous
-              {onPreviousOperation ? <Kbd hotkey="H" /> : null}
+              {onPreviousOperation ? <Kbd hotkey="K" /> : null}
             </button>
             <button
               type="button"
@@ -385,7 +385,7 @@ export function ExecutableClient({
               onClick={onNextOperation}
             >
               Next
-              {onNextOperation ? <Kbd hotkey="L" /> : null}
+              {onNextOperation ? <Kbd hotkey="J" /> : null}
             </button>
             {result ? (
               <button
