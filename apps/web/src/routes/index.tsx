@@ -290,17 +290,6 @@ function Home() {
                   <span className="inline-flex items-center gap-1">
                     <Kbd hotkey="Enter" /> to open
                   </span>
-                  {apis.length > 1 ? (
-                    <>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-flex items-center gap-0.5">
-                          <Kbd hotkey="J" />/<Kbd hotkey="K" />
-                        </span>
-                        down/up
-                      </span>
-                    </>
-                  ) : null}
                 </KeyHints>
               </div>
               <ul>
