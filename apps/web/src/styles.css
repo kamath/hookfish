@@ -216,13 +216,22 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
 
 .oc-bar-action-icon {
   display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) and (not (pointer: coarse)) {
+  .oc-chrome-back {
+    display: none;
+  }
 }
 
 @media (pointer: coarse), (max-width: 767px) {
   kbd,
   .oc-key-hints,
   [data-oc-hint],
-  .oc-bar-action-label {
+  .oc-bar-action-label,
+  [data-oc-pane-back] {
     display: none !important;
   }
 

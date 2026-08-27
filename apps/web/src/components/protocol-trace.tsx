@@ -8,7 +8,8 @@ import {
   useMcpTrace,
   type ProtocolRpc,
 } from '../lib/mcp/trace'
-import { Kbd, KeyHints } from './hints'
+import { Kbd } from './hints'
+import { PaneBackButton } from './pane-back-button'
 
 function moveSelection(
   groups: ProtocolRpc[],
@@ -302,16 +303,9 @@ export function ProtocolTrace({
       }}
     >
       <div className="oc-bar flex shrink-0 flex-wrap items-center gap-3 px-3 py-2 md:px-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
-          onClick={onClose}
-        >
+        <PaneBackButton label="Close traces" onClick={onClose}>
           Close traces
-          <KeyHints>
-            <Kbd hotkey="Escape" />
-          </KeyHints>
-        </button>
+        </PaneBackButton>
         <p className="font-mono text-xs text-ink">{count}</p>
       </div>
       <div

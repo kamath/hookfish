@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import { paneBarButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
 
 type ResponseNode = {
@@ -386,7 +387,7 @@ export function ResponsePane({
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            className="inline-flex items-center gap-2 bg-ink/10 px-3 py-1.5 text-sm font-medium text-ink hover:bg-ink/15"
+            className={paneBarButtonClass}
             onClick={onBack}
           >
             Edit input

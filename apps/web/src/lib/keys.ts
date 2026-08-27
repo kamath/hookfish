@@ -8,6 +8,7 @@ export {
   isEscapeLike,
   keybindingsEnabled,
   paneConfig,
+  previousPaneTitle,
   sourceSubmitActionId,
   useGlobalKeybindings,
   useKeybindingsEnabled,
