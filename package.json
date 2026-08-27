@@ -7,7 +7,8 @@
     "deploy": "pnpm --filter @hookfish/web deploy",
     "dev": "turbo run dev --filter=@hookfish/web",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "wrangler": "pnpm --filter @hookfish/web build:cloudflare && pnpm --filter @hookfish/web exec wrangler"
   },
   "devDependencies": {
     "turbo": "^2.10.12"
