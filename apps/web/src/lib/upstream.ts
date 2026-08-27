@@ -17,7 +17,7 @@ export async function localUpstreamFetch(
     return await upstreamFetch(input, init)
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new Error('Likely CORS error — cloud mode may help.', { cause: error })
+      throw new Error('Likely CORS error. Cloud mode may help.', { cause: error })
     }
     throw error
   }
