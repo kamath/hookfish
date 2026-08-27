@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -19,6 +20,7 @@ const config = defineConfig(({ command }) => ({
   },
   plugins: [
     devtools(),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
