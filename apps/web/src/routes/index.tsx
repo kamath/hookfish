@@ -241,9 +241,6 @@ function Home() {
                         <span className="block truncate text-sm text-ink">{entry.title}</span>
                       </span>
                     </div>
-                    <div className="mt-3">
-                      <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
-                    </div>
                   </div>
                 ) : (
                   <button
@@ -280,7 +277,7 @@ function Home() {
   }
 
   return (
-    <main id="main" className="flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
+    <main id="main" className="relative flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
       <div className="mx-auto my-auto w-full max-w-3xl py-10">
         <form
           ref={formRef}
@@ -347,11 +344,7 @@ function Home() {
             })}
           </div>
         </form>
-        {pendingAuth && !pendingAuth.entryId ? (
-          <div className="mt-3 bg-signal/10 px-3 py-3">
-            <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
-          </div>
-        ) : openSource.isError && !openSource.variables?.entryId ? (
+        {openSource.isError && !openSource.variables?.entryId && !pendingAuth ? (
           <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>
@@ -439,6 +432,11 @@ function Home() {
           </div>
         </div>
       </div>
+      {pendingAuth ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
+          <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+        </div>
+      ) : null}
     </main>
   )
 }

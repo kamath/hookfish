@@ -170,7 +170,7 @@ function ApiClientPage() {
       authorizationUrl
     ) {
       return (
-        <main id="main" className="px-4 py-10">
+        <main id="main" className="flex h-full items-center justify-center px-4">
           <AuthRedirect
             href={authorizationUrl}
             onCancel={() => {

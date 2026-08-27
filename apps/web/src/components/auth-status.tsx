@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
-import { QueryStatus } from './query-status'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
 const COUNTDOWN_START = 3
@@ -77,7 +76,7 @@ export function AuthRedirect({
   }, [href])
 
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="flex w-full flex-col items-center text-center">
       <p className="flex items-center justify-center gap-2 text-sm text-mute">
         <Spinner />
         <span>
@@ -111,5 +110,9 @@ export function AuthRedirect({
 }
 
 export function AuthCallback() {
-  return <QueryStatus label="Completing authentication…" />
+  return (
+    <main id="main" className="flex h-full items-center justify-center px-4">
+      <p className="text-sm text-mute">Completing authentication…</p>
+    </main>
+  )
 }
