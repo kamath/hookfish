@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
-import { withTheme } from '@rjsf/core'
+import { SchemaExamples, withTheme } from '@rjsf/core'
 import type { ThemeProps } from '@rjsf/core'
 import {
   ADDITIONAL_PROPERTY_FLAG,
@@ -299,6 +299,7 @@ function BaseInputTemplate(props: WidgetProps) {
         aria-describedby={ariaDescribedByIds(id, !!schema.examples)}
         {...inputProps}
       />
+      <SchemaExamples id={id} schema={schema} />
     </>
   )
 }
@@ -533,7 +534,10 @@ function FieldTemplate(props: FieldTemplateProps) {
         data-oc-required={required && !nest ? 'true' : undefined}
       >
         {displayLabel && !isCheckbox ? (
-          <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
+          <label
+            htmlFor={id}
+            className={`${labelClass} flex min-w-0 flex-wrap items-baseline gap-2 overflow-hidden`}
+          >
             <span className="shrink-0">
               {label}
               {required ? (

@@ -125,6 +125,10 @@ label:hover > [data-oc-desc],
   overflow: visible;
   white-space: normal;
   text-overflow: clip;
+  /* In a label row this is the width the text wants on one line, so the flex line
+     breaks and the description drops to its own full-width row only when the
+     expanded text would not have fit beside the name. */
+  flex-basis: max-content;
 }
 
 kbd {
