@@ -100,6 +100,7 @@ function Home() {
       }
     },
   })
+  const compactLauncher = showKeybindings && !openSource.isPending
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -307,7 +308,11 @@ function Home() {
           onSubmit={(event) => {
             event.preventDefault()
           }}
-          className="flex flex-col gap-3 sm:flex-row sm:items-start"
+          className={
+            compactLauncher
+              ? 'mx-auto w-full max-w-xl'
+              : 'flex w-full flex-col gap-3 sm:flex-row sm:items-start'
+          }
         >
           <label htmlFor="url" className="sr-only">
             MCP endpoint or OpenAPI document URL
@@ -337,27 +342,36 @@ function Home() {
               </span>
             ) : null}
           </div>
-          <div className="flex shrink-0 gap-2">
-            {sourceOptions.map((option, index) => {
-              const pending =
-                openSource.isPending && !openSource.variables?.entryId && openSource.variables?.kind === option.kind
-              return (
-                <button
-                  key={option.kind}
-                  type="button"
-                  className={index === 0 ? primaryButtonClass : softButtonClass}
-                  disabled={openSource.isPending || Boolean(pendingAuth)}
-                  onClick={() => submit(option.kind)}
-                >
-                  {pending ? 'Reading…' : option.label}
-                  {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
-                </button>
-              )
-            })}
-          </div>
+          {compactLauncher ? null : (
+            <div className="flex shrink-0 gap-2">
+              {sourceOptions.map((option, index) => {
+                const pending =
+                  openSource.isPending &&
+                  !openSource.variables?.entryId &&
+                  openSource.variables?.kind === option.kind
+                return (
+                  <button
+                    key={option.kind}
+                    type="button"
+                    className={index === 0 ? primaryButtonClass : softButtonClass}
+                    disabled={openSource.isPending || Boolean(pendingAuth)}
+                    onClick={() => submit(option.kind)}
+                  >
+                    {pending ? 'Reading…' : option.label}
+                    {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </form>
         {openSource.isError && !openSource.variables?.entryId && !pendingAuth ? (
-          <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
+          <p
+            className={`mt-3 line-clamp-3 break-words text-sm text-error ${
+              compactLauncher ? 'mx-auto max-w-xl' : ''
+            }`}
+            role="alert"
+          >
             {queryErrorMessage(openSource.error, 'Could not read that source.')}
           </p>
         ) : null}
