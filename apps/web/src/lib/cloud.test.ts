@@ -14,19 +14,19 @@ Object.defineProperty(globalThis, 'window', {
   configurable: true,
 })
 
-assert.equal(getCloudProxy(), false)
+assert.equal(getCloudProxy(), true)
 
 hydrateCloudProxy()
-assert.equal(getCloudProxy(), false)
-assert.equal(browserStorage.get(CLOUD_PROXY_KEY), 'false')
-
-setCloudProxy(true)
 assert.equal(getCloudProxy(), true)
 assert.equal(browserStorage.get(CLOUD_PROXY_KEY), 'true')
 
+setCloudProxy(false)
+assert.equal(getCloudProxy(), false)
+assert.equal(browserStorage.get(CLOUD_PROXY_KEY), 'false')
+
 browserStorage.clear()
 hydrateCloudProxy()
-assert.equal(getCloudProxy(), false)
+assert.equal(getCloudProxy(), true)
 
 browserStorage.set(CLOUD_PROXY_KEY, 'true')
 hydrateCloudProxy()
@@ -36,4 +36,4 @@ browserStorage.set(CLOUD_PROXY_KEY, 'false')
 hydrateCloudProxy()
 assert.equal(getCloudProxy(), false)
 
-console.log('cloud proxy defaults to browser mode')
+console.log('cloud proxy defaults to cloud mode')
