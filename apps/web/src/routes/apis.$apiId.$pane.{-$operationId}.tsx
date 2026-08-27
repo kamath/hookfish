@@ -548,13 +548,11 @@ function ApiWorkbench({
           className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
           style={{ '--exec-color': operation.accent } as CSSProperties}
         >
-          {navigationHint ? (
-            <span className="inline-flex w-8 shrink-0 justify-end">
-              <Kbd hotkey={navigationHint} />
+          <span className="inline-flex shrink-0 items-baseline gap-1">
+            {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+            <span data-oc-executable-badge className="w-12 font-mono text-xs tabular-nums">
+              {operation.badge}
             </span>
-          ) : null}
-          <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
-            {operation.badge}
           </span>
           <span className="min-w-0 truncate font-mono text-xs">{operation.name}</span>
           {description ? (
