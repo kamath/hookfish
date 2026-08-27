@@ -36,13 +36,28 @@ function scalarText(value: unknown) {
   if (typeof value === 'string') {
     return value
   }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (value === null) {
-    return 'null'
+  if (value === undefined) {
+    return 'undefined'
   }
   return JSON.stringify(value)
+}
+
+function scalarClass(value: unknown) {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return 'text-ink'
+  }
+  return 'text-faint'
+}
+
+function collectionMark(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.length === 0 ? '[]' : `[${value.length}]`
+  }
+  if (isRecord(value)) {
+    const n = Object.keys(value).length
+    return n === 0 ? '{}' : `{${n}}`
+  }
+  return ''
 }
 
 function itemLead(value: unknown): { text: string; rest?: unknown } | undefined {
@@ -63,40 +78,37 @@ function itemLead(value: unknown): { text: string; rest?: unknown } | undefined 
   return undefined
 }
 
-function nestClass(depth: number) {
-  return depth > 0 ? 'mt-1 space-y-1 bg-ink/5 px-3 py-1.5' : 'space-y-1'
-}
-
-function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
+function JsonTree({ value }: { value: unknown }) {
   if (Array.isArray(value)) {
     if (value.length === 0) {
       return <span className="text-faint">[]</span>
     }
     return (
-      <ol className={nestClass(depth)}>
+      <ol className="space-y-0.5">
         {value.map((item, index) => {
           const lead = itemLead(item)
+          const nested = item !== null && typeof item === 'object'
           return (
             <li key={index} className="font-mono text-xs leading-relaxed">
               <div className="flex gap-3">
                 <span className="w-6 shrink-0 text-right tabular-nums text-faint">{index}</span>
                 {lead ? (
                   <span className="min-w-0 break-words text-ink">{lead.text}</span>
-                ) : item !== null && typeof item === 'object' ? (
-                  <span className="text-faint">
-                    {Array.isArray(item) ? `[${item.length}]` : `{${Object.keys(item).length}}`}
-                  </span>
+                ) : nested ? (
+                  <span className="text-faint">{collectionMark(item)}</span>
                 ) : (
-                  <span className="min-w-0 break-words text-ink">{scalarText(item)}</span>
+                  <span className={`min-w-0 break-words ${scalarClass(item)}`}>
+                    {scalarText(item)}
+                  </span>
                 )}
               </div>
               {lead?.rest !== undefined ? (
                 <div className="pl-9">
-                  <JsonTree value={lead.rest} depth={depth + 1} />
+                  <JsonTree value={lead.rest} />
                 </div>
-              ) : !lead && item !== null && typeof item === 'object' ? (
+              ) : !lead && nested ? (
                 <div className="pl-9">
-                  <JsonTree value={item} depth={depth + 1} />
+                  <JsonTree value={item} />
                 </div>
               ) : null}
             </li>
@@ -107,7 +119,9 @@ function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
   }
 
   if (!isRecord(value)) {
-    return <span className="break-words text-ink">{scalarText(value)}</span>
+    return (
+      <span className={`break-words ${scalarClass(value)}`}>{scalarText(value)}</span>
+    )
   }
 
   const entries = Object.entries(value).filter(([key]) => key !== 'jsonrpc')
@@ -116,7 +130,7 @@ function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
   }
 
   return (
-    <div className={nestClass(depth)}>
+    <div className="space-y-0.5">
       {entries.map(([key, item]) => {
         const nested = item !== null && typeof item === 'object'
         return (
@@ -126,18 +140,16 @@ function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
                 {key}
               </span>
               {nested ? (
-                <span className="text-faint">
-                  {Array.isArray(item)
-                    ? `[${item.length}]`
-                    : `{${Object.keys(item).length}}`}
-                </span>
+                <span className="text-faint">{collectionMark(item)}</span>
               ) : (
-                <span className="min-w-0 break-words text-ink">{scalarText(item)}</span>
+                <span className={`min-w-0 break-words ${scalarClass(item)}`}>
+                  {scalarText(item)}
+                </span>
               )}
             </div>
             {nested ? (
-              <div className="pl-3">
-                <JsonTree value={item} depth={depth + 1} />
+              <div className="pl-4">
+                <JsonTree value={item} />
               </div>
             ) : null}
           </div>
@@ -145,6 +157,16 @@ function JsonTree({ value, depth = 0 }: { value: unknown; depth?: number }) {
       })}
     </div>
   )
+}
+
+function frameLabelClass(frame: ProtocolTraceEntry, label: string) {
+  if (label === 'error' || /^[45]\d\d\b/.test(label)) {
+    return 'text-error'
+  }
+  if (frame.kind === 'http') {
+    return 'text-mute'
+  }
+  return 'text-ink'
 }
 
 function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
@@ -157,13 +179,15 @@ function RpcFrames({ frames }: { frames: ProtocolTraceEntry[] }) {
             <div className="flex gap-3 font-mono text-xs">
               <span className="w-4 shrink-0" />
               <span className="w-14 shrink-0" />
-              <span className="w-5 shrink-0 text-mute">
+              <span className="w-5 shrink-0 text-faint">
                 {frame.direction === 'out' ? '→' : '←'}
               </span>
-              <span className="min-w-0 text-ink">{view.label}</span>
+              <span className={`min-w-0 ${frameLabelClass(frame, view.label)}`}>
+                {view.label}
+              </span>
             </div>
             {view.value !== undefined ? (
-              <div className="mt-1 pl-32">
+              <div className="mt-0.5 pl-32">
                 <JsonTree value={view.value} />
               </div>
             ) : null}
