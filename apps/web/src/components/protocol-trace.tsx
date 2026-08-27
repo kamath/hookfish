@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { ProtocolTraceEntry } from '../lib/client-types'
 import { consumePointerIntent, usePaneActions, useStepKeys } from '../lib/keys'
 import { activate, getPane } from '../lib/mode'
@@ -24,6 +24,19 @@ function moveSelection(
   return {
     id: groups[next]?.id,
     followLatest: next === groups.length - 1,
+  }
+}
+
+function revealInList(row: HTMLElement | null, list: HTMLElement | null) {
+  if (!row || !list) {
+    return
+  }
+  const rowRect = row.getBoundingClientRect()
+  const listRect = list.getBoundingClientRect()
+  if (rowRect.top < listRect.top) {
+    list.scrollTop -= listRect.top - rowRect.top
+  } else if (rowRect.bottom > listRect.bottom) {
+    list.scrollTop += rowRect.bottom - listRect.bottom
   }
 }
 
@@ -158,7 +171,14 @@ export function ProtocolTrace({
   const [selectedId, setSelectedId] = useState<string>()
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const followLatest = useRef(true)
-  const listRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  function revealRpc(id: string | undefined) {
+    if (!id) {
+      return
+    }
+    revealInList(document.getElementById(`rpc-${id}`), listRef.current)
+  }
 
   useEffect(() => {
     claimTracePane()
@@ -183,6 +203,7 @@ export function ProtocolTrace({
     const next = moveSelection(groups, selectedId, delta)
     followLatest.current = next.followLatest
     setSelectedId(next.id)
+    revealRpc(next.id)
   }
 
   function toggleExpanded(id: string) {
@@ -212,11 +233,9 @@ export function ProtocolTrace({
     },
   })
 
-  useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>('[data-oc-current="true"]')
-      ?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId, groups, expanded])
+  useLayoutEffect(() => {
+    revealRpc(selectedId)
+  }, [selectedId])
 
   const found = groups.findIndex((group) => group.id === selectedId)
   const activeIndex = found === -1 ? Math.max(groups.length - 1, 0) : found
@@ -231,7 +250,6 @@ export function ProtocolTrace({
   return (
     <section
       id="protocol-trace-pane"
-      ref={listRef}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
       aria-label="Protocol traces"
       onPointerEnter={() => {
@@ -254,7 +272,11 @@ export function ProtocolTrace({
         </button>
         <p className="font-mono text-xs text-ink">{count}</p>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 md:px-4">
+      <div
+        ref={listRef}
+        data-trace-list
+        className="min-h-0 flex-1 overscroll-contain overflow-y-auto px-3 py-3 md:px-4"
+      >
         {groups.length > 0 ? (
           <ol className="w-full font-mono text-sm leading-relaxed">
             {groups.map((group, index) => {
@@ -275,6 +297,7 @@ export function ProtocolTrace({
                   style={{ '--exec-color': accent } as CSSProperties}
                 >
                   <button
+                    id={`rpc-${group.id}`}
                     type="button"
                     data-oc-command-focus="true"
                     data-oc-current={active ? 'true' : undefined}
@@ -283,6 +306,12 @@ export function ProtocolTrace({
                     className={`relative flex min-h-7 w-full items-center gap-3 py-1 pr-10 text-left outline-none ${
                       active ? 'exec-active' : ''
                     }`}
+                    onFocus={() => {
+                      claimTracePane()
+                      followLatest.current = index === groups.length - 1
+                      setSelectedId(group.id)
+                      revealRpc(group.id)
+                    }}
                     onClick={() => {
                       claimTracePane()
                       followLatest.current = index === groups.length - 1
