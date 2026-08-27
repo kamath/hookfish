@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import validator from '@rjsf/validator-ajv8'
 import type { IChangeEvent } from '@rjsf/core'
 import type {
   Executable,
@@ -15,6 +14,7 @@ import { asRecord } from '../lib/build-request'
 import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
+import { validatorForSchema } from '../lib/form-validator'
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, usePane } from '../lib/mode'
@@ -413,7 +413,11 @@ export function ExecutableClient({
                 ? withAuthUiSchema(operation.inputUiSchema, authUiSchema)
                 : operation.inputUiSchema) as never
             }
-            validator={validator}
+            validator={validatorForSchema(
+              showAuth && authSchema
+                ? withAuthSchema(operation.inputSchema, authSchema)
+                : operation.inputSchema,
+            )}
             formData={formData}
             onChange={(event: IChangeEvent) => setFormData(event.formData)}
             onSubmit={onSubmit}
