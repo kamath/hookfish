@@ -535,9 +535,12 @@ function FieldTemplate(props: FieldTemplateProps) {
         {!nest ? (
           <span
             data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
+            className="pointer-events-none absolute right-2 top-2 z-[1] items-center gap-1 whitespace-nowrap text-[11px] text-mute"
           >
             <Kbd hotkey="I" />
+            <span>to insert text</span>
+            <Kbd hotkey="Tab" />
+            <span>to go to next input</span>
           </span>
         ) : null}
         {displayLabel && !isCheckbox ? (
