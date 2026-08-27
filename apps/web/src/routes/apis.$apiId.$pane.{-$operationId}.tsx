@@ -509,8 +509,9 @@ function ApiWorkbench({
   function renderOperation(operation: Executable) {
     const active = operation.id === selected?.id
     const index = operationIndexById.get(operation.id) ?? -1
+    const showNavigationGutter = activePane === 'routes'
     const navigationHint =
-      activePane !== 'routes'
+      !showNavigationGutter
         ? undefined
         : active
           ? 'Enter'
@@ -548,9 +549,11 @@ function ApiWorkbench({
           className="flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
           style={{ '--exec-color': operation.accent } as CSSProperties}
         >
-          <span className="inline-flex w-8 shrink-0 justify-end">
-            {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-          </span>
+          {showNavigationGutter ? (
+            <span className="inline-flex w-8 shrink-0 justify-end">
+              {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
+            </span>
+          ) : null}
           <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
             {operation.badge}
           </span>
@@ -651,7 +654,11 @@ function ApiWorkbench({
           }`}
         >
           <div className="shrink-0 px-3 py-2">
-            <div className="relative w-full max-w-[26rem]">
+            <div
+              className={`relative max-w-[26rem] ${
+                activePane === 'routes' ? 'ml-11 w-[calc(100%-2.75rem)]' : 'w-full'
+              }`}
+            >
               <label htmlFor="operation-filter" className="sr-only">
                 Filter {api.labels.executablePlural}
               </label>
