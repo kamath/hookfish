@@ -1,17 +1,12 @@
+import type { ExecuteRequest } from '@hookfish/api'
 import type { AuthScheme, ClientOperation, HttpBinding } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
 import { applyAuth } from './openapi'
 
+export type { ExecuteRequest }
+
 const BODY_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options'])
-
-export type ExecuteRequest = {
-  transport: 'http'
-  method: string
-  url: string
-  headers: Record<string, string>
-  body?: string
-}
 
 function headersToRecord(headers: Headers): Record<string, string> {
   const record: Record<string, string> = {}

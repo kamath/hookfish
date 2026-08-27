@@ -10,8 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiMcpOauthClientRouteImport } from './routes/api.mcp-oauth-client'
-import { Route as ApiMcpProxyRouteImport } from './routes/api.mcp-proxy'
+import { Route as ApiSplatRouteImport } from './routes/api.$'
 import { Route as ApisApiIdPaneChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.$pane.{-$operationId}'
 
 const IndexRoute = IndexRouteImport.update({
@@ -19,14 +18,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMcpOauthClientRoute = ApiMcpOauthClientRouteImport.update({
-  id: '/api/mcp-oauth-client',
-  path: '/api/mcp-oauth-client',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMcpProxyRoute = ApiMcpProxyRouteImport.update({
-  id: '/api/mcp-proxy',
-  path: '/api/mcp-proxy',
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApisApiIdPaneChar123OperationIdChar125Route =
@@ -38,48 +32,31 @@ const ApisApiIdPaneChar123OperationIdChar125Route =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
-  '/api/mcp-proxy': typeof ApiMcpProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
-  '/api/mcp-proxy': typeof ApiMcpProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/mcp-oauth-client': typeof ApiMcpOauthClientRoute
-  '/api/mcp-proxy': typeof ApiMcpProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/api/mcp-oauth-client'
-    | '/api/mcp-proxy'
-    | '/apis/$apiId/$pane/{-$operationId}'
+  fullPaths: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/api/mcp-oauth-client'
-    | '/api/mcp-proxy'
-    | '/apis/$apiId/$pane/{-$operationId}'
-  id:
-    | '__root__'
-    | '/'
-    | '/api/mcp-oauth-client'
-    | '/api/mcp-proxy'
-    | '/apis/$apiId/$pane/{-$operationId}'
+  to: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
+  id: '__root__' | '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiMcpOauthClientRoute: typeof ApiMcpOauthClientRoute
-  ApiMcpProxyRoute: typeof ApiMcpProxyRoute
+  ApiSplatRoute: typeof ApiSplatRoute
   ApisApiIdPaneChar123OperationIdChar125Route: typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 
@@ -92,18 +69,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/mcp-oauth-client': {
-      id: '/api/mcp-oauth-client'
-      path: '/api/mcp-oauth-client'
-      fullPath: '/api/mcp-oauth-client'
-      preLoaderRoute: typeof ApiMcpOauthClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp-proxy': {
-      id: '/api/mcp-proxy'
-      path: '/api/mcp-proxy'
-      fullPath: '/api/mcp-proxy'
-      preLoaderRoute: typeof ApiMcpProxyRouteImport
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apis/$apiId/$pane/{-$operationId}': {
@@ -118,8 +88,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiMcpOauthClientRoute: ApiMcpOauthClientRoute,
-  ApiMcpProxyRoute: ApiMcpProxyRoute,
+  ApiSplatRoute: ApiSplatRoute,
   ApisApiIdPaneChar123OperationIdChar125Route:
     ApisApiIdPaneChar123OperationIdChar125Route,
 }
