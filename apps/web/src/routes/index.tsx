@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { Kbd } from '../components/hints'
+import { Kbd, KeyHints } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { blurActive } from '../lib/focus'
@@ -247,54 +247,47 @@ function Home() {
         ) : apis.length === 0 ? (
           <p className="mt-8 text-sm text-mute">Add a source URL to list its executables.</p>
         ) : (
-          <ul className="mt-8">
-            {apis.map((api, index) => {
-              const active = index === selected
-              const navigationHint = active
-                ? 'Enter'
-                : index === selected - 1
-                  ? 'K'
-                  : index === selected + 1
-                    ? 'J'
-                    : undefined
-              return (
-                <li
-                  key={api.id}
-                  className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
-                >
-                  <Link
-                    to="/apis/$apiId/$pane/{-$operationId}"
-                    params={{
-                      apiId: api.id,
-                      pane: 'routes',
-                      operationId: undefined,
-                    }}
-                    className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
-                    onFocus={() => setSelected(index)}
+          <>
+            <ul className="mt-8">
+              {apis.map((api, index) => {
+                const active = index === selected
+                return (
+                  <li
+                    key={api.id}
+                    className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
                   >
-                    <span className="inline-flex w-8 shrink-0 justify-end">
-                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">{api.title}</span>
-                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                        {api.kind} · {api.executableCount} executables
-                        {api.version ? ` · ${api.version}` : ''}
+                    <Link
+                      to="/apis/$apiId/$pane/{-$operationId}"
+                      params={{
+                        apiId: api.id,
+                        pane: 'routes',
+                        operationId: undefined,
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
+                      onFocus={() => setSelected(index)}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{api.title}</span>
+                        <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                          {api.kind} · {api.executableCount} executables
+                          {api.version ? ` · ${api.version}` : ''}
+                        </span>
                       </span>
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    className="min-h-11 px-2 text-sm text-mute hover:text-signal"
-                    onClick={() => onRemove(api.id, api.title)}
-                    disabled={remove.isPending}
-                  >
-                    Remove
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+                    </Link>
+                    <button
+                      type="button"
+                      className="min-h-11 px-2 text-sm text-mute hover:text-signal"
+                      onClick={() => onRemove(api.id, api.title)}
+                      disabled={remove.isPending}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <SourceListHints selected={selected} count={apis.length} />
+          </>
         )}
         {remove.isError ? (
           <p className="mt-3 text-sm text-signal" role="alert">
@@ -303,5 +296,41 @@ function Home() {
         ) : null}
       </div>
     </main>
+  )
+}
+
+function SourceListHints({ selected, count }: { selected: number; count: number }) {
+  const canOpen = count > 0
+  const canGoDown = selected < count - 1
+  const canGoUp = selected > 0
+
+  if (!canOpen && !canGoDown && !canGoUp) {
+    return null
+  }
+
+  return (
+    <p className="mt-3 px-3 text-sm text-mute md:px-4">
+      <KeyHints>
+        {canOpen ? (
+          <>
+            <Kbd key="enter" hotkey="Enter" /> to open
+          </>
+        ) : null}
+        {canOpen && (canGoDown || canGoUp) ? ', ' : null}
+        {canGoDown && canGoUp ? (
+          <>
+            <Kbd key="j" hotkey="J" />/<Kbd key="k" hotkey="K" /> to go down/up
+          </>
+        ) : canGoDown ? (
+          <>
+            <Kbd key="j" hotkey="J" /> to go down
+          </>
+        ) : canGoUp ? (
+          <>
+            <Kbd key="k" hotkey="K" /> to go up
+          </>
+        ) : null}
+      </KeyHints>
+    </p>
   )
 }
