@@ -90,12 +90,50 @@ body {
   --oc-gutter: 0.75rem;
   margin-block: 0.25rem;
   padding-inline-start: var(--oc-gutter);
-  border-inline-start: 1px solid var(--rule);
 }
 
 .oc-nest .oc-nest .oc-nest .oc-nest {
   padding-inline-start: 0;
-  border-inline-start: none;
+}
+
+/* Controls read as a filled region rather than an outlined box. When the field
+   behind them is highlighted they drop to plain paper so they still stand out. */
+.oc-control {
+  background-color: color-mix(in srgb, var(--ink) 6%, var(--paper));
+}
+
+[data-oc-current='true'] .oc-control {
+  background-color: var(--paper);
+}
+
+[data-oc-mode='insert'] [data-oc-current='true'] .oc-control {
+  background-color: color-mix(in srgb, var(--ink) 6%, var(--paper));
+}
+
+.oc-control[aria-invalid='true'],
+[data-oc-current='true'] .oc-control[aria-invalid='true'] {
+  background-color: color-mix(in srgb, var(--error) 14%, var(--paper));
+}
+
+/* Descriptions stay on one line until their field or group is hovered or focused. */
+[data-oc-desc] {
+  display: block;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+[data-oc-desc]:hover,
+[data-oc-nav='field']:is(:hover, :focus-within) [data-oc-desc],
+[data-oc-current='true'] [data-oc-desc],
+[data-oc-nav='group']:has(> legend :is(:hover, :focus-within, [data-oc-current='true']))
+  > .oc-nest
+  > *
+  > [data-oc-desc] {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
 }
 
 kbd {
@@ -145,25 +183,10 @@ html[data-oc-mode='edit'] .oc-key-hints {
 }
 
 .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
-  width: calc(100% + var(--oc-gutter) + 1px);
-  max-width: calc(28rem + var(--oc-gutter) + 1px);
-  margin-inline-start: calc(-1 * var(--oc-gutter) - 1px);
-  padding-inline-start: calc(0.5rem + var(--oc-gutter) + 1px);
-  border-inline-start: 1px solid var(--signal);
-}
-
-.oc-nest .oc-fold[data-oc-current='true'] {
-  position: relative;
-}
-
-.oc-nest .oc-fold[data-oc-current='true']::before {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: calc(-1 * (var(--oc-gutter) + 0.5rem + 1px));
-  width: 1px;
-  background: var(--signal);
-  pointer-events: none;
+  width: calc(100% + var(--oc-gutter));
+  max-width: calc(28rem + var(--oc-gutter));
+  margin-inline-start: calc(-1 * var(--oc-gutter));
+  padding-inline-start: calc(0.5rem + var(--oc-gutter));
 }
 
 .oc-fold[data-oc-current='true'],
@@ -195,14 +218,6 @@ button[type='submit'][data-oc-current='true'] {
 
 .exec-ink {
   color: var(--exec-color);
-}
-
-.exec-context .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
-  border-inline-start-color: var(--exec-color);
-}
-
-.exec-context .oc-nest .oc-fold[data-oc-current='true']::before {
-  background: var(--exec-color);
 }
 
 .exec-context button[type='submit'][data-oc-current='true'] {

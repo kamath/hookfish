@@ -284,7 +284,7 @@ function BaseInputTemplate(props: WidgetProps) {
       <input
         id={id}
         name={htmlName || id}
-        className={`${formInputClass} ${invalid ? 'border-error' : ''}`}
+        className={formInputClass}
         readOnly={readonly}
         disabled={disabled}
         autoFocus={autofocus}
@@ -324,7 +324,7 @@ function TextareaWidget(props: WidgetProps) {
     <textarea
       id={id}
       name={htmlName || id}
-      className={`${formInputClass} max-w-xl min-h-20 resize-y ${rawErrors?.length ? 'border-error' : ''}`}
+      className={`${formInputClass} max-w-xl min-h-20 resize-y`}
       value={value || ''}
       placeholder={placeholder}
       required={required}
@@ -339,6 +339,7 @@ function TextareaWidget(props: WidgetProps) {
       }
       onBlur={(event) => onBlur(id, event.target.value)}
       onFocus={(event) => onFocus(id, event.target.value)}
+      aria-invalid={Boolean(rawErrors?.length)}
       aria-describedby={ariaDescribedByIds(id)}
     />
   )
@@ -378,7 +379,7 @@ function SelectWidget(props: WidgetProps) {
       id={id}
       name={htmlName || id}
       multiple={multiple}
-      className={`${formInputClass} appearance-none ${rawErrors?.length ? 'border-error' : ''}`}
+      className={`${formInputClass} appearance-none`}
       value={selectValue}
       required={required}
       disabled={disabled || readonly}
@@ -413,6 +414,7 @@ function SelectWidget(props: WidgetProps) {
           ),
         )
       }
+      aria-invalid={Boolean(rawErrors?.length)}
       aria-describedby={ariaDescribedByIds(id)}
     >
       {!multiple && schema.default === undefined ? (
@@ -590,10 +592,7 @@ function DescriptionFieldTemplate(props: DescriptionFieldProps) {
   }
 
   return (
-    <span
-      id={id}
-      className="m-0 min-w-0 flex-1 truncate text-xs text-faint"
-    >
+    <span id={id} data-oc-desc className="m-0 min-w-0 flex-1 text-xs text-faint">
       {description}
     </span>
   )
@@ -813,7 +812,7 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
         uiSchema={uiSchema}
         registry={registry}
       />
-      <div className="flex flex-col">{items}</div>
+      <div className="flex flex-col gap-1">{items}</div>
       {canAdd ? (
         <AddButton
           id={buttonId(fieldPathId, 'add')}
@@ -885,7 +884,7 @@ function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
 
   const body = (
     <div
-      className={`${className ?? ''} flex min-w-0 flex-col gap-2 border-t border-rule py-2 md:flex-row md:items-start`}
+      className={`${className ?? ''} flex min-w-0 flex-col gap-2 py-1 md:flex-row md:items-start`}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {hasToolbar ? (
