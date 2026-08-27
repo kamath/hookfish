@@ -436,7 +436,8 @@ function Home() {
               >
                 100% open source
               </a>
-              . MIT License
+              {' '}
+              (MIT License)
             </p>
           ) : null}
           {urlError ? (
