@@ -182,9 +182,8 @@ function markItem(root: HTMLElement, item: HTMLElement) {
   const items = listFormInputs(root.id)
   const index = indexOfItem(items, item)
   const next = nextDistinctItem(items, index, 1)
-  const nextField = next?.closest<HTMLElement>('[data-oc-nav="field"]')
-  if (nextField) {
-    nextField.dataset.ocTabTarget = 'true'
+  if (next) {
+    itemMark(next).dataset.ocTabTarget = 'true'
   }
 }
 

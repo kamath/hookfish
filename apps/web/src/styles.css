@@ -141,6 +141,11 @@ html[data-oc-mode='edit'] .oc-key-hints {
   display: inline-flex;
 }
 
+[data-oc-nav='action'][data-oc-tab-target='true'] > [data-oc-tab-hint] {
+  display: inline-flex;
+  margin-inline-end: 0.5rem;
+}
+
 [data-oc-nav='field'][data-oc-current='true'] > [data-oc-input-helper] {
   display: block;
 }

@@ -989,6 +989,9 @@ function TextButton(props: IconButtonProps & { children: string }) {
 
   return (
     <button type="button" className={formGhostButtonClass} data-oc-nav="action" {...rest}>
+      <span data-oc-tab-hint>
+        <Kbd hotkey="Tab" />
+      </span>
       {children}
     </button>
   )
