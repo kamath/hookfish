@@ -710,10 +710,10 @@ function ApiWorkbench({
     routePane === 'trace'
       ? 'Close traces'
       : activePane === 'response'
-        ? 'Input'
+        ? 'Back to input'
         : activePane === 'input'
-          ? api.labels.executablePlural
-          : api.labels.sourcePlural
+          ? `Back to ${api.labels.executablePlural}`
+          : `Back to ${api.labels.sourcePlural}`
 
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
@@ -761,14 +761,14 @@ function ApiWorkbench({
           <div className="flex w-full items-center gap-1 md:ml-auto md:w-auto md:gap-3">
             <button
               type="button"
-              className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm text-mute hover:text-ink"
+              className="oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm text-mute hover:text-ink"
               aria-label={backLabel}
               onClick={stepBack}
             >
-              <span className="oc-bar-action-label">{backLabel}</span>
               <span className="oc-bar-action-icon" aria-hidden="true">
                 <BackIcon />
               </span>
+              <span className="min-w-0 truncate">{backLabel}</span>
               <Kbd hotkey="Escape" />
             </button>
             {onClearAuth ? (
