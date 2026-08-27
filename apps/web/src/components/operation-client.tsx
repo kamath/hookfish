@@ -444,8 +444,8 @@ export function ExecutableClient({
             idPrefix={operation.id}
           >
             <div className="flex flex-col gap-2 pt-3">
-              <KeyHints className="inline-flex items-center gap-1 text-xs text-mute">
-                <Kbd hotkey="Mod+Enter" /> to send
+              <KeyHints className="inline-flex items-center gap-1 text-sm text-ink">
+                <Kbd hotkey="Mod+Enter" /> to run
               </KeyHints>
               {error ? (
                 <p className="text-xs text-error" role="alert">
