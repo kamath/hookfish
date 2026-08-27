@@ -195,14 +195,14 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   display: inline-flex;
 }
 
-/* Touch / mobile: no keyboard chrome. Keep in sync with KEYBINDINGS_MEDIA in keymap.ts. */
+/* Touch / narrow viewports: no keyboard chrome. Keep in sync with KEYBINDINGS_MEDIA. */
 .oc-kbd-fallback {
   font-size: 1rem;
   line-height: 1;
   color: var(--mute);
 }
 
-@media (hover: none), (pointer: coarse) {
+@media (pointer: coarse), (max-width: 767px) {
   kbd,
   .oc-key-hints,
   [data-oc-hint] {

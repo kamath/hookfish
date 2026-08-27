@@ -250,8 +250,8 @@ type Registration = {
   flags?: Record<string, boolean>
 }
 
-// Keep in sync with the `@media (hover: none), (pointer: coarse)` hide in styles.css.
-export const KEYBINDINGS_MEDIA = '(hover: hover) and (pointer: fine)'
+// Keep in sync with the `@media (pointer: coarse), (max-width: 767px)` hide in styles.css.
+export const KEYBINDINGS_MEDIA = '(min-width: 768px) and (not (pointer: coarse))'
 
 export function keybindingsEnabled() {
   return typeof globalThis.matchMedia === 'function' && globalThis.matchMedia(KEYBINDINGS_MEDIA).matches

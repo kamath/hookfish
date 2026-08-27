@@ -96,6 +96,12 @@ assert.ok(
 
 console.log('keymap step and tab bindings ok')
 
+assert.equal(
+  KEYBINDINGS_MEDIA,
+  '(min-width: 768px) and (not (pointer: coarse))',
+  'availability query matches the CSS hide dual',
+)
+
 const originalMatchMedia = globalThis.matchMedia
 
 function withMatchMedia(matchesFor: (query: string) => boolean, run: () => void) {
@@ -132,7 +138,7 @@ withMatchMedia(
 withMatchMedia(
   (query) => query === KEYBINDINGS_MEDIA,
   () => {
-    assert.equal(keybindingsEnabled(), true, 'enabled for hover + fine pointer')
+    assert.equal(keybindingsEnabled(), true, 'enabled on md+ viewports that are not coarse-pointer')
   },
 )
 withMatchMedia(
