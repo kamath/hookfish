@@ -150,12 +150,23 @@ function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
   }
+  for (const element of root.querySelectorAll('[data-oc-tab-target]')) {
+    element.removeAttribute('data-oc-tab-target')
+  }
 }
 
 function markItem(root: HTMLElement, item: HTMLElement) {
   clearCurrent(root)
   const field = item.closest<HTMLElement>('[data-oc-nav="field"]')
   ;(field ?? item).dataset.ocCurrent = 'true'
+
+  const items = cachedFormInputs(root)
+  const currentIndex = indexOfItem(items, item)
+  if (currentIndex === -1 || items.length === 0) {
+    return
+  }
+  const next = items[(currentIndex + 1) % items.length]
+  next?.closest<HTMLElement>('[data-oc-nav="field"]')?.setAttribute('data-oc-tab-target', 'true')
 }
 
 function indexOfItem(items: HTMLElement[], target: Element | null): number {
