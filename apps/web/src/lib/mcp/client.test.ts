@@ -42,6 +42,7 @@ Object.defineProperty(globalThis, 'window', {
   },
   configurable: true,
 })
+setCloudProxy(true)
 
 type SeenRequest = {
   endpoint: string
