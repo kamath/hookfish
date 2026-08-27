@@ -3,6 +3,7 @@ import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { AuthRedirect } from '../components/auth-status'
+import { Brand } from '../components/brand'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -303,6 +304,9 @@ function Home() {
   return (
     <main id="main" className="relative flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
       <div className="mx-auto my-auto w-full max-w-3xl py-10">
+        <div className={compactLauncher ? 'mx-auto mb-6 w-full max-w-xl' : 'mb-6'}>
+          <Brand />
+        </div>
         <form
           ref={formRef}
           data-oc-enter-submit="true"

@@ -1,7 +1,6 @@
 import { type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
-  Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
@@ -10,6 +9,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect } from 'react'
+import { Brand } from '../components/brand'
 import { hydrateCloudProxy, useCloudProxy } from '../lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from '../lib/keymap'
 import { bindModeFromFocus } from '../lib/mode'
@@ -31,13 +31,14 @@ export const Route = createRootRouteWithContext<{
       },
       { name: 'color-scheme', content: 'light' },
       { name: 'theme-color', content: '#f7f6f3' },
-      { title: 'Executable Client' },
+      { title: 'Hookfish' },
       {
         name: 'description',
         content: 'Browse, configure, and run executables from pluggable sources.',
       },
     ],
     links: [
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       {
         rel: 'preconnect',
@@ -201,9 +202,9 @@ function NotFound() {
   return (
     <main id="main" className="px-4 py-10">
       <p className="text-sm text-mute">Nothing here.</p>
-      <Link to="/" className="mt-4 inline-flex min-h-11 items-center text-sm text-signal">
-        Home
-      </Link>
+      <div className="mt-4">
+        <Brand />
+      </div>
     </main>
   )
 }
