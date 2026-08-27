@@ -905,6 +905,10 @@ function ApiWorkbench({
             authPending={authPending}
             authError={authError}
             onSaveAuth={onSaveAuth}
+            canPrevious={canPreviousOperation}
+            canNext={canNextOperation}
+            onPrevious={() => navigateOperation(-1)}
+            onNext={() => navigateOperation(1)}
           />
         ) : null}
         </div>

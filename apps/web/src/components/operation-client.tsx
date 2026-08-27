@@ -81,6 +81,9 @@ function mergeAuth(
   return next
 }
 
+const stepButtonClass =
+  'inline-flex min-h-8 shrink-0 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40'
+
 export function ExecutableClient({
   api,
   operation,
@@ -91,6 +94,10 @@ export function ExecutableClient({
   authPending,
   authError,
   onSaveAuth,
+  canPrevious,
+  canNext,
+  onPrevious,
+  onNext,
 }: {
   api: ExecutableSource
   operation: Executable
@@ -101,6 +108,10 @@ export function ExecutableClient({
   authPending?: boolean
   authError?: unknown
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
+  canPrevious?: boolean
+  canNext?: boolean
+  onPrevious?: () => void
+  onNext?: () => void
 }) {
   const [formData, setFormData] = useState<unknown>(() =>
     readOperationFormData(api.id, operation.id),
@@ -351,7 +362,30 @@ export function ExecutableClient({
             <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
             {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
           </div>
-          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
+            {onPrevious || onNext ? (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  className={stepButtonClass}
+                  disabled={!canPrevious}
+                  onClick={onPrevious}
+                >
+                  Previous
+                  {canPrevious ? <Kbd hotkey="H" /> : null}
+                </button>
+                <button
+                  type="button"
+                  className={stepButtonClass}
+                  disabled={!canNext}
+                  onClick={onNext}
+                >
+                  Next
+                  {canNext ? <Kbd hotkey="L" /> : null}
+                </button>
+              </div>
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
             {result ? (
               <button
                 type="button"
@@ -400,6 +434,7 @@ export function ExecutableClient({
                 </>
               )}
             </button>
+            </div>
           </div>
         </div>
 
