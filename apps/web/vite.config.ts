@@ -9,18 +9,12 @@ import tailwindcss from '@tailwindcss/vite'
 const config = defineConfig(({ command }) => ({
   resolve: { tsconfigPaths: true },
   optimizeDeps: {
-    include: [
-      '@tanstack/react-query',
-      'use-sync-external-store/shim/with-selector',
-    ],
+    include: ['@tanstack/react-query'],
   },
   ssr: {
     ...(command === 'build' ? { noExternal: true } : {}),
     optimizeDeps: {
-      include: [
-        '@tanstack/react-query',
-        'use-sync-external-store/shim/with-selector',
-      ],
+      include: ['@tanstack/react-query'],
     },
   },
   plugins: [
