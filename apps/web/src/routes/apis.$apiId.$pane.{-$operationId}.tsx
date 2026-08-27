@@ -12,6 +12,7 @@ import {
 import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
 import { McpServerPanel } from '../components/mcp-server-panel'
+import { Brand } from '../components/brand'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus } from '../components/query-status'
@@ -697,6 +698,7 @@ function ApiWorkbench({
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
       <div className="oc-bar shrink-0">
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
+          <Brand compact />
           <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
           {manyServers ? (
             <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
