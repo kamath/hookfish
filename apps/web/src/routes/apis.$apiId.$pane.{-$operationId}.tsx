@@ -757,7 +757,7 @@ function ApiWorkbench({
           <div className="flex w-full items-center justify-center gap-1 md:ml-auto md:w-auto md:justify-end md:gap-3">
             <button
               type="button"
-              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm leading-none text-mute hover:text-ink"
+              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink"
               aria-label={backLabel}
               onClick={stepBack}
             >
@@ -766,12 +766,12 @@ function ApiWorkbench({
                   <span className="oc-bar-action-icon" aria-hidden="true">
                     <BackCaret />
                   </span>
-                  <span className="min-w-0 truncate leading-none">Close traces</span>
+                  <span className="min-w-0 truncate leading-4">Close traces</span>
                 </>
               ) : (
                 <>
                   <BackCaret />
-                  <span className="leading-none">{parentTitle}</span>
+                  <span className="leading-4">{parentTitle}</span>
                 </>
               )}
               <Kbd hotkey="Escape" />
@@ -779,7 +779,7 @@ function ApiWorkbench({
             {onClearAuth ? (
               <button
                 type="button"
-                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm leading-none text-mute hover:text-ink disabled:opacity-40"
+                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
                 aria-label="Clear credentials"
                 disabled={authPending}
                 onClick={() => {
@@ -806,20 +806,20 @@ function ApiWorkbench({
         <ProtocolTrace sourceId={api.id} onClose={stepBack} />
       ) : (
         <div
-          className={`grid min-h-0 flex-1 grid-cols-1 ${
+          className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${
             selected && (activePane === 'input' || activePane === 'response')
               ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
               : ''
           }`}
         >
         <aside
-          className={`flex min-h-0 flex-col border-rule ${
+          className={`flex min-h-0 flex-col overflow-hidden border-rule ${
             activePane === 'input' || activePane === 'response'
               ? 'hidden lg:flex lg:border-r'
               : 'flex'
           }`}
         >
-          <div className="shrink-0 px-3 py-2">
+          <div className="oc-bar shrink-0 overflow-hidden px-3 py-2">
             {activePane === 'input' ? (
               <div className="flex w-full gap-2">
                 <button
@@ -842,15 +842,14 @@ function ApiWorkbench({
                 </button>
               </div>
             ) : (
-              <div className="flex w-full items-center gap-2">
+              <div className="flex h-9 w-full items-stretch gap-2">
                 {activePane === 'routes' ? (
                   <PaneBackButton
                     label={previousPaneTitle('routes', api.labels) ?? api.labels.sourcePlural}
-                    className="min-h-9"
                     onClick={stepBack}
                   />
                 ) : null}
-                <div className="relative min-w-0 w-full max-w-[26rem] flex-1">
+                <div className="relative h-9 min-w-0 w-full max-w-[26rem] flex-1">
                   <label htmlFor="operation-filter" className="sr-only">
                     Filter {api.labels.executablePlural}
                   </label>
@@ -860,7 +859,7 @@ function ApiWorkbench({
                     type="search"
                     autoComplete="off"
                     spellCheck={false}
-                    className={`min-h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm text-ink outline-none placeholder:text-mute ${
+                    className={`h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm leading-4 text-ink outline-none placeholder:text-mute ${
                       filterValue ? (keybindings ? 'pr-16' : 'pr-9') : keybindings ? 'pr-9' : ''
                     }`}
                     value={filterValue}
@@ -920,9 +919,9 @@ function ApiWorkbench({
                   <section key={group.name ?? 'untagged'} className="pb-2">
                     {title ? (
                       <header className="px-3 pb-1 pt-3">
-                        <p className="truncate text-[11px] text-mute">{title}</p>
+                        <p className="truncate text-[11px] leading-4 text-mute">{title}</p>
                         {groupDescription ? (
-                          <p className="truncate text-[11px] text-faint">{groupDescription}</p>
+                          <p className="truncate text-[11px] leading-4 text-faint">{groupDescription}</p>
                         ) : null}
                       </header>
                     ) : null}
