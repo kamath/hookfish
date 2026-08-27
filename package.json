@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "cli": "pnpm --filter hookfish start",
+    "cli": "pnpm build && pnpm --filter hookfish start",
     "dev": "turbo run dev --filter=@hookfish/web",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"

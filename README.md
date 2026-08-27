@@ -68,7 +68,6 @@ hookfish --port 3000
 Run the workspace build directly during development:
 
 ```bash
-pnpm build
 pnpm cli
 ```
 
