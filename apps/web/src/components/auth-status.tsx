@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
+import { keybindingsEnabled } from '../lib/keys'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
 function authorizationHost(href: string) {
@@ -87,6 +88,9 @@ export function AuthRedirect({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (!keybindingsEnabled()) {
+        return
+      }
       const waiting = remainingRef.current > 0
       if (event.key === 'Escape') {
         event.preventDefault()
