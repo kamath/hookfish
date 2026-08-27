@@ -146,6 +146,21 @@ function scheduleInsertFocus(element: HTMLElement) {
   }, 0)
 }
 
+function openSelectPicker(element: HTMLElement) {
+  const target = editableIn(element) ?? element
+  if (!(target instanceof HTMLSelectElement)) {
+    return false
+  }
+
+  focusInsertTarget(target)
+  try {
+    target.showPicker()
+  } catch {
+    target.click()
+  }
+  return true
+}
+
 function clearCurrent(root: HTMLElement) {
   for (const element of root.querySelectorAll('[data-oc-current]')) {
     element.removeAttribute('data-oc-current')
@@ -533,7 +548,9 @@ export function insertCurrentInput(rootId: string): boolean {
   syncMode(root)
   scrollMark(target)
   blurActive()
-  scheduleInsertFocus(target)
+  if (!openSelectPicker(target)) {
+    scheduleInsertFocus(target)
+  }
   return true
 }
 
