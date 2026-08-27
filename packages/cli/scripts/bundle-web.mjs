@@ -3,11 +3,11 @@ import { constants } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const webOutput = fileURLToPath(
-  new URL('../../../apps/web/dist/', import.meta.url),
+  new URL('../../../apps/web/dist-node/', import.meta.url),
 )
 const bundledWeb = fileURLToPath(new URL('../web/', import.meta.url))
 const serverEntry = fileURLToPath(
-  new URL('../../../apps/web/dist/server/server.js', import.meta.url),
+  new URL('../../../apps/web/dist-node/server/server.js', import.meta.url),
 )
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url))
 
