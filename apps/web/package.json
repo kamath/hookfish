@@ -6,8 +6,8 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "build": "vite build --mode cloudflare",
-    "build:node": "vite build --mode node",
+    "build": "pnpm --filter @hookfish/client build && vite build --mode cloudflare",
+    "build:node": "pnpm --filter @hookfish/client build && vite build --mode node",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "typecheck": "tsc --noEmit"
