@@ -7,7 +7,7 @@ export function CloudToggle() {
     <div className="flex min-w-0 items-center">
       {cloudProxy ? null : (
         <p
-          className="mr-1 flex h-8 w-max max-w-full shrink items-center overflow-hidden bg-error/10 px-2 text-[11px] leading-none text-error"
+          className="mr-1 flex h-8 w-max max-w-full shrink items-center overflow-hidden bg-warn/10 px-2 text-[11px] leading-none text-warn"
           role="status"
           aria-live="polite"
         >
