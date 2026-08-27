@@ -178,6 +178,7 @@ function Home() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-ink">{entry.title}</span>
                     <span
+                      title={status.failed ? status.text : undefined}
                       className={`mt-0.5 block truncate font-mono text-xs ${
                         status.failed ? 'text-error' : 'text-faint'
                       }`}
@@ -198,81 +199,78 @@ function Home() {
   }
 
   return (
-    <main
-      id="main"
-      className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-10 md:px-4"
-    >
-      <form
-        ref={formRef}
-        data-oc-enter-submit="true"
-        onSubmit={(event) => {
-          event.preventDefault()
-        }}
-        className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start"
-      >
-        <label htmlFor="url" className="sr-only">
-          MCP endpoint or OpenAPI document URL
-        </label>
-        <div className="relative min-w-0 flex-1">
-          <input
-            ref={urlRef}
-            id="url"
-            name="url"
-            type="url"
-            inputMode="url"
-            autoComplete="off"
-            spellCheck={false}
-            required
-            className={`${softInputClass} pl-10`}
-            placeholder="Paste an MCP endpoint or OpenAPI document URL"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            onFocus={() => {
-              activate('specs', 'edit')
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') {
-                return
-              }
-              event.preventDefault()
-              const adapter = sourceAdapterForSubmit(
-                event.metaKey || event.ctrlKey ? 'Mod+Enter' : 'Enter',
+    <main id="main" className="flex h-full min-h-0 flex-col overflow-y-auto px-3 md:px-4">
+      <div className="mx-auto my-auto w-full max-w-3xl py-10">
+        <form
+          ref={formRef}
+          data-oc-enter-submit="true"
+          onSubmit={(event) => {
+            event.preventDefault()
+          }}
+          className="flex flex-col gap-3 sm:flex-row sm:items-start"
+        >
+          <label htmlFor="url" className="sr-only">
+            MCP endpoint or OpenAPI document URL
+          </label>
+          <div className="relative min-w-0 flex-1">
+            <input
+              ref={urlRef}
+              id="url"
+              name="url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              className={`${softInputClass} pl-10`}
+              placeholder="Paste an MCP endpoint or OpenAPI document URL"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              onFocus={() => {
+                activate('specs', 'edit')
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') {
+                  return
+                }
+                event.preventDefault()
+                const adapter = sourceAdapterForSubmit(
+                  event.metaKey || event.ctrlKey ? 'Mod+Enter' : 'Enter',
+                )
+                if (adapter) {
+                  submit(adapter.kind)
+                }
+              }}
+            />
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+              <Kbd hotkey="I" />
+            </span>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {sourceOptions.map((option, index) => {
+              const pending =
+                openSource.isPending && !openSource.variables?.entryId && openSource.variables?.kind === option.kind
+              return (
+                <button
+                  key={option.kind}
+                  type="button"
+                  className={index === 0 ? primaryButtonClass : softButtonClass}
+                  disabled={openSource.isPending}
+                  onClick={() => submit(option.kind)}
+                >
+                  {pending ? 'Reading…' : option.label}
+                  <Kbd hotkey={option.submitHotkey} persistent />
+                </button>
               )
-              if (adapter) {
-                submit(adapter.kind)
-              }
-            }}
-          />
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Kbd hotkey="I" />
-          </span>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          {sourceOptions.map((option, index) => {
-            const pending =
-              openSource.isPending && !openSource.variables?.entryId && openSource.variables?.kind === option.kind
-            return (
-              <button
-                key={option.kind}
-                type="button"
-                className={index === 0 ? primaryButtonClass : softButtonClass}
-                disabled={openSource.isPending}
-                onClick={() => submit(option.kind)}
-              >
-                {pending ? 'Reading…' : option.label}
-                <Kbd hotkey={option.submitHotkey} persistent />
-              </button>
-            )
-          })}
-        </div>
-      </form>
-      {openSource.isError && !openSource.variables?.entryId ? (
-        <p className="mt-3 shrink-0 text-sm text-error" role="alert">
-          {queryErrorMessage(openSource.error, 'Could not read that source.')}
-        </p>
-      ) : null}
+            })}
+          </div>
+        </form>
+        {openSource.isError && !openSource.variables?.entryId ? (
+          <p className="mt-3 line-clamp-3 break-words text-sm text-error" role="alert">
+            {queryErrorMessage(openSource.error, 'Could not read that source.')}
+          </p>
+        ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-10">
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {renderCatalog('MCP servers', MCP_CATALOG)}
           {renderCatalog('OpenAPI specs', OPENAPI_CATALOG)}
