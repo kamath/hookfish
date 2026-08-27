@@ -14,6 +14,7 @@ export type Chrome = {
 export const chromeAtom = atom<Chrome>({ mode: 'command', pane: 'specs' })
 export const modeAtom = atom((get) => get(chromeAtom).mode)
 export const paneAtom = atom((get) => get(chromeAtom).pane)
+export const protocolTraceOpenAtom = atom(false)
 
 function syncDocumentMode(mode: Mode) {
   if (typeof document !== 'undefined') {

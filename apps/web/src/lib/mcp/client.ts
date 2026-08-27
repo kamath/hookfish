@@ -10,21 +10,29 @@ const CLIENT_INFO = {
   version: '1.0.0',
 }
 
-type McpConnection = {
-  client: Client
-  transport: StreamableHTTPClientTransport
-  endpoint: string
+type TraceSink = {
+  sourceId: string
   trace: ProtocolTraceEntry[]
   startedAt: number
 }
 
+type McpConnection = TraceSink & {
+  client: Client
+  transport: StreamableHTTPClientTransport
+  endpoint: string
+}
+
 const connections = new Map<string, McpConnection>()
 const changeListeners = new Map<string, Set<() => void>>()
+const traceListeners = new Map<string, Set<() => void>>()
 
-function traceEntry(
-  connection: Pick<McpConnection, 'trace' | 'startedAt'>,
-  entry: Omit<ProtocolTraceEntry, 'atMs'>,
-) {
+function emitTrace(sourceId: string) {
+  for (const listener of traceListeners.get(sourceId) ?? []) {
+    listener()
+  }
+}
+
+function traceEntry(connection: TraceSink, entry: Omit<ProtocolTraceEntry, 'atMs'>) {
   connection.trace.push({
     ...entry,
     atMs: Date.now() - connection.startedAt,
@@ -32,6 +40,7 @@ function traceEntry(
   if (connection.trace.length > 500) {
     connection.trace.splice(0, connection.trace.length - 500)
   }
+  emitTrace(connection.sourceId)
 }
 
 function requestSummary(body: BodyInit | null | undefined) {
@@ -51,7 +60,7 @@ function jsonValue(value: unknown): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue
 }
 
-function proxyFetch(connection: Pick<McpConnection, 'trace' | 'startedAt'>) {
+function proxyFetch(connection: TraceSink) {
   return async (input: string | URL | Request, init?: RequestInit) => {
     const target =
       input instanceof Request
@@ -116,7 +125,8 @@ export async function getMcpConnection(
     await current.client.close().catch(() => {})
   }
 
-  const pending = {
+  const pending: TraceSink = {
+    sourceId,
     trace: [] as ProtocolTraceEntry[],
     startedAt: Date.now(),
   }
@@ -167,6 +177,7 @@ export async function getMcpConnection(
     client,
     transport,
     endpoint,
+    sourceId,
     trace: pending.trace,
     startedAt: pending.startedAt,
   }
@@ -190,6 +201,7 @@ export async function getMcpConnection(
     receive?.(message)
   }
   connections.set(sourceId, connection)
+  emitTrace(sourceId)
   return connection
 }
 
@@ -199,6 +211,22 @@ export function traceMark(connection: McpConnection) {
 
 export function traceSince(connection: McpConnection, mark: number) {
   return connection.trace.slice(mark)
+}
+
+export function getMcpTrace(sourceId: string): ProtocolTraceEntry[] {
+  return connections.get(sourceId)?.trace.slice() ?? []
+}
+
+export function subscribeMcpTrace(sourceId: string, listener: () => void) {
+  const listeners = traceListeners.get(sourceId) ?? new Set()
+  listeners.add(listener)
+  traceListeners.set(sourceId, listeners)
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) {
+      traceListeners.delete(sourceId)
+    }
+  }
 }
 
 export function subscribeMcpChanges(sourceId: string, listener: () => void) {
@@ -216,6 +244,7 @@ export function subscribeMcpChanges(sourceId: string, listener: () => void) {
 export async function closeMcpConnection(sourceId: string) {
   const connection = connections.get(sourceId)
   connections.delete(sourceId)
+  emitTrace(sourceId)
   if (!connection) {
     return
   }

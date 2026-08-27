@@ -10,6 +10,7 @@ export {
   chromeAtom,
   modeAtom,
   paneAtom,
+  protocolTraceOpenAtom,
   paneForTarget,
   setInsertMode,
   setMode,

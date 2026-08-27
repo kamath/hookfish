@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionResult } from '../lib/client-types'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { Kbd, KeyHints } from './hints'
-import { ProtocolTrace } from './protocol-trace'
 
 type ResponseNode = {
   id: string
@@ -333,8 +332,6 @@ export function ResponsePane({
             </button>
           </section>
         ) : null}
-
-        <ProtocolTrace entries={result.trace ?? []} />
 
         {result.details && result.details.items.length > 0 ? (
           <div className="mb-3">

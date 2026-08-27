@@ -1,14 +1,23 @@
+import { useState } from 'react'
 import type { ExecutableSource } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
+import { useMcpTrace } from '../lib/mcp/trace'
+import { ProtocolTrace } from './protocol-trace'
 
 export function McpServerPanel({ source }: { source: ExecutableSource }) {
   if (source.kind !== 'mcp') {
     return null
   }
+  return <McpServerChrome source={source} />
+}
+
+function McpServerChrome({ source }: { source: ExecutableSource }) {
   const data = asRecord(source.adapterData)
   const capabilities = Object.keys(asRecord(data.capabilities))
   const capabilitySet = new Set(capabilities)
   const serverInfo = asRecord(data.serverInfo)
+  const entries = useMcpTrace(source.id)
+  const [traceOpen, setTraceOpen] = useState(false)
   const counts = source.executables.reduce(
     (current, executable) => {
       if (executable.binding.type !== 'mcp') {
@@ -29,7 +38,7 @@ export function McpServerPanel({ source }: { source: ExecutableSource }) {
     { tools: 0, prompts: 0, resources: 0 },
   )
   return (
-    <section className="bg-ink/5 px-3 py-2 text-xs md:px-4">
+    <section className="relative bg-ink/5 px-3 py-2 text-xs md:px-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-mono text-ink">
           MCP {typeof data.protocolVersion === 'string' ? data.protocolVersion : 'unknown'}
@@ -57,6 +66,29 @@ export function McpServerPanel({ source }: { source: ExecutableSource }) {
             </span>
           )
         })}
+        <button
+          type="button"
+          data-oc-trace-toggle
+          data-oc-command-focus="true"
+          aria-expanded={traceOpen}
+          aria-controls="protocol-trace-panel"
+          disabled={entries.length === 0 && !traceOpen}
+          className={`px-1.5 py-0.5 font-mono ${
+            entries.length === 0 && !traceOpen
+              ? 'bg-ink/5 text-faint'
+              : traceOpen
+                ? 'bg-paper text-ink'
+                : 'bg-paper text-mute hover:text-ink'
+          }`}
+          onClick={() => {
+            if (entries.length === 0 && !traceOpen) {
+              return
+            }
+            setTraceOpen((open) => !open)
+          }}
+        >
+          trace {entries.length}
+        </button>
         {capabilities
           .filter(
             (capability) =>
@@ -77,6 +109,9 @@ export function McpServerPanel({ source }: { source: ExecutableSource }) {
           <span className="ml-auto text-faint">sessionless</span>
         )}
       </div>
+      {traceOpen ? (
+        <ProtocolTrace entries={entries} onClose={() => setTraceOpen(false)} />
+      ) : null}
     </section>
   )
 }
