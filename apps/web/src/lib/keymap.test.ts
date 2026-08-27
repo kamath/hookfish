@@ -21,3 +21,5 @@ for (const [pane, config] of Object.entries(paneConfig)) {
     `${pane} previous is K and ArrowUp`,
   )
 }
+
+console.log('keymap arrow aliases ok')
