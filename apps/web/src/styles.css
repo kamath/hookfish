@@ -214,11 +214,25 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   color: var(--mute);
 }
 
+.oc-bar-action-icon {
+  display: none;
+}
+
 @media (pointer: coarse), (max-width: 767px) {
   kbd,
   .oc-key-hints,
-  [data-oc-hint] {
+  [data-oc-hint],
+  .oc-bar-action-label {
     display: none !important;
+  }
+
+  .oc-bar-action-icon {
+    display: inline-flex;
+  }
+
+  .oc-bar-action {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
   }
 }
 
