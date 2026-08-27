@@ -4,51 +4,65 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { Kbd } from '../components/hints'
 import { QueryMessage } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
+import {
+  CATALOG,
+  MCP_CATALOG,
+  OPENAPI_CATALOG,
+  catalogActionId,
+  sourceUrlKey,
+  type CatalogEntry,
+} from '../lib/catalog'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
-import { sourceAdapterOptions } from '../lib/source-adapters'
-import { inputClass, primaryButtonClass } from '../lib/ui'
+import { sourceAdapterForSubmit, sourceAdapterOptions } from '../lib/source-adapters'
+import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 export const Route = createFileRoute('/')({
   ssr: false,
   component: Home,
 })
 
+type OpenSource = {
+  url: string
+  kind: string
+  entryId?: string
+}
+
 function Home() {
   const apisQuery = useQuery(apisQueryOptions)
   const queryClient = useQueryClient()
   const router = useRouter()
+  const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
-  const sourceKindRef = useRef<HTMLSelectElement>(null)
+  const [url, setUrl] = useState('')
   const [selected, setSelected] = useState(0)
   const sourceOptions = sourceAdapterOptions()
-  const [sourceKind, setSourceKind] = useState(sourceOptions[0]?.kind ?? 'openapi')
-  const sourceOption = sourceOptions.find((option) => option.kind === sourceKind)
   const apis = apisQuery.data ?? []
 
-  const add = useMutation({
-    mutationFn: ({
-      url,
-      kind,
-      credentials,
-    }: {
-      url: string
-      kind: string
-      credentials: Record<string, string>
-    }) => addApi(url, kind, credentials),
+  const openSource = useMutation({
+    mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
+      const key = sourceUrlKey(sourceUrl)
+      const existing = apis.find(
+        (api) => api.kind === kind && sourceUrlKey(api.sourceUrl) === key,
+      )
+      return existing ? { id: existing.id } : addApi(sourceUrl, kind)
+    },
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
+      setUrl('')
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
         params: { apiId: id, pane: 'routes', operationId: undefined },
       })
     },
-    onError: () => {
-      urlRef.current?.focus()
+    onError: (_error, variables) => {
+      if (!variables.entryId) {
+        urlRef.current?.focus()
+      }
     },
   })
 
@@ -74,9 +88,26 @@ function Home() {
     })
   }
 
+  function submit(kind: string) {
+    if (openSource.isPending || !formRef.current?.reportValidity()) {
+      return
+    }
+    openSource.mutate({ url: url.trim(), kind })
+  }
+
+  function launch(entry: CatalogEntry) {
+    if (openSource.isPending) {
+      return
+    }
+    openSource.mutate({ url: entry.url, kind: entry.kind, entryId: entry.id })
+  }
+
   usePaneFlags('specs', { hasSpecs: apis.length > 0 })
   useStepKeys('specs', move, apis.length > 0)
   usePaneActions('specs', {
+    ...Object.fromEntries(
+      CATALOG.map((entry) => [catalogActionId(entry), { callback: () => launch(entry) }]),
+    ),
     open: {
       callback: () => {
         const api = apis[selected]
@@ -93,31 +124,11 @@ function Home() {
       activate('specs', 'edit')
       urlRef.current?.focus()
     },
-    sourceType: {
-      callback: () => {
-        sourceKindRef.current?.focus()
-        sourceKindRef.current?.showPicker?.()
-      },
-      ignoreInputs: false,
-    },
     command: () => {
       enterCommand()
       blurActive()
     },
   })
-
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = event.currentTarget
-    const values = new FormData(form)
-    const url = String(values.get('url') ?? '').trim()
-    const credentials = Object.fromEntries(
-      (sourceOption?.credentialFields ?? [])
-        .map((field) => [field.name, String(values.get(field.name) ?? '').trim()])
-        .filter(([, value]) => value),
-    )
-    add.mutate({ url, kind: sourceKind, credentials })
-  }
 
   function onRemove(id: string, title: string) {
     if (!window.confirm(`Remove ${title}?`)) {
@@ -126,59 +137,84 @@ function Home() {
     remove.mutate(id)
   }
 
+  function entryStatus(entry: CatalogEntry) {
+    if (openSource.variables?.entryId === entry.id) {
+      if (openSource.isPending) {
+        return { text: 'Opening…', failed: false }
+      }
+      if (openSource.isError) {
+        return {
+          text: queryErrorMessage(openSource.error, 'Could not open that source.'),
+          failed: true,
+        }
+      }
+    }
+    return { text: entry.detail, failed: false }
+  }
+
+  function renderCatalog(title: string, entries: readonly CatalogEntry[]) {
+    return (
+      <section className="bg-ink/5 pb-2">
+        <h2 className="px-3 pb-1 pt-3 font-mono text-[11px] text-mute">{title}</h2>
+        <ul>
+          {entries.map((entry) => {
+            const status = entryStatus(entry)
+            const added = apis.some(
+              (api) =>
+                api.kind === entry.kind &&
+                sourceUrlKey(api.sourceUrl) === sourceUrlKey(entry.url),
+            )
+            return (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                  disabled={openSource.isPending}
+                  onClick={() => launch(entry)}
+                >
+                  <span className="inline-flex w-4 shrink-0 justify-center">
+                    <Kbd hotkey={entry.hotkey} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-ink">{entry.title}</span>
+                    <span
+                      className={`mt-0.5 block truncate font-mono text-xs ${
+                        status.failed ? 'text-error' : 'text-faint'
+                      }`}
+                    >
+                      {status.text}
+                    </span>
+                  </span>
+                  {added ? (
+                    <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
+                  ) : null}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+    )
+  }
+
   return (
     <main
       id="main"
-      className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-8 md:px-4"
+      className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden px-3 pt-10 md:px-4"
     >
       <form
+        ref={formRef}
         data-oc-enter-submit="true"
-        onSubmit={onSubmit}
-        className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start"
+        onSubmit={(event) => {
+          event.preventDefault()
+        }}
+        className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start"
       >
-        <label htmlFor="source-kind" className="sr-only">
-          Source type
+        <label htmlFor="url" className="sr-only">
+          MCP endpoint or OpenAPI document URL
         </label>
-        <div className="flex min-w-0 flex-1">
-          <div className="relative shrink-0">
-            <select
-            ref={sourceKindRef}
-            id="source-kind"
-            name="source-kind"
-            data-oc-command-focus="true"
-            className="min-h-11 appearance-none bg-ink/5 py-2 pl-16 pr-9 text-sm text-ink outline-none hover:bg-ink/10 focus:bg-ink/10"
-            value={sourceKind}
-            onChange={(event) => {
-              setSourceKind(event.target.value)
-              event.currentTarget.blur()
-              enterCommand()
-            }}
-          >
-            {sourceOptions.map((option) => (
-              <option key={option.kind} value={option.kind}>
-                {option.label}
-              </option>
-            ))}
-            </select>
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Kbd hotkey="Mod+/" />
-            </span>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 16 16"
-              className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-mute"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path d="m4 6 4 4 4-4" />
-            </svg>
-          </div>
-          <label htmlFor="url" className="sr-only">
-            {sourceOption?.inputLabel ?? 'Source URL'}
-          </label>
-          <div className="relative min-w-0 flex-1">
-            <input
+        <div className="relative min-w-0 flex-1">
+          <input
             ref={urlRef}
             id="url"
             name="url"
@@ -187,50 +223,61 @@ function Home() {
             autoComplete="off"
             spellCheck={false}
             required
-            className={`${inputClass} border-l-0 pl-10`}
-            placeholder={sourceOption?.placeholder}
+            className={`${softInputClass} pl-10`}
+            placeholder="Paste an MCP endpoint or OpenAPI document URL"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
             onFocus={() => {
               activate('specs', 'edit')
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
-                event.preventDefault()
-                event.currentTarget.form?.requestSubmit()
+              if (event.key !== 'Enter') {
+                return
+              }
+              event.preventDefault()
+              const adapter = sourceAdapterForSubmit(
+                event.metaKey || event.ctrlKey ? 'Mod+Enter' : 'Enter',
+              )
+              if (adapter) {
+                submit(adapter.kind)
               }
             }}
-            />
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Kbd hotkey="I" />
-            </span>
-          </div>
+          />
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+            <Kbd hotkey="I" />
+          </span>
         </div>
-        {(sourceOption?.credentialFields ?? []).map((field) => (
-          <label key={field.name} className="min-w-0 flex-1">
-            <span className="sr-only">{field.label}</span>
-            <input
-              name={field.name}
-              type={field.type ?? 'text'}
-              autoComplete="off"
-              spellCheck={false}
-              className={inputClass}
-              placeholder={field.placeholder ?? field.label}
-              onFocus={() => {
-                activate('specs', 'edit')
-              }}
-            />
-          </label>
-        ))}
-        <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={add.isPending}>
-          {add.isPending ? 'Reading…' : 'Add source'}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          {sourceOptions.map((option, index) => {
+            const pending =
+              openSource.isPending && !openSource.variables?.entryId && openSource.variables?.kind === option.kind
+            return (
+              <button
+                key={option.kind}
+                type="button"
+                className={index === 0 ? primaryButtonClass : softButtonClass}
+                disabled={openSource.isPending}
+                onClick={() => submit(option.kind)}
+              >
+                {pending ? 'Reading…' : option.label}
+                <Kbd hotkey={option.submitHotkey} persistent />
+              </button>
+            )
+          })}
+        </div>
       </form>
-      {add.isError ? (
-        <p className="mt-3 text-sm text-signal" role="alert">
-          {queryErrorMessage(add.error, 'Could not read that source.')}
+      {openSource.isError && !openSource.variables?.entryId ? (
+        <p className="mt-3 shrink-0 text-sm text-error" role="alert">
+          {queryErrorMessage(openSource.error, 'Could not read that source.')}
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-10">
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          {renderCatalog('MCP servers', MCP_CATALOG)}
+          {renderCatalog('OpenAPI specs', OPENAPI_CATALOG)}
+        </div>
+
         {apisQuery.isPending ? (
           <div className="mt-8">
             <QueryMessage label="Loading sources…" />
@@ -244,60 +291,61 @@ function Home() {
               }}
             />
           </div>
-        ) : apis.length === 0 ? (
-          <p className="mt-8 text-sm text-mute">Add a source URL to list its executables.</p>
-        ) : (
-          <ul className="mt-8">
-            {apis.map((api, index) => {
-              const active = index === selected
-              const navigationHint = active
-                ? 'Enter'
-                : index === selected - 1
-                  ? 'K'
-                  : index === selected + 1
-                    ? 'J'
-                    : undefined
-              return (
-                <li
-                  key={api.id}
-                  className={`flex items-center gap-3 px-3 py-3 md:px-4 ${active ? 'bg-signal/10' : ''}`}
-                >
-                  <Link
-                    to="/apis/$apiId/$pane/{-$operationId}"
-                    params={{
-                      apiId: api.id,
-                      pane: 'routes',
-                      operationId: undefined,
-                    }}
-                    className="flex min-w-0 flex-1 items-center gap-3 px-1 outline-none focus-visible:text-signal"
-                    onFocus={() => setSelected(index)}
+        ) : apis.length > 0 ? (
+          <section className="mt-8">
+            <h2 className="px-3 pb-1 font-mono text-[11px] text-mute">Added</h2>
+            <ul>
+              {apis.map((api, index) => {
+                const active = index === selected
+                const navigationHint = active
+                  ? 'Enter'
+                  : index === selected - 1
+                    ? 'K'
+                    : index === selected + 1
+                      ? 'J'
+                      : undefined
+                return (
+                  <li
+                    key={api.id}
+                    className={`flex items-center gap-3 px-3 ${active ? 'bg-signal/10' : ''}`}
                   >
-                    <span className="inline-flex w-8 shrink-0 justify-end">
-                      {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">{api.title}</span>
-                      <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                        {api.kind} · {api.executableCount} executables
-                        {api.version ? ` · ${api.version}` : ''}
+                    <Link
+                      to="/apis/$apiId/$pane/{-$operationId}"
+                      params={{
+                        apiId: api.id,
+                        pane: 'routes',
+                        operationId: undefined,
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
+                      onFocus={() => setSelected(index)}
+                    >
+                      <span className="inline-flex w-4 shrink-0 justify-center">
+                        {navigationHint ? <Kbd hotkey={navigationHint} /> : null}
                       </span>
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    className="min-h-11 px-2 text-sm text-mute hover:text-signal"
-                    onClick={() => onRemove(api.id, api.title)}
-                    disabled={remove.isPending}
-                  >
-                    Remove
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{api.title}</span>
+                        <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                          {api.kind} · {api.executableCount} executables
+                          {api.version ? ` · ${api.version}` : ''}
+                        </span>
+                      </span>
+                    </Link>
+                    <button
+                      type="button"
+                      className="min-h-11 px-2 text-sm text-mute hover:text-signal"
+                      onClick={() => onRemove(api.id, api.title)}
+                      disabled={remove.isPending}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        ) : null}
         {remove.isError ? (
-          <p className="mt-3 text-sm text-signal" role="alert">
+          <p className="mt-3 text-sm text-error" role="alert">
             {queryErrorMessage(remove.error, 'Could not remove that source.')}
           </p>
         ) : null}

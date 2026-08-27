@@ -1,5 +1,4 @@
 const APIS_KEY = 'oc:apis'
-const DEFAULTS_VERSION_KEY = 'oc:defaults-version'
 
 function authKey(apiId: string) {
   return `oc:auth:${apiId}`
@@ -45,16 +44,6 @@ export function readApisJson() {
 
 export function writeApisJson(value: unknown) {
   writeJson(APIS_KEY, value)
-}
-
-export function readDefaultsVersion() {
-  const raw = browserStorage()?.getItem(DEFAULTS_VERSION_KEY)
-  const version = raw ? Number(raw) : 0
-  return Number.isFinite(version) ? version : 0
-}
-
-export function writeDefaultsVersion(version: number) {
-  browserStorage()?.setItem(DEFAULTS_VERSION_KEY, String(version))
 }
 
 export function readAuth(apiId: string) {

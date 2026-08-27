@@ -1,22 +1,15 @@
 import type { ExecutableSource } from './client-types'
-import { ARCADE_SPEC_URL } from './defaults'
 import { loadMcpSource } from './mcp/source'
 import { specToClient } from './openapi'
 import { fetchSpec } from './spec.functions'
 
-export type SourceCredentialField = {
-  name: string
-  label: string
-  type?: 'text' | 'password'
-  placeholder?: string
-}
+export type SourceSubmitHotkey = 'Enter' | 'Mod+Enter'
 
 export type SourceAdapter = {
   kind: string
   label: string
   inputLabel: string
-  placeholder?: string
-  credentialFields?: SourceCredentialField[]
+  submitHotkey: SourceSubmitHotkey
   load: (
     sourceUrl: string,
     id: string,
@@ -39,32 +32,33 @@ export function sourceAdapterFor(kind: string) {
 }
 
 export function sourceAdapterOptions() {
-  return [...sourceAdapters.values()].map(
-    ({ kind, label, inputLabel, placeholder, credentialFields }) => ({
-      kind,
-      label,
-      inputLabel,
-      placeholder,
-      credentialFields,
-    }),
-  )
+  return [...sourceAdapters.values()].map(({ kind, label, inputLabel, submitHotkey }) => ({
+    kind,
+    label,
+    inputLabel,
+    submitHotkey,
+  }))
 }
 
-registerSourceAdapter({
-  kind: 'openapi',
-  label: 'OpenAPI',
-  inputLabel: 'OpenAPI document URL',
-  placeholder: ARCADE_SPEC_URL,
-  load: async (sourceUrl, id) => {
-    const document = await fetchSpec({ data: { url: sourceUrl } })
-    return specToClient(document, sourceUrl, id)
-  },
-})
+export function sourceAdapterForSubmit(hotkey: SourceSubmitHotkey) {
+  return [...sourceAdapters.values()].find((adapter) => adapter.submitHotkey === hotkey)
+}
 
 registerSourceAdapter({
   kind: 'mcp',
   label: 'MCP',
   inputLabel: 'Streamable HTTP endpoint',
-  placeholder: 'https://example.com/mcp',
+  submitHotkey: 'Enter',
   load: loadMcpSource,
+})
+
+registerSourceAdapter({
+  kind: 'openapi',
+  label: 'OpenAPI',
+  inputLabel: 'OpenAPI document URL',
+  submitHotkey: 'Mod+Enter',
+  load: async (sourceUrl, id) => {
+    const document = await fetchSpec({ data: { url: sourceUrl } })
+    return specToClient(document, sourceUrl, id)
+  },
 })
