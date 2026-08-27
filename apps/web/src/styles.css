@@ -166,7 +166,12 @@ html[data-oc-mode='edit'] .oc-key-hints {
 }
 
 [data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
-  display: inline-flex;
+  display: flex;
+}
+
+/* Once the field is being typed in, the prompt to focus it is stale. */
+html[data-oc-mode='edit'] [data-oc-nav='field'][data-oc-current='true'] > [data-oc-insert-hint] {
+  display: none;
 }
 
 [data-oc-mode='insert'] [data-oc-current='true'] {

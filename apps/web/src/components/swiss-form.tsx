@@ -528,18 +528,10 @@ function FieldTemplate(props: FieldTemplateProps) {
   return (
     <WrapIfAdditionalTemplate {...props}>
       <div
-        className={`relative mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
+        className={`mb-2 flex min-w-0 flex-col gap-1 ${nest ? '' : 'max-w-md p-2'}`}
         data-oc-nav={nest ? undefined : 'field'}
         data-oc-required={required && !nest ? 'true' : undefined}
       >
-        {!nest ? (
-          <span
-            data-oc-insert-hint
-            className="pointer-events-none absolute right-2 top-2 z-[1]"
-          >
-            <Kbd hotkey="I" />
-          </span>
-        ) : null}
         {displayLabel && !isCheckbox ? (
           <label htmlFor={id} className={`${labelClass} flex min-w-0 items-baseline gap-2 overflow-hidden`}>
             <span className="shrink-0">
@@ -558,6 +550,12 @@ function FieldTemplate(props: FieldTemplateProps) {
         {children}
         {errors}
         {help}
+        {!nest ? (
+          <span data-oc-insert-hint className="items-center gap-1.5 text-xs text-faint">
+            <Kbd hotkey="I" />
+            to focus input
+          </span>
+        ) : null}
       </div>
     </WrapIfAdditionalTemplate>
   )
