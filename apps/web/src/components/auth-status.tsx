@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Kbd } from './hints'
 import { primaryButtonClass, softButtonClass } from '../lib/ui'
 
-function authorizationOrigin(href: string) {
+function authorizationHost(href: string) {
   try {
-    return `${new URL(href).origin}/`
+    return new URL(href).host
   } catch {
     return href
   }
@@ -42,9 +42,11 @@ function Spinner() {
 export function AuthRedirect({
   href,
   onCancel,
+  name,
 }: {
   href: string
   onCancel: () => void
+  name?: string
 }) {
   const [remaining, setRemaining] = useState(COUNTDOWN_START)
   const onCancelRef = useRef(onCancel)
@@ -83,17 +85,17 @@ export function AuthRedirect({
     return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [href])
 
-  const destination = authorizationOrigin(href)
+  const host = authorizationHost(href)
 
   return (
     <div className="flex w-full flex-col items-center text-center">
-      <p className="max-w-xl truncate font-mono text-sm text-ink" title={destination}>
-        {destination}
+      <p className="max-w-xl text-sm text-ink">
+        {name ? `Sign in to ${name} to continue.` : 'This MCP server needs you to sign in.'}
       </p>
       <p className="mt-3 flex items-center justify-center gap-2 text-sm text-mute">
         <Spinner />
         <span>
-          Redirecting
+          Sending you to <span className="text-ink" title={href}>{host}</span>
           {remaining > 0 ? (
             <>
               {' '}

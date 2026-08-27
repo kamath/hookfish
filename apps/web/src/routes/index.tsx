@@ -470,7 +470,14 @@ function Home() {
       </div>
       {pendingAuth ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
-          <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+          <AuthRedirect
+            href={pendingAuth.href}
+            name={
+              CATALOG.find((entry) => entry.id === pendingAuth.entryId)?.title ??
+              apis.find((api) => api.id === pendingAuth.sourceId)?.title
+            }
+            onCancel={cancelAuthorization}
+          />
         </div>
       ) : null}
     </main>
