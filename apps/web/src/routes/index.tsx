@@ -102,6 +102,8 @@ function Home() {
     },
   })
   const compactLauncher = showKeybindings && !openSource.isPending
+  const canStepDown = selected < apis.length - 1
+  const canStepUp = selected > 0
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -298,7 +300,11 @@ function Home() {
                 ) : (
                   <button
                     type="button"
-                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                    className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
+                      added
+                        ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
+                        : 'hover:bg-ink/10 focus-visible:bg-ink/10'
+                    }`}
                     disabled={openSource.isPending || dialogOpen}
                     onClick={() => launch(entry)}
                   >
@@ -318,9 +324,7 @@ function Home() {
                         </span>
                       ) : null}
                     </span>
-                    {added ? (
-                      <span className="shrink-0 font-mono text-[11px] text-faint">added</span>
-                    ) : null}
+                    {added ? <span className="sr-only">added</span> : null}
                     {hotkey}
                   </button>
                 )}
@@ -427,19 +431,34 @@ function Home() {
                   <KeyHints className="flex items-center gap-2 text-faint">
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="Enter" /> to open
+                      <Kbd hotkey="Enter" /> open
                     </span>
+                    <span>·</span>
                     <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="D" /> to remove
+                      <Kbd hotkey="D" /> remove
                     </span>
+                    {canStepDown ? (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Kbd hotkey="J" /> down
+                        </span>
+                      </>
+                    ) : null}
+                    {canStepUp ? (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Kbd hotkey="K" /> up
+                        </span>
+                      </>
+                    ) : null}
                   </KeyHints>
                 )}
               </div>
               <ul>
                 {apis.map((api, index) => {
                   const active = index === selected
-                  const navigationHint =
-                    index === selected - 1 ? 'K' : index === selected + 1 ? 'J' : undefined
                   return (
                     <li
                       key={api.id}
@@ -455,11 +474,6 @@ function Home() {
                         className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
                         onFocus={() => setSelected(index)}
                       >
-                        {showKeybindings && navigationHint ? (
-                          <span className="inline-flex w-4 shrink-0 justify-center">
-                            <Kbd hotkey={navigationHint} />
-                          </span>
-                        ) : null}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm text-ink">{api.title}</span>
                           <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -497,7 +511,14 @@ function Home() {
       </div>
       {pendingAuth ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">
-          <AuthRedirect href={pendingAuth.href} onCancel={cancelAuthorization} />
+          <AuthRedirect
+            href={pendingAuth.href}
+            name={
+              CATALOG.find((entry) => entry.id === pendingAuth.entryId)?.title ??
+              apis.find((api) => api.id === pendingAuth.sourceId)?.title
+            }
+            onCancel={cancelAuthorization}
+          />
         </div>
       ) : pendingRemove ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-paper">

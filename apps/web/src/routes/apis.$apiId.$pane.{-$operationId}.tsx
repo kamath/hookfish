@@ -16,6 +16,7 @@ import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus } from '../components/query-status'
 import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
+import { listApis } from '../lib/apis'
 import type {
   Executable,
   ExecutableGroup,
@@ -177,6 +178,7 @@ function ApiClientPage() {
         <main id="main" className="flex h-full items-center justify-center px-4">
           <AuthRedirect
             href={authorizationUrl}
+            name={listApis().find((api) => api.id === apiId)?.title}
             onCancel={() => {
               clearPendingMcpAuthorization()
               setAuthDismissed(true)
