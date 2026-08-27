@@ -82,7 +82,7 @@ function mergeAuth(
 }
 
 const stepButtonClass =
-  'inline-flex min-h-8 shrink-0 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex min-h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink outline-none disabled:cursor-not-allowed disabled:opacity-40'
 
 export function ExecutableClient({
   api,
@@ -364,7 +364,7 @@ export function ExecutableClient({
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
             {onPrevious || onNext ? (
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2 lg:hidden">
                 <button
                   type="button"
                   className={stepButtonClass}
@@ -389,7 +389,7 @@ export function ExecutableClient({
             {result ? (
               <button
                 type="button"
-                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
                 onClick={showResponse}
               >
                 View output
@@ -400,7 +400,7 @@ export function ExecutableClient({
               <button
                 type="button"
                 data-oc-nav="action"
-                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none md:flex-none"
+                className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-3 py-1 text-xs font-medium text-ink hover:bg-ink/15 outline-none md:flex-none"
                 aria-live="polite"
                 aria-label={copied ? (api.labels.exported ?? 'Copied') : api.labels.export}
                 onClick={() => {
@@ -416,7 +416,7 @@ export function ExecutableClient({
             <button
               type="button"
               data-oc-nav="action"
-              className={`${formPrimaryButtonClass} exec-solid flex-1 md:flex-none`}
+              className={`${formPrimaryButtonClass} exec-solid flex-1 whitespace-nowrap md:flex-none`}
               disabled={pending || authPending}
               onClick={() => submitForm('call-form')}
             >
