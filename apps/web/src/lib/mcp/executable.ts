@@ -1,4 +1,10 @@
-import type { ExecutionResult, JsonValue, McpBinding } from '../client-types'
+import type {
+  Executable,
+  ExecutionResult,
+  JsonValue,
+  McpBinding,
+} from '../client-types'
+import { executableSnippetName, withZodExport } from '../export-snippet'
 import type {
   ExecutableAdapter,
   InvocationContext,
@@ -140,17 +146,42 @@ async function executeMcp(
   )
 }
 
-function exportSnippet(invocation: unknown) {
-  const value = asInvocation(invocation)
+function buildMcpInvocation(context: InvocationContext): McpInvocation {
+  const binding = mcpBinding(context.executable.binding)
+  return {
+    transport: 'mcp',
+    sourceId: context.source.id,
+    endpoint: context.target,
+    binding,
+    params: invocationParams(binding, context.formData),
+  }
+}
+
+function exportSnippet(context: InvocationContext) {
+  const value = buildMcpInvocation(context)
+  const executable: Executable = context.executable
+  const input =
+    value.binding.kind === 'tool' || value.binding.kind === 'prompt'
+      ? asRecord(value.params).arguments
+      : value.binding.kind === 'resource-template'
+        ? { uri: asRecord(value.params).uri }
+        : {}
   const call =
     value.binding.method === 'tools/call'
-      ? `client.callTool(${JSON.stringify(value.params, null, 2)})`
+      ? `client.callTool({\n  name: ${JSON.stringify(value.binding.name)},\n  arguments: input,\n})`
       : value.binding.method === 'resources/read'
-        ? `client.readResource(${JSON.stringify(value.params, null, 2)})`
-        : `client.getPrompt(${JSON.stringify(value.params, null, 2)})`
-  return `import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
-
-const client = new Client(
+        ? value.binding.kind === 'resource-template'
+          ? `client.readResource({\n  uri: input.uri,\n})`
+          : `client.readResource(${JSON.stringify(value.params, null, 2)})`
+        : `client.getPrompt({\n  name: ${JSON.stringify(value.binding.name)},\n  arguments: input,\n})`
+  return withZodExport({
+    name: executableSnippetName(executable),
+    inputSchema: executable.inputSchema,
+    outputSchema: executable.outputSchema,
+    imports: [
+      "import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'",
+    ],
+    setup: `const client = new Client(
   { name: 'example-client', version: '1.0.0' },
   { versionNegotiation: { mode: 'auto' } },
 )
@@ -158,22 +189,18 @@ const transport = new StreamableHTTPClientTransport(
   new URL(${JSON.stringify(value.endpoint)}),
 )
 
-await client.connect(transport)
-const result = await ${call}
-console.log(result)`
+await client.connect(transport)`,
+    input,
+    result: (outputSchemaName) =>
+      outputSchemaName
+        ? `const response = await ${call}
+const result = ${outputSchemaName}.parse(response.structuredContent)`
+        : `const result = await ${call}`,
+  })
 }
 
 export const mcpExecutableAdapter: ExecutableAdapter = {
-  buildInvocation: ({ source, executable, target, formData }) => {
-    const binding = mcpBinding(executable.binding)
-    return {
-      transport: 'mcp',
-      sourceId: source.id,
-      endpoint: target,
-      binding,
-      params: invocationParams(binding, formData),
-    } satisfies McpInvocation
-  },
+  buildInvocation: buildMcpInvocation,
   execute: executeMcp,
   continue: (invocation, inputResponses, requestState) =>
     executeMcp(invocation, { inputResponses, requestState }),

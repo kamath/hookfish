@@ -206,19 +206,18 @@ export function ExecutableClient({
     }
     try {
       const data = asRecord(formDataRef.current)
-      const ok = await copyText(
-        adapter.exportSnippet(
-          adapter.buildInvocation({
-            source: api,
-            executable: operation,
-            target,
-            formData: withoutAuth(data),
-            credentials: withAuthPlaceholders(
-              mergeAuth(readApiAuth(api.id), fieldsFromForm(data.auth)),
-              Object.keys(asRecord(authSchema?.properties)),
-            ),
-          }),
+      const context = {
+        source: api,
+        executable: operation,
+        target,
+        formData: withoutAuth(data),
+        credentials: withAuthPlaceholders(
+          mergeAuth(readApiAuth(api.id), fieldsFromForm(data.auth)),
+          Object.keys(asRecord(authSchema?.properties)),
         ),
+      }
+      const ok = await copyText(
+        adapter.exportSnippet(context),
       )
       if (ok) {
         setCopied(true)

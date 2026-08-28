@@ -30,6 +30,7 @@
     "ajv": "^8.20.0",
     "hono": "^4.11.4",
     "jotai": "^2.20.3",
+    "json-schema-to-zod": "^2.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
