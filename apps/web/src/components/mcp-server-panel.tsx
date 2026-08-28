@@ -9,6 +9,31 @@ export function mcpTransportLabel(era: unknown, sessionId: unknown) {
   return `${protocol}/${session}`
 }
 
+export type McpChromeFact = {
+  text: string
+  title?: string
+}
+
+export function mcpChromeFacts(data: Record<string, unknown>): McpChromeFact[] {
+  const facts: McpChromeFact[] = [
+    {
+      text: `MCP ${typeof data.protocolVersion === 'string' ? data.protocolVersion : 'unknown'}`,
+    },
+    {
+      text: mcpTransportLabel(data.era, data.sessionId),
+      title: typeof data.sessionId === 'string' ? data.sessionId : undefined,
+    },
+  ]
+  if (data.oauthAuthorized === true) {
+    facts.push({ text: 'OAuth' })
+  }
+  const serverInfo = asRecord(data.serverInfo)
+  if (typeof serverInfo.version === 'string') {
+    facts.push({ text: `server ${serverInfo.version}` })
+  }
+  return facts
+}
+
 export function McpServerPanel({
   source,
   traceOpen,
@@ -42,7 +67,6 @@ function McpServerChrome({
   const data = asRecord(source.adapterData)
   const capabilities = Object.keys(asRecord(data.capabilities))
   const capabilitySet = new Set(capabilities)
-  const serverInfo = asRecord(data.serverInfo)
   const entries = useMcpTrace(source.id)
   const counts = source.executables.reduce(
     (current, executable) => {
@@ -63,24 +87,19 @@ function McpServerChrome({
     },
     { tools: 0, prompts: 0, resources: 0 },
   )
+  const facts = mcpChromeFacts(data)
+
   return (
     <section className="bg-ink/5 px-3 py-2 text-xs md:px-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-mono text-ink">
-          MCP {typeof data.protocolVersion === 'string' ? data.protocolVersion : 'unknown'}
+        <span className="text-mute">
+          {facts.map((fact, index) => (
+            <span key={`${fact.text}:${index}`}>
+              {index > 0 ? <span className="text-faint"> · </span> : null}
+              <span title={fact.title}>{fact.text}</span>
+            </span>
+          ))}
         </span>
-        <span
-          className="text-mute"
-          title={typeof data.sessionId === 'string' ? data.sessionId : undefined}
-        >
-          {mcpTransportLabel(data.era, data.sessionId)}
-        </span>
-        {data.oauthAuthorized === true ? (
-          <span className="bg-paper px-1.5 py-0.5 font-mono text-mute">OAuth</span>
-        ) : null}
-        {typeof serverInfo.version === 'string' ? (
-          <span className="text-faint">server {serverInfo.version}</span>
-        ) : null}
         {(['prompts', 'resources', 'tools'] as const).map((capability) => {
           const enabled = capabilitySet.has(capability)
           return (
