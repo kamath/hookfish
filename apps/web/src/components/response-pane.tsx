@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { ExecutableAnnotation, ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
@@ -496,19 +504,14 @@ export function ResponsePane({
             {inspection.annotations?.length ? (
               <section className="mb-5">
                 <h2 className="mb-2 font-mono text-xs text-faint">Annotations</h2>
-                <dl className="space-y-1">
+                <dl className="grid items-baseline gap-x-3 gap-y-1 sm:grid-cols-[max-content_1fr]">
                   {inspection.annotations.map((annotation) => (
-                    <div
-                      key={annotation.label}
-                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
-                    >
-                      <dt className="bg-ink/5 px-1.5 py-0.5 font-mono text-xs text-ink">
+                    <Fragment key={annotation.label}>
+                      <dt className="justify-self-start bg-ink/5 px-1.5 py-0.5 font-mono text-xs text-ink">
                         {annotation.label}
                       </dt>
-                      {annotation.detail ? (
-                        <dd className="min-w-0 flex-1 text-xs text-mute">{annotation.detail}</dd>
-                      ) : null}
-                    </div>
+                      <dd className="min-w-0 text-xs text-mute">{annotation.detail}</dd>
+                    </Fragment>
                   ))}
                 </dl>
                 <p className="mt-2 text-xs text-faint">

@@ -382,7 +382,7 @@ export function ExecutableClient({
             {onBack ? (
               <PaneBackButton label={backLabel ?? 'Back'} onClick={onBack} />
             ) : null}
-            <div className="flex min-w-0 items-baseline gap-3">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
               <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
                 {operation.badge}
               </span>
