@@ -5,9 +5,9 @@
   "scripts": {
     "build": "turbo run build",
     "cli": "pnpm build && pnpm --filter hookfish start",
-    "cli:gh": "node scripts/cli-gh.mjs",
+    "cli:gh": "pnpm --filter hookfish gh",
     "dev": "turbo run dev --filter=@hookfish/web",
-    "test": "turbo run test && node --test scripts/*.test.mjs",
+    "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

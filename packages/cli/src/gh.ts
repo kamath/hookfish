@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process'
+import { spawn, type SpawnOptions } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,23 +13,34 @@ export const USAGE =
   'Usage: pnpm cli:gh <branch> [-- <hookfish options>]\n' +
   `Clone ${REPO} at <branch>, build apps/web in node mode, and start the CLI.`
 
-export function parseCliGhArgs(argv) {
+export type ParsedCliGhArgs =
+  | { kind: 'help' }
+  | { kind: 'error'; error: string }
+  | { kind: 'run'; branch: string; forwarded: string[] }
+
+export type RunFn = (
+  command: string,
+  args: readonly string[],
+  options?: SpawnOptions,
+) => Promise<void>
+
+export function parseCliGhArgs(argv: string[]): ParsedCliGhArgs {
   const args = argv.filter((arg) => arg !== '--')
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-    return { help: true }
+    return { kind: 'help' }
   }
 
   const [branch, ...forwarded] = args
 
-  if (branch.startsWith('-')) {
-    return { error: 'a branch name is required before options' }
+  if (!branch || branch.startsWith('-')) {
+    return { kind: 'error', error: 'a branch name is required before options' }
   }
 
-  return { branch, forwarded }
+  return { kind: 'run', branch, forwarded }
 }
 
-export function cloneArgs(branch, directory) {
+export function cloneArgs(branch: string, directory: string): string[] {
   return [
     'clone',
     '--depth',
@@ -42,14 +53,14 @@ export function cloneArgs(branch, directory) {
   ]
 }
 
-function run(command, args, options = {}) {
-  return new Promise((resolve, reject) => {
+function run(command: string, args: readonly string[], options: SpawnOptions = {}) {
+  return new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: 'inherit',
       ...options,
     })
 
-    const forward = (signal) => {
+    const forward = (signal: NodeJS.Signals) => {
       if (!child.killed) {
         child.kill(signal)
       }
@@ -88,11 +99,20 @@ function run(command, args, options = {}) {
   })
 }
 
-export async function runBranch(branch, forwarded, options = {}) {
+export async function runBranch(
+  branch: string,
+  forwarded: string[],
+  options: {
+    run?: RunFn
+    createTempDir?: () => Promise<string>
+    removeDir?: (directory: string) => Promise<void>
+  } = {},
+) {
   const runCommand = options.run ?? run
   const createTempDir =
     options.createTempDir ?? (() => mkdtemp(join(tmpdir(), 'hookfish-cli-gh-')))
-  const removeDir = options.removeDir ?? ((dir) => rm(dir, { recursive: true, force: true }))
+  const removeDir =
+    options.removeDir ?? ((directory) => rm(directory, { recursive: true, force: true }))
 
   const directory = await createTempDir()
 
@@ -118,12 +138,12 @@ export async function runBranch(branch, forwarded, options = {}) {
 export async function main(argv = process.argv.slice(2)) {
   const parsed = parseCliGhArgs(argv)
 
-  if (parsed.help) {
+  if (parsed.kind === 'help') {
     console.log(USAGE)
     return 0
   }
 
-  if (parsed.error) {
+  if (parsed.kind === 'error') {
     console.error(parsed.error)
     console.error(USAGE)
     return 1

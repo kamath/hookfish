@@ -6,24 +6,26 @@ import {
   cloneArgs,
   parseCliGhArgs,
   runBranch,
-} from './cli-gh.mjs'
+} from '../dist/gh.js'
 
 test('prints usage for help flags and missing args', () => {
-  assert.deepEqual(parseCliGhArgs([]), { help: true })
-  assert.deepEqual(parseCliGhArgs(['--help']), { help: true })
-  assert.deepEqual(parseCliGhArgs(['-h']), { help: true })
+  assert.deepEqual(parseCliGhArgs([]), { kind: 'help' })
+  assert.deepEqual(parseCliGhArgs(['--help']), { kind: 'help' })
+  assert.deepEqual(parseCliGhArgs(['-h']), { kind: 'help' })
   assert.match(USAGE, /pnpm cli:gh <branch>/)
   assert.match(USAGE, /node mode/)
 })
 
 test('requires a branch name before options', () => {
   assert.deepEqual(parseCliGhArgs(['--port', '4000']), {
+    kind: 'error',
     error: 'a branch name is required before options',
   })
 })
 
 test('parses a branch and forwards remaining CLI options', () => {
   assert.deepEqual(parseCliGhArgs(['cursor/demo', '--', '--port', '4000']), {
+    kind: 'run',
     branch: 'cursor/demo',
     forwarded: ['--port', '4000'],
   })
