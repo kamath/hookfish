@@ -115,8 +115,43 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
   return undefined
 }
 
+function syncNearestFormMode(from: EventTarget | null) {
+  if (!(from instanceof HTMLElement)) {
+    return
+  }
+  const root = from.closest<HTMLElement>('[data-oc-mode]')
+  if (root && root !== document.documentElement) {
+    root.dataset.ocMode = getMode() === 'edit' ? 'insert' : 'command'
+  }
+}
+
 export function bindModeFromFocus() {
+  let restoreFrame = 0
+
+  const cancelRestore = () => {
+    if (!restoreFrame) {
+      return
+    }
+    cancelAnimationFrame(restoreFrame)
+    restoreFrame = 0
+  }
+
+  // Wait a frame so a programmatic blur-then-focus (insertCurrentInput) can
+  // land first. focusin cancels this; a blur that goes nowhere restores command.
+  const restoreCommandIfIdle = (from: EventTarget | null) => {
+    cancelRestore()
+    restoreFrame = requestAnimationFrame(() => {
+      restoreFrame = 0
+      if (isEditing()) {
+        return
+      }
+      enterCommand()
+      syncNearestFormMode(from)
+    })
+  }
+
   const onFocusIn = (event: FocusEvent) => {
+    cancelRestore()
     const target = event.target
     const commandFocus =
       target instanceof HTMLElement &&
@@ -137,6 +172,16 @@ export function bindModeFromFocus() {
     }
     enterEdit()
   }
+
+  const onFocusOut = (event: FocusEvent) => {
+    restoreCommandIfIdle(event.target)
+  }
+
   document.addEventListener('focusin', onFocusIn)
-  return () => document.removeEventListener('focusin', onFocusIn)
+  document.addEventListener('focusout', onFocusOut)
+  return () => {
+    cancelRestore()
+    document.removeEventListener('focusin', onFocusIn)
+    document.removeEventListener('focusout', onFocusOut)
+  }
 }
