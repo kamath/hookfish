@@ -11,9 +11,8 @@ import {
 } from 'react'
 import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
-import { BackCaret, PaneBackButton } from '../components/pane-back-button'
+import { PaneBackButton } from '../components/pane-back-button'
 import { McpServerPanel } from '../components/mcp-server-panel'
-import { Brand } from '../components/brand'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
@@ -38,6 +37,7 @@ import {
   useStepKeys,
 } from '../lib/keys'
 import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '../lib/mode'
+import { useSourceToolbar } from '../lib/toolbar'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
 import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
@@ -711,96 +711,60 @@ function ApiWorkbench({
   const parentTitle = previousPaneTitle(activePane, api.labels)
   const backLabel = routePane === 'trace' ? 'Close traces' : parentTitle
 
+  useSourceToolbar({
+    title: api.title,
+    onClearAuth,
+    authPending,
+    backLabel,
+    onBack: stepBack,
+  })
+
   return (
     <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
-      <div className="oc-bar shrink-0">
-        <div className="flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
-          <Brand compact />
-          <span className="min-w-0 truncate text-sm text-ink">{api.title}</span>
-          {manyServers ? (
-            <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Previous ${api.labels.target}`}
-                onClick={() => cycleServer(-1)}
-              >
-                <Kbd hotkey="[" fallback="‹" />
-              </button>
-              <label htmlFor="server-url" className="sr-only">
-                {api.labels.target}
-              </label>
-              <input
-                id="server-url"
-                name="server-url"
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                className={`${inputClass} min-w-0 flex-1`}
-                value={serverUrl}
-                onFocus={() => {
-                  enterEdit()
-                }}
-                onChange={(event) => setServerUrl(event.target.value)}
-              />
-              <button
-                type="button"
-                className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
-                aria-label={`Next ${api.labels.target}`}
-                onClick={() => cycleServer(1)}
-              >
-                <Kbd hotkey="]" fallback="›" />
-              </button>
-            </div>
-          ) : null}
-          <div className="flex w-full items-center justify-center gap-1 md:ml-auto md:w-auto md:justify-end md:gap-3">
+      {manyServers ? (
+        <div className="oc-bar flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
+          <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
             <button
               type="button"
-              className="oc-chrome-back oc-bar-action inline-flex min-w-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink"
-              aria-label={backLabel}
-              onClick={stepBack}
+              className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+              aria-label={`Previous ${api.labels.target}`}
+              onClick={() => cycleServer(-1)}
             >
-              {routePane === 'trace' ? (
-                <>
-                  <span className="oc-bar-action-icon" aria-hidden="true">
-                    <BackCaret />
-                  </span>
-                  <span className="min-w-0 truncate leading-4">Close traces</span>
-                </>
-              ) : (
-                <>
-                  <BackCaret />
-                  <span className="leading-4">{parentTitle}</span>
-                </>
-              )}
-              <Kbd hotkey="Escape" />
+              <Kbd hotkey="[" fallback="‹" />
             </button>
-            {onClearAuth ? (
-              <button
-                type="button"
-                className="oc-bar-action inline-flex items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
-                aria-label="Clear credentials"
-                disabled={authPending}
-                onClick={() => {
-                  void onClearAuth()
-                }}
-              >
-                <span className="oc-bar-action-label">Clear credentials</span>
-                <span className="oc-bar-action-icon" aria-hidden="true">
-                  <TrashIcon />
-                </span>
-                <Kbd hotkey="Mod+Backspace" />
-              </button>
-            ) : null}
+            <label htmlFor="server-url" className="sr-only">
+              {api.labels.target}
+            </label>
+            <input
+              id="server-url"
+              name="server-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              className={`${inputClass} min-w-0 flex-1`}
+              value={serverUrl}
+              onFocus={() => {
+                enterEdit()
+              }}
+              onChange={(event) => setServerUrl(event.target.value)}
+            />
+            <button
+              type="button"
+              className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+              aria-label={`Next ${api.labels.target}`}
+              onClick={() => cycleServer(1)}
+            >
+              <Kbd hotkey="]" fallback="›" />
+            </button>
           </div>
         </div>
-        <McpServerPanel
-          source={api}
-          traceOpen={routePane === 'trace' || activePane === 'trace'}
-          onToggleTrace={openTrace}
-        />
-      </div>
+      ) : null}
+      <McpServerPanel
+        source={api}
+        traceOpen={routePane === 'trace' || activePane === 'trace'}
+        onToggleTrace={openTrace}
+      />
 
       {routePane === 'trace' || activePane === 'trace' ? (
         <ProtocolTrace sourceId={api.id} onClose={stepBack} />
@@ -956,25 +920,5 @@ function ApiWorkbench({
         </div>
       )}
     </main>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 7h16" />
-      <path d="M9 7V5h6v2" />
-      <path d="M6 7l1 14h10l1-14" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
   )
 }

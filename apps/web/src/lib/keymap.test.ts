@@ -152,6 +152,14 @@ assert.equal(
 )
 assert.equal(isEscapeLike(keyEvent('Enter')), false, 'Enter is not escape-like')
 
+for (const pane of ['routes', 'input', 'trace'] as const) {
+  const clearAuth = paneConfig[pane].bindings.find((binding) => binding.id === 'clearAuth')
+  assert.ok(clearAuth, `${pane} has clearAuth`)
+  assert.equal(clearAuth.hotkey, 'Mod+Backspace', `${pane} clearAuth is Mod+Backspace`)
+  assert.equal(clearAuth.flag, 'canClear', `${pane} clearAuth requires stored auth`)
+  assert.deepEqual(clearAuth.modes, ['command', 'edit'], `${pane} clearAuth works in both modes`)
+}
+
 console.log('keymap step and tab bindings ok')
 
 const labels = { sourcePlural: 'OpenAPI documents', executablePlural: 'Endpoints' }
