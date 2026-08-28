@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ExecutionResult } from '../lib/client-types'
+import type { ExecutableAnnotation, ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import type { Pane } from '../lib/mode'
@@ -170,6 +170,7 @@ export function ResponsePane({
   inspection?: {
     summary?: string
     description?: string
+    annotations?: ExecutableAnnotation[]
     hasOutputSchema: boolean
   }
 }) {
@@ -492,6 +493,29 @@ export function ResponsePane({
                 </button>
               ) : null}
             </section>
+            {inspection.annotations?.length ? (
+              <section className="mb-5">
+                <h2 className="mb-2 font-mono text-xs text-faint">Annotations</h2>
+                <dl className="space-y-1">
+                  {inspection.annotations.map((annotation) => (
+                    <div
+                      key={annotation.label}
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                    >
+                      <dt className="bg-ink/5 px-1.5 py-0.5 font-mono text-xs text-ink">
+                        {annotation.label}
+                      </dt>
+                      {annotation.detail ? (
+                        <dd className="min-w-0 flex-1 text-xs text-mute">{annotation.detail}</dd>
+                      ) : null}
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-2 text-xs text-faint">
+                  Annotations are unverified hints from the server.
+                </p>
+              </section>
+            ) : null}
             <h2 className="mb-2 font-mono text-xs text-faint">Output schema</h2>
           </>
         ) : null}

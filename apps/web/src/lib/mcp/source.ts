@@ -1,11 +1,14 @@
 import type {
+  Annotations,
   Prompt,
   Resource,
   ResourceTemplateType,
   Tool,
+  ToolAnnotations,
 } from '@modelcontextprotocol/client'
 import type {
   Executable,
+  ExecutableAnnotation,
   ExecutableSource,
   FormUiSchema,
   JsonSchema,
@@ -31,6 +34,73 @@ const FORM_UI: FormUiSchema = {
   'ui:options': { autocomplete: 'off' },
 }
 
+// Every annotation is a hint: servers are not held to them, so both sides of a
+// boolean hint are worth showing when a server bothers to state one.
+export function toolAnnotations(annotations?: ToolAnnotations): ExecutableAnnotation[] {
+  const shown: ExecutableAnnotation[] = []
+  const hint = (
+    value: boolean | undefined,
+    whenTrue: ExecutableAnnotation,
+    whenFalse: ExecutableAnnotation,
+  ) => {
+    if (value === true) {
+      shown.push(whenTrue)
+    } else if (value === false) {
+      shown.push(whenFalse)
+    }
+  }
+  hint(
+    annotations?.readOnlyHint,
+    { label: 'read-only', detail: 'Does not modify its environment.' },
+    { label: 'writes', detail: 'May modify its environment.' },
+  )
+  hint(
+    annotations?.destructiveHint,
+    { label: 'destructive', detail: 'May perform destructive updates.' },
+    { label: 'additive', detail: 'Performs only additive updates.' },
+  )
+  hint(
+    annotations?.idempotentHint,
+    {
+      label: 'idempotent',
+      detail: 'Repeat calls with the same arguments have no additional effect.',
+    },
+    {
+      label: 'not idempotent',
+      detail: 'Repeat calls with the same arguments have additional effects.',
+    },
+  )
+  hint(
+    annotations?.openWorldHint,
+    { label: 'open world', detail: 'Interacts with external entities.' },
+    { label: 'closed world', detail: 'Interacts with a closed set of entities.' },
+  )
+  return shown
+}
+
+export function contentAnnotations(annotations?: Annotations): ExecutableAnnotation[] {
+  const shown: ExecutableAnnotation[] = []
+  if (annotations?.audience?.length) {
+    shown.push({
+      label: `audience ${annotations.audience.join(', ')}`,
+      detail: 'Intended for these participants.',
+    })
+  }
+  if (typeof annotations?.priority === 'number') {
+    shown.push({
+      label: `priority ${annotations.priority}`,
+      detail: 'How important this is, from 0 (least) to 1 (most).',
+    })
+  }
+  if (annotations?.lastModified) {
+    shown.push({
+      label: `modified ${annotations.lastModified}`,
+      detail: 'Last modification time reported by the server.',
+    })
+  }
+  return shown
+}
+
 function executable(
   binding: McpBinding,
   inputSchema: JsonSchema,
@@ -38,6 +108,7 @@ function executable(
     title?: string
     description?: string
     outputSchema?: JsonSchema
+    annotations?: ExecutableAnnotation[]
   },
 ): Executable {
   const labels = {
@@ -70,6 +141,7 @@ function executable(
     inputSchema,
     inputUiSchema: FORM_UI,
     outputSchema: value.outputSchema,
+    annotations: value.annotations?.length ? value.annotations : undefined,
   }
 }
 
@@ -83,9 +155,11 @@ function toolExecutable(tool: Tool) {
     },
     tool.inputSchema as JsonSchema,
     {
-      title: tool.title,
+      // The spec's display precedence for tools is title, then annotations.title, then name.
+      title: tool.title ?? tool.annotations?.title,
       description: tool.description,
       outputSchema: tool.outputSchema as JsonSchema | undefined,
+      annotations: toolAnnotations(tool.annotations),
     },
   )
 }
@@ -103,7 +177,11 @@ function resourceExecutable(resource: Resource) {
       properties: {},
       additionalProperties: false,
     },
-    resource,
+    {
+      title: resource.title,
+      description: resource.description,
+      annotations: contentAnnotations(resource.annotations),
+    },
   )
 }
 
@@ -128,7 +206,11 @@ function templateExecutable(template: ResourceTemplateType) {
       required: ['uri'],
       additionalProperties: false,
     },
-    template,
+    {
+      title: template.title,
+      description: template.description,
+      annotations: contentAnnotations(template.annotations),
+    },
   )
 }
 
@@ -158,7 +240,10 @@ function promptExecutable(prompt: Prompt) {
         .map((argument) => argument.name),
       additionalProperties: false,
     },
-    prompt,
+    {
+      title: prompt.title,
+      description: prompt.description,
+    },
   )
 }
 
