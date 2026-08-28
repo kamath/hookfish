@@ -8,7 +8,7 @@ import type {
 } from './client-types'
 import { asRecord, buildRequestUrl, omitEmpty } from './build-request'
 import { getCloudProxy } from './cloud'
-import { toFetch } from './export-snippet'
+import { toHttpExportSnippet } from './export-snippet'
 import { buildOperationRequest, httpBindingFor, type ExecuteRequest } from './invoke'
 import { mcpExecutableAdapter } from './mcp/executable'
 import { localUpstreamFetch } from './upstream'
@@ -30,7 +30,11 @@ export type ExecutableAdapter = {
     requestState?: string,
   ) => Promise<ExecutionResult>
   preview: (context: Omit<InvocationContext, 'credentials'>) => string
-  exportSnippet?: (invocation: unknown) => string
+  exportSnippet?: (
+    invocation: unknown,
+    executable: Executable,
+    formData?: unknown,
+  ) => string
 }
 
 const adapters = new Map<string, ExecutableAdapter>()
@@ -94,7 +98,8 @@ registerExecutableAdapter('openapi', {
       return `${target}${binding.path}`
     }
   },
-  exportSnippet: (invocation) => toFetch(asHttpInvocation(invocation)),
+  exportSnippet: (invocation, executable, formData) =>
+    toHttpExportSnippet(asHttpInvocation(invocation), executable, formData),
 })
 
 registerExecutableAdapter('mcp', mcpExecutableAdapter)

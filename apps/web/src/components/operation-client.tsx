@@ -218,6 +218,8 @@ export function ExecutableClient({
               Object.keys(asRecord(authSchema?.properties)),
             ),
           }),
+          operation,
+          withoutAuth(data),
         ),
       )
       if (ok) {

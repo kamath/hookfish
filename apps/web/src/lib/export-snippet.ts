@@ -1,8 +1,11 @@
+import { jsonSchemaToZod } from 'json-schema-to-zod'
+import type { Executable, JsonSchema } from './client-types'
 import type { ExecuteRequest } from './invoke'
 
 function headerList(request: ExecuteRequest): Array<[string, string]> {
   return Object.entries(request.headers ?? {}).filter(
-    ([name]) => name.toLowerCase() !== 'content-length',
+    (entry): entry is [string, string] =>
+      typeof entry[1] === 'string' && entry[0].toLowerCase() !== 'content-length',
   )
 }
 
@@ -84,4 +87,147 @@ export function toFetch(request: ExecuteRequest): string {
   }
 
   return `fetch(${JSON.stringify(request.url)}, {\n${options.join('\n')}\n})`
+}
+
+export function snippetBaseName(value: string): string {
+  const words = value.match(/[A-Za-z0-9]+/g) ?? []
+  if (words.length === 0) {
+    return 'operation'
+  }
+  const camel = words
+    .map((word, index) =>
+      index === 0
+        ? word[0]!.toLowerCase() + word.slice(1)
+        : word[0]!.toUpperCase() + word.slice(1),
+    )
+    .join('')
+  return /^[A-Za-z_$]/.test(camel) ? camel : `operation${camel}`
+}
+
+export function executableSnippetName(executable: Executable): string {
+  const raw =
+    executable.binding.type === 'mcp' ? executable.name : executable.id
+  return snippetBaseName(raw)
+}
+
+function asSchemaRecord(schema: unknown): Record<string, unknown> {
+  return schema && typeof schema === 'object' && !Array.isArray(schema)
+    ? { ...(schema as Record<string, unknown>) }
+    : { type: 'object', additionalProperties: true }
+}
+
+function lookupDef(
+  defs: Record<string, unknown>,
+  ref: string,
+): unknown {
+  const match = ref.match(/^#\/(?:\$defs|definitions)\/(.+)$/)
+  if (!match) {
+    return undefined
+  }
+  return defs[match[1]!]
+}
+
+function inlineJsonSchema(schema: JsonSchema): Record<string, unknown> {
+  const root = asSchemaRecord(schema)
+  const defs = asSchemaRecord(root.$defs ?? root.definitions)
+
+  const walk = (node: unknown, stack: string[]): unknown => {
+    if (Array.isArray(node)) {
+      return node.map((item) => walk(item, stack))
+    }
+    if (!node || typeof node !== 'object') {
+      return node
+    }
+    const record = node as Record<string, unknown>
+    if (typeof record.$ref === 'string') {
+      const ref = record.$ref
+      const target = lookupDef(defs, ref)
+      if (target !== undefined && !stack.includes(ref)) {
+        const { $ref: _ref, ...rest } = record
+        const resolved = walk(target, [...stack, ref])
+        return Object.keys(rest).length
+          ? {
+              ...(typeof resolved === 'object' && resolved && !Array.isArray(resolved)
+                ? resolved
+                : {}),
+              ...Object.fromEntries(
+                Object.entries(rest).map(([key, value]) => [key, walk(value, stack)]),
+              ),
+            }
+          : resolved
+      }
+    }
+    return Object.fromEntries(
+      Object.entries(record)
+        .filter(([key]) => key !== '$defs' && key !== 'definitions')
+        .map(([key, value]) => [key, walk(value, stack)]),
+    )
+  }
+
+  return asSchemaRecord(walk(root, []))
+}
+
+function zodSchemaConst(name: string, schema: JsonSchema): string {
+  try {
+    return jsonSchemaToZod(inlineJsonSchema(schema), {
+      name,
+      module: 'none',
+      zodVersion: 4,
+    })
+  } catch {
+    return `const ${name} = z.unknown()`
+  }
+}
+
+function prettyJson(value: unknown): string {
+  return JSON.stringify(value ?? {}, null, 2)
+}
+
+export function withZodExport(options: {
+  name: string
+  inputSchema: JsonSchema
+  outputSchema?: JsonSchema
+  imports?: string[]
+  setup?: string
+  input?: unknown
+  expression: string
+}): string {
+  const base = snippetBaseName(options.name)
+  const inputName = `${base}InputSchema`
+  const outputName = `${base}OutputSchema`
+  const outputConst = options.outputSchema
+    ? zodSchemaConst(outputName, options.outputSchema)
+    : undefined
+
+  const blocks = [
+    ['import { z } from "zod"', ...(options.imports ?? [])].join('\n'),
+    zodSchemaConst(inputName, options.inputSchema),
+    outputConst,
+    options.setup,
+    [
+      `const input = ${inputName}.parse(${prettyJson(options.input)})`,
+      outputConst
+        ? `const result = ${outputName}.parse(await ${options.expression})`
+        : `const result = await ${options.expression}`,
+    ].join('\n'),
+  ].filter((block): block is string => Boolean(block))
+
+  return blocks.join('\n\n')
+}
+
+export function toHttpExportSnippet(
+  request: ExecuteRequest,
+  executable: Executable,
+  formData?: unknown,
+): string {
+  const fetchCall = toFetch(request)
+  return withZodExport({
+    name: executableSnippetName(executable),
+    inputSchema: executable.inputSchema,
+    outputSchema: executable.outputSchema,
+    input: formData,
+    expression: executable.outputSchema
+      ? `(await ${fetchCall}).json()`
+      : fetchCall,
+  })
 }
