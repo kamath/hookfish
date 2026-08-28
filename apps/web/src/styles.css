@@ -24,7 +24,6 @@
   --exec-color: var(--signal);
   /* Its own hue: switching views is not one of the route's actions. */
   --view: light-dark(#6d3bd1, #b79bff);
-  --on-view: light-dark(#f7f6f3, #141311);
   /* Opaque, so a sticky bar stays readable over content scrolling beneath it. */
   --bar: color-mix(in srgb, var(--ink) 5%, var(--paper));
   color-scheme: light dark;
@@ -324,13 +323,13 @@ button[type='submit'][data-oc-current='true'] {
 }
 
 .oc-view-toggle {
-  color: var(--on-view);
-  background-color: var(--view);
+  color: var(--view);
+  background-color: color-mix(in srgb, var(--view) 14%, var(--paper));
 }
 
 .oc-view-toggle:hover,
 .oc-view-toggle:focus-visible {
-  background-color: color-mix(in srgb, var(--view) 82%, var(--ink));
+  background-color: color-mix(in srgb, var(--view) 22%, var(--paper));
 }
 
 .exec-solid {
