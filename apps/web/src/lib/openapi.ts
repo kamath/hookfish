@@ -512,6 +512,37 @@ function operationToForm(
   }
 }
 
+function operationOutputSchema(operation: Json, root: unknown): JsonSchema | undefined {
+  if (!isObject(operation.responses)) {
+    return undefined
+  }
+
+  const properties = Object.fromEntries(
+    Object.entries(operation.responses).flatMap(([status, raw]) => {
+      const response = deref(raw, root)
+      if (!isObject(response)) {
+        return []
+      }
+      const content = isObject(response.content) ? response.content : {}
+      const media =
+        (isObject(content['application/json']) && content['application/json']) ||
+        Object.values(content).find(isObject)
+      const rawSchema = isObject(media) ? media.schema : response.schema
+      const description =
+        typeof response.description === 'string' ? response.description : undefined
+      if (!rawSchema && !description) {
+        return []
+      }
+      const schema = rawSchema ? oasToJsonSchema(deref(rawSchema, root)) : {}
+      return [[status, description ? { ...schema, description } : schema]]
+    }),
+  )
+
+  return Object.keys(properties).length
+    ? { type: 'object', title: 'Responses', properties }
+    : undefined
+}
+
 function serversFromSpec(root: Json, specUrl: string): string[] {
   if (Array.isArray(root.servers)) {
     const urls = root.servers
@@ -624,6 +655,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
         },
         inputSchema: form.schema,
         inputUiSchema: form.uiSchema,
+        outputSchema: operationOutputSchema(operation, spec),
       })
     }
   }

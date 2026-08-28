@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { atom, useAtom } from 'jotai'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import type { IChangeEvent } from '@rjsf/core'
@@ -16,9 +17,9 @@ import { executableAdapterFor } from '../lib/executable-adapters'
 import { withAuthPlaceholders } from '../lib/export-snippet'
 import { bindFormTabSync, selectDefaultFormItem, selectMatchingFormItem } from '../lib/form-nav'
 import { validatorForSchema } from '../lib/form-validator'
-import { submitForm } from '../lib/focus'
+import { blurActive, submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
-import { activate, usePane } from '../lib/mode'
+import { activate, enterCommand, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
@@ -28,6 +29,7 @@ import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
 const AUTH_NOTICE = 'This execution requires credentials.'
+const inspectRouteAtom = atom(false)
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
@@ -129,6 +131,7 @@ export function ExecutableClient({
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const pane = usePane()
+  const [inspecting, setInspecting] = useAtom(inspectRouteAtom)
   const navigate = useNavigate()
   const adapter = executableAdapterFor(api)
   const invoke = useMutation({
@@ -161,11 +164,18 @@ export function ExecutableClient({
   useEffect(() => {
     setAskingAuth(false)
     setCopied(false)
+    if (inspecting) {
+      return
+    }
     const timer = window.setTimeout(() => selectDefaultFormItem('call-form'), 0)
     return () => window.clearTimeout(timer)
-  }, [operation.id])
+  }, [inspecting, operation.id])
 
-  useEffect(() => bindFormTabSync('call-form'), [operation.id])
+  useEffect(() => {
+    if (!inspecting) {
+      return bindFormTabSync('call-form')
+    }
+  }, [inspecting, operation.id])
 
   useEffect(() => {
     if (!showAuth) {
@@ -218,24 +228,32 @@ export function ExecutableClient({
     }
   }
 
+  function toggleInspect() {
+    blurActive()
+    enterCommand()
+    setInspecting((current) => !current)
+  }
+
   usePaneFlags('input', {
     hasResult: Boolean(result),
-    hasExport: Boolean(adapter.exportSnippet && api.labels.export),
+    hasExport: !inspecting && Boolean(adapter.exportSnippet && api.labels.export),
   })
   usePaneActions('input', {
     send: {
       callback: () => {
-        if (pending || authPending) {
+        if (inspecting || pending || authPending) {
           return
         }
         submitForm('call-form')
       },
+      enabled: !inspecting,
       ignoreInputs: false,
     },
     output: () => showResponse(),
     export: () => {
       void copyExport()
     },
+    inspect: toggleInspect,
   })
   usePaneActions('response', {
     parent: () => showInput(false),
@@ -359,7 +377,7 @@ export function ExecutableClient({
       style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
-        <div className="oc-bar sticky top-0 z-10 flex flex-col gap-2 overflow-hidden px-3 py-2 md:flex-row md:items-center md:gap-3 md:px-4">
+        <div className="oc-bar sticky top-0 z-10 flex shrink-0 flex-col gap-2 overflow-hidden px-3 py-2 md:flex-row md:items-center md:gap-3 md:px-4">
           <div className="flex min-w-0 items-center gap-3">
             {onBack ? (
               <PaneBackButton label={backLabel ?? 'Back'} onClick={onBack} />
@@ -405,7 +423,22 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
-            {adapter.exportSnippet && api.labels.export ? (
+            <button
+              type="button"
+              aria-pressed={inspecting}
+              className={`inline-flex min-h-8 flex-1 items-center justify-center gap-2 px-3 py-1 text-xs font-medium outline-none md:flex-none ${
+                inspecting
+                  ? 'exec-solid'
+                  : 'bg-ink/10 text-ink hover:bg-ink/15'
+              }`}
+              onClick={toggleInspect}
+            >
+              {inspecting ? 'Call' : 'Inspect'}
+              <KeyHints>
+                <Kbd hotkey="V" />
+              </KeyHints>
+            </button>
+            {inspecting ? null : adapter.exportSnippet && api.labels.export ? (
               <button
                 type="button"
                 data-oc-nav="action"
@@ -422,6 +455,7 @@ export function ExecutableClient({
                 </KeyHints>
               </button>
             ) : null}
+            {inspecting ? null : (
             <button
               type="button"
               data-oc-nav="action"
@@ -443,9 +477,26 @@ export function ExecutableClient({
                 </>
               )}
             </button>
+            )}
           </div>
         </div>
 
+        {inspecting ? (
+          <ResponsePane
+            result={{
+              body: operation.outputSchema ? JSON.stringify(operation.outputSchema) : '',
+              elapsedMs: 0,
+            }}
+            pending={false}
+            error={null}
+            pane="input"
+            inspection={{
+              summary: operation.summary,
+              description: operation.description,
+              hasOutputSchema: Boolean(operation.outputSchema),
+            }}
+          />
+        ) : (
         <div className="px-3 py-3 md:px-4">
           <SwissForm
             id="call-form"
@@ -488,6 +539,7 @@ export function ExecutableClient({
             </div>
           </SwissForm>
         </div>
+        )}
       </section>
     </div>
   )

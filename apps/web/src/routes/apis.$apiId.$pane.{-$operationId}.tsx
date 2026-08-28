@@ -377,7 +377,10 @@ function ApiWorkbench({
     const rowRect = row.getBoundingClientRect()
     const listRect = list.getBoundingClientRect()
     if (rowRect.top < listRect.top) {
-      list.scrollTop -= listRect.top - rowRect.top
+      const group = row.closest<HTMLElement>('[data-operation-group]')
+      const firstInGroup = group?.querySelector('[id^="op-"]') === row
+      const top = firstInGroup ? group.getBoundingClientRect().top : rowRect.top
+      list.scrollTop -= listRect.top - top
     } else if (rowRect.bottom > listRect.bottom) {
       list.scrollTop += rowRect.bottom - listRect.bottom
     }
@@ -880,7 +883,11 @@ function ApiWorkbench({
                 const title = oneLine(group.name)
                 const groupDescription = oneLine(group.description)
                 return (
-                  <section key={group.name ?? 'untagged'} className="pb-2">
+                  <section
+                    key={group.name ?? 'untagged'}
+                    data-operation-group
+                    className="pb-2"
+                  >
                     {title ? (
                       <header className="px-3 pb-1 pt-3">
                         <p className="truncate text-[11px] leading-4 text-mute">{title}</p>

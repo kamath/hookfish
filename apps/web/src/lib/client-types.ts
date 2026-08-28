@@ -54,6 +54,7 @@ export type Executable = {
   binding: ExecutableBinding
   inputSchema: JsonSchema
   inputUiSchema: FormUiSchema
+  outputSchema?: JsonSchema
 }
 
 export type ExecutableGroup = {

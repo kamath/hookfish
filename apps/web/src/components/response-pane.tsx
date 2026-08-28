@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
+import type { Pane } from '../lib/mode'
 import { paneBarButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
 
@@ -154,15 +155,23 @@ export function ResponsePane({
   executeLabel,
   executingLabel,
   onContinue,
+  pane = 'response',
+  inspection,
 }: {
   result: ExecutionResult
   pending: boolean
   error: string | null
-  onBack: () => void
-  onResend: () => void
-  executeLabel: string
-  executingLabel: string
+  onBack?: () => void
+  onResend?: () => void
+  executeLabel?: string
+  executingLabel?: string
   onContinue?: (inputResponses: Record<string, unknown>) => void
+  pane?: Pane
+  inspection?: {
+    summary?: string
+    description?: string
+    hasOutputSchema: boolean
+  }
 }) {
   const body = useMemo(() => parseBody(result.body), [result.body])
   const [detailsVisible, setDetailsVisible] = useState(false)
@@ -183,8 +192,11 @@ export function ResponsePane({
   const [copiedId, setCopiedId] = useState<string>()
   const [wrapped, setWrapped] = useState<Set<string>>(new Set())
   const [clipped, setClipped] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [descriptionClipped, setDescriptionClipped] = useState(false)
   const treeRef = useRef<HTMLDivElement>(null)
   const selectedTextRef = useRef<HTMLSpanElement>(null)
+  const descriptionRef = useRef<HTMLParagraphElement>(null)
   const rows = useMemo(
     () =>
       body.root
@@ -226,6 +238,16 @@ export function ResponsePane({
 
   useLayoutEffect(measureSelected)
 
+  const measureDescription = useCallback(() => {
+    const description = descriptionRef.current
+    if (!description || descriptionExpanded) {
+      return
+    }
+    setDescriptionClipped(description.scrollHeight > description.clientHeight + 1)
+  }, [descriptionExpanded])
+
+  useLayoutEffect(measureDescription, [inspection?.description, measureDescription])
+
   useEffect(() => {
     const tree = treeRef.current
     if (!tree || typeof ResizeObserver === 'undefined') {
@@ -235,6 +257,21 @@ export function ResponsePane({
     observer.observe(tree)
     return () => observer.disconnect()
   }, [measureSelected])
+
+  useEffect(() => {
+    const description = descriptionRef.current
+    if (!description || typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(measureDescription)
+    observer.observe(description)
+    return () => observer.disconnect()
+  }, [measureDescription])
+
+  useEffect(() => {
+    setDescriptionExpanded(false)
+    setDescriptionClipped(false)
+  }, [inspection?.description])
 
   useEffect(() => {
     if (!copiedId) {
@@ -344,13 +381,15 @@ export function ResponsePane({
   const activeRow = rows[selected]
   const firstActiveChildId = activeRow?.children?.[0]?.id
   const canToggleChildren = Boolean(activeRow?.collection)
-  usePaneFlags('response', {
+  const canToggleDescription = descriptionClipped || descriptionExpanded
+  usePaneFlags(pane, {
     canToggleChildren,
+    hasDescription: canToggleDescription,
     hasDetails: Boolean(result.details?.items.length),
     hasJson: Boolean(body.root),
   })
-  useStepKeys('response', move)
-  usePaneActions('response', {
+  useStepKeys(pane, move)
+  usePaneActions(pane, {
     expand: (event) => {
       event.preventDefault()
       toggleSelected()
@@ -362,15 +401,21 @@ export function ResponsePane({
     resend: (event) => {
       event.preventDefault()
       if (!pending) {
-        onResend()
+        onResend?.()
       }
     },
     details: () => setDetailsVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
+    description: () => setDescriptionExpanded((expanded) => !expanded),
   })
 
   return (
-    <section id="response-pane" className="flex h-full min-h-0 min-w-0 flex-col" aria-live="polite">
+    <section
+      id={inspection ? 'route-inspect-pane' : 'response-pane'}
+      className="flex h-full min-h-0 min-w-0 flex-col"
+      aria-live="polite"
+    >
+      {inspection ? null : (
       <div className="oc-bar flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
         {result.status ? (
           <p className="font-mono text-xs tabular-nums text-ink">
@@ -408,6 +453,7 @@ export function ResponsePane({
           </button>
         </div>
       </div>
+      )}
 
       {error ? (
         <p className="oc-bar px-3 py-2 text-xs text-signal md:px-4" role="alert">
@@ -416,6 +462,39 @@ export function ResponsePane({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 md:px-4">
+        {inspection ? (
+          <>
+            <section className="mb-5">
+              <h2 className="mb-1 font-mono text-xs text-faint">Description</h2>
+              {inspection.summary ? (
+                <p className="text-sm text-ink">{inspection.summary}</p>
+              ) : null}
+              {inspection.description ? (
+                <p
+                  ref={descriptionRef}
+                  className={`whitespace-pre-wrap text-sm text-mute ${
+                    descriptionExpanded ? '' : 'line-clamp-3'
+                  }`}
+                >
+                  {inspection.description}
+                </p>
+              ) : inspection.summary ? null : (
+                <p className="text-sm text-mute">Not advertised.</p>
+              )}
+              {canToggleDescription ? (
+                <button
+                  type="button"
+                  className="mt-2 inline-flex items-center gap-2 bg-ink/10 px-2 py-1 text-xs text-ink hover:bg-ink/15"
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                >
+                  {descriptionExpanded ? 'Collapse' : 'Expand'}
+                  <Kbd hotkey="E" />
+                </button>
+              ) : null}
+            </section>
+            <h2 className="mb-2 font-mono text-xs text-faint">Output schema</h2>
+          </>
+        ) : null}
         {result.inputRequired && onContinue ? (
           <section className="mb-3 bg-ink/5 px-3 py-3">
             <p className="text-sm text-ink">The server needs additional client input.</p>
@@ -484,6 +563,9 @@ export function ResponsePane({
           </div>
         ) : null}
 
+        {inspection && !inspection.hasOutputSchema ? (
+          <p className="text-sm text-mute">Not advertised.</p>
+        ) : (
         <div
           ref={treeRef}
           className="w-full min-w-0 overflow-hidden font-mono text-sm leading-relaxed"
@@ -600,6 +682,7 @@ export function ResponsePane({
             )
           })}
         </div>
+        )}
       </div>
     </section>
   )
