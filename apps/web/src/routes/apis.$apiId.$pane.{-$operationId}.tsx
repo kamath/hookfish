@@ -780,9 +780,9 @@ function ApiWorkbench({
           }`}
         >
         <aside
-          className={`flex min-h-0 flex-col overflow-hidden border-rule ${
+          className={`flex min-h-0 flex-col overflow-hidden bg-ink/5 ${
             activePane === 'input' || activePane === 'response'
-              ? 'hidden lg:flex lg:border-r'
+              ? 'hidden lg:flex'
               : 'flex'
           }`}
         >
