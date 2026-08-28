@@ -421,7 +421,7 @@ export function ResponsePane({
   return (
     <section
       id={inspection ? 'route-inspect-pane' : 'response-pane'}
-      className="flex h-full min-h-0 min-w-0 flex-col"
+      className={`flex min-h-0 min-w-0 flex-col ${inspection ? 'flex-1' : 'h-full'}`}
       aria-live="polite"
     >
       {inspection ? null : (
