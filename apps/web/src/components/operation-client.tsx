@@ -29,7 +29,7 @@ import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
 const AUTH_NOTICE = 'This execution requires credentials.'
-const inspectRouteAtom = atom(false)
+const inspectRouteAtom = atom(true)
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
@@ -423,21 +423,6 @@ export function ExecutableClient({
                 <Kbd hotkey="O" />
               </button>
             ) : null}
-            <button
-              type="button"
-              aria-pressed={inspecting}
-              className={`inline-flex min-h-8 flex-1 items-center justify-center gap-2 px-3 py-1 text-xs font-medium outline-none md:flex-none ${
-                inspecting
-                  ? 'exec-solid'
-                  : 'bg-ink/10 text-ink hover:bg-ink/15'
-              }`}
-              onClick={toggleInspect}
-            >
-              {inspecting ? 'Call' : 'Inspect'}
-              <KeyHints>
-                <Kbd hotkey="V" />
-              </KeyHints>
-            </button>
             {inspecting ? null : adapter.exportSnippet && api.labels.export ? (
               <button
                 type="button"
@@ -479,6 +464,19 @@ export function ExecutableClient({
             </button>
             )}
           </div>
+        </div>
+
+        <div className="shrink-0 px-3 pt-3 md:px-4">
+          <button
+            type="button"
+            className="oc-view-toggle inline-flex min-h-8 items-center gap-2 px-3 py-1 text-xs font-medium outline-none"
+            onClick={toggleInspect}
+          >
+            {inspecting ? 'View input' : 'View metadata'}
+            <KeyHints>
+              <Kbd hotkey="V" />
+            </KeyHints>
+          </button>
         </div>
 
         {inspecting ? (

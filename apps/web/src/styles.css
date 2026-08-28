@@ -22,6 +22,9 @@
   --accent-mcp-template: light-dark(#8a6d1d, #d4c05c);
   --accent-mcp-prompt: light-dark(#166b68, #3dbdb8);
   --exec-color: var(--signal);
+  /* Its own hue: switching views is not one of the route's actions. */
+  --view: light-dark(#6d3bd1, #b79bff);
+  --on-view: light-dark(#f7f6f3, #141311);
   /* Opaque, so a sticky bar stays readable over content scrolling beneath it. */
   --bar: color-mix(in srgb, var(--ink) 5%, var(--paper));
   color-scheme: light dark;
@@ -318,6 +321,16 @@ button[type='submit'][data-oc-current='true'] {
 
 .exec-context [data-oc-mode='insert'] button[type='submit'][data-oc-current='true'] {
   background-color: var(--exec-color);
+}
+
+.oc-view-toggle {
+  color: var(--on-view);
+  background-color: var(--view);
+}
+
+.oc-view-toggle:hover,
+.oc-view-toggle:focus-visible {
+  background-color: color-mix(in srgb, var(--view) 82%, var(--ink));
 }
 
 .exec-solid {
