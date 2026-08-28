@@ -241,12 +241,26 @@ globalThis.fetch = async (input, init) => {
           type: 'object',
           properties: { text: { type: 'string' } },
         },
+        annotations: {
+          title: 'Inspector',
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
       },
     ])
   }
   if (rpcMethod === 'resources/list') {
     return listResult(id, 'resources', [
-      { uri: 'test://fixed', name: 'Fixed resource' },
+      {
+        uri: 'test://fixed',
+        name: 'Fixed resource',
+        annotations: {
+          audience: ['user', 'assistant'],
+          priority: 0.4,
+          lastModified: '2025-01-12T15:00:57Z',
+        },
+      },
     ])
   }
   if (rpcMethod === 'resources/templates/list') {
@@ -309,12 +323,25 @@ assert.equal(
 )
 const tool = modern.executables.find((item) => item.id === 'tool:echo')
 assert.ok(tool)
+assert.equal(tool.annotations, undefined)
 const documented = modern.executables.find((item) => item.id === 'tool:inspect')
 assert.equal(documented?.description, 'Documented tool')
+assert.equal(documented?.summary, 'Inspector')
 assert.deepEqual(documented?.outputSchema, {
   type: 'object',
   properties: { text: { type: 'string' } },
 })
+assert.deepEqual(
+  documented?.annotations?.map((annotation) => annotation.label),
+  ['read-only', 'additive', 'closed world'],
+)
+const annotatedResource = modern.executables.find(
+  (item) => item.id === 'resource:test://fixed',
+)
+assert.deepEqual(
+  annotatedResource?.annotations?.map((annotation) => annotation.label),
+  ['audience user, assistant', 'priority 0.4', 'modified 2025-01-12T15:00:57Z'],
+)
 const invocation = mcpExecutableAdapter.buildInvocation({
   source: modern,
   executable: tool,

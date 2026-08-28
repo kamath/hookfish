@@ -382,12 +382,21 @@ export function ExecutableClient({
             {onBack ? (
               <PaneBackButton label={backLabel ?? 'Back'} onClick={onBack} />
             ) : null}
-            <div className="flex min-w-0 items-baseline gap-3">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
               <span data-oc-executable-badge className="exec-ink font-mono text-xs tabular-nums">
                 {operation.badge}
               </span>
               <span className="min-w-0 truncate font-mono text-xs text-ink">{operation.name}</span>
               {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
+              {operation.annotations?.map((annotation) => (
+                <span
+                  key={annotation.label}
+                  title={annotation.detail}
+                  className="shrink-0 bg-ink/10 px-1.5 py-0.5 font-mono text-[11px] text-mute"
+                >
+                  {annotation.label}
+                </span>
+              ))}
             </div>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
@@ -493,6 +502,7 @@ export function ExecutableClient({
             inspection={{
               summary: operation.summary,
               description: operation.description,
+              annotations: operation.annotations,
               hasOutputSchema: Boolean(operation.outputSchema),
             }}
           />

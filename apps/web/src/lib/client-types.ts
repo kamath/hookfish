@@ -42,6 +42,13 @@ export type ExecutableBinding =
   | McpBinding
   | ({ type: string } & Record<string, unknown>)
 
+// Protocol-neutral rendering of hints an executable advertises about itself,
+// such as MCP tool annotations.
+export type ExecutableAnnotation = {
+  label: string
+  detail?: string
+}
+
 export type Executable = {
   id: string
   name: string
@@ -55,6 +62,7 @@ export type Executable = {
   inputSchema: JsonSchema
   inputUiSchema: FormUiSchema
   outputSchema?: JsonSchema
+  annotations?: ExecutableAnnotation[]
 }
 
 export type ExecutableGroup = {
