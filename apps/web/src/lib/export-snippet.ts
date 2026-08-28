@@ -361,7 +361,6 @@ if (cookies.size > 0) {
 
 function httpFetchExpression(
   request: ExecuteRequest,
-  context: InvocationContext,
 ): string {
   const options = [`method: ${JSON.stringify(request.method)}`, 'headers']
   if (request.body !== undefined) {
@@ -381,7 +380,7 @@ export function toHttpExportSnippet(
   context: InvocationContext,
 ): string {
   const outputSchema = httpBodyOutputSchema(context.executable.outputSchema)
-  const fetchCall = httpFetchExpression(request, context)
+  const fetchCall = httpFetchExpression(request)
   return withZodExport({
     name: executableSnippetName(context.executable),
     inputSchema: context.executable.inputSchema,
