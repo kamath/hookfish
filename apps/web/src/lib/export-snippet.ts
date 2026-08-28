@@ -1,5 +1,7 @@
 import { jsonSchemaToZod } from 'json-schema-to-zod'
-import type { Executable, JsonSchema } from './client-types'
+import type { AuthScheme, Executable, JsonSchema } from './client-types'
+import { asRecord } from './build-request'
+import type { InvocationContext } from './executable-adapters'
 import type { ExecuteRequest } from './invoke'
 
 function headerList(request: ExecuteRequest): Array<[string, string]> {
@@ -168,15 +170,11 @@ function inlineJsonSchema(schema: JsonSchema): Record<string, unknown> {
 }
 
 function zodSchemaConst(name: string, schema: JsonSchema): string {
-  try {
-    return jsonSchemaToZod(inlineJsonSchema(schema), {
-      name,
-      module: 'none',
-      zodVersion: 4,
-    })
-  } catch {
-    return `const ${name} = z.unknown()`
-  }
+  return jsonSchemaToZod(inlineJsonSchema(schema), {
+    name,
+    module: 'none',
+    zodVersion: 4,
+  })
 }
 
 function prettyJson(value: unknown): string {
@@ -190,7 +188,7 @@ export function withZodExport(options: {
   imports?: string[]
   setup?: string
   input?: unknown
-  expression: string
+  result: (outputSchemaName?: string) => string
 }): string {
   const base = snippetBaseName(options.name)
   const inputName = `${base}InputSchema`
@@ -203,31 +201,200 @@ export function withZodExport(options: {
     ['import { z } from "zod"', ...(options.imports ?? [])].join('\n'),
     zodSchemaConst(inputName, options.inputSchema),
     outputConst,
+    `const input = ${inputName}.parse(${prettyJson(options.input)})`,
     options.setup,
-    [
-      `const input = ${inputName}.parse(${prettyJson(options.input)})`,
-      outputConst
-        ? `const result = ${outputName}.parse(await ${options.expression})`
-        : `const result = await ${options.expression}`,
-    ].join('\n'),
+    options.result(outputConst ? outputName : undefined),
   ].filter((block): block is string => Boolean(block))
 
   return blocks.join('\n\n')
 }
 
+function schemaHasValidation(schema: unknown): schema is JsonSchema {
+  return (
+    Boolean(schema) &&
+    typeof schema === 'object' &&
+    !Array.isArray(schema) &&
+    Object.keys(schema as JsonSchema).some(
+      (key) => key !== 'title' && key !== 'description',
+    )
+  )
+}
+
+function httpBodyOutputSchema(schema?: JsonSchema): JsonSchema | undefined {
+  const variants = Object.values(asRecord(schema?.properties)).filter(
+    schemaHasValidation,
+  )
+  if (variants.length === 0) {
+    return undefined
+  }
+  return variants.length === 1 ? variants[0] : { oneOf: variants }
+}
+
+function authParameterNames(context: InvocationContext) {
+  const locations = {
+    query: new Set<string>(),
+    header: new Set<string>(),
+    cookie: new Set<string>(),
+  }
+  const rawSchemes = asRecord(context.source.adapterData).authSchemes
+  const schemes = Array.isArray(rawSchemes) ? (rawSchemes as AuthScheme[]) : []
+  for (const scheme of schemes) {
+    if (scheme.type === 'apiKey') {
+      const location = scheme.in === 'query' || scheme.in === 'cookie'
+        ? scheme.in
+        : 'header'
+      const name = scheme.key ?? scheme.name
+      locations[location].add(location === 'header' ? name.toLowerCase() : name)
+    } else {
+      locations.header.add('authorization')
+    }
+  }
+  return locations
+}
+
+function staticQuery(request: ExecuteRequest, context: InvocationContext) {
+  const url = new URL(request.url)
+  const protectedNames = authParameterNames(context).query
+  const dynamicNames = new Set(
+    Object.keys(asRecord(asRecord(context.formData).query)).filter(
+      (name) => !protectedNames.has(name),
+    ),
+  )
+  return Array.from(url.searchParams.entries()).filter(
+    ([name]) => !dynamicNames.has(name),
+  )
+}
+
+function staticHeaders(request: ExecuteRequest, context: InvocationContext) {
+  const protectedNames = authParameterNames(context).header
+  const dynamicNames = new Set(
+    Object.keys(asRecord(asRecord(context.formData).header))
+      .map((name) => name.toLowerCase())
+      .filter((name) => !protectedNames.has(name)),
+  )
+  dynamicNames.add('cookie')
+  return Object.fromEntries(
+    headerList(request).filter(([name]) => !dynamicNames.has(name.toLowerCase())),
+  )
+}
+
+function staticCookies(request: ExecuteRequest, context: InvocationContext) {
+  const protectedNames = authParameterNames(context).cookie
+  const dynamicNames = new Set(
+    Object.keys(asRecord(asRecord(context.formData).cookie)).filter(
+      (name) => !protectedNames.has(name),
+    ),
+  )
+  const cookie = headerList(request).find(
+    ([name]) => name.toLowerCase() === 'cookie',
+  )?.[1]
+  return (cookie ?? '')
+    .split(/;\s*|,\s*(?=[^;,]+=)/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf('=')
+      return separator < 0
+        ? [part, '']
+        : [part.slice(0, separator), part.slice(separator + 1)]
+    })
+    .filter(([name]) => !dynamicNames.has(name)) as Array<[string, string]>
+}
+
+function httpSetup(
+  request: ExecuteRequest,
+  context: InvocationContext,
+): string {
+  const binding = context.executable.binding
+  if (binding.type !== 'http' || typeof binding.path !== 'string') {
+    throw new Error('Expected an HTTP executable.')
+  }
+  const query = staticQuery(request, context)
+  const headers = staticHeaders(request, context)
+  const cookies = staticCookies(request, context)
+  const authNames = authParameterNames(context)
+  const setup = [
+    `const path = ${JSON.stringify(binding.path)}.replace(/\\{([^}]+)\\}/g, (_, name) => {
+  const value = input.path?.[name]
+  return value === undefined || value === null || value === ''
+    ? \`{\${name}}\`
+    : encodeURIComponent(String(value))
+})`,
+    `const url = new URL(${JSON.stringify(context.target.replace(/\/$/, ''))} + (path.startsWith('/') ? '' : '/') + path)`,
+  ]
+
+  for (const [name, value] of query) {
+    setup.push(
+      `url.searchParams.append(${JSON.stringify(name)}, ${JSON.stringify(value)})`,
+    )
+  }
+  setup.push(`const authQueryNames = new Set(${prettyJson([...authNames.query])})
+for (const [name, value] of Object.entries(input.query ?? {})) {
+  if (authQueryNames.has(name)) continue
+  for (const item of Array.isArray(value) ? value : [value]) {
+    if (item !== undefined && item !== null && item !== '') {
+      url.searchParams.append(name, String(item))
+    }
+  }
+}`)
+  setup.push(`const headers = new Headers(${prettyJson(headers)})`)
+  setup.push(`const authHeaderNames = new Set(${prettyJson([...authNames.header])})
+for (const [name, value] of Object.entries(input.header ?? {})) {
+  if (authHeaderNames.has(name.toLowerCase())) continue
+  if (value !== undefined && value !== null && value !== '') {
+    headers.set(name, String(value))
+  }
+}`)
+  setup.push(`const cookies = new Map(${prettyJson(cookies)})
+const authCookieNames = new Set(${prettyJson([...authNames.cookie])})
+for (const [name, value] of Object.entries(input.cookie ?? {})) {
+  if (authCookieNames.has(name)) continue
+  if (value !== undefined && value !== null && value !== '') {
+    cookies.set(name, String(value))
+  }
+}
+if (cookies.size > 0) {
+  headers.set('Cookie', Array.from(cookies, ([name, value]) => \`\${name}=\${value}\`).join('; '))
+}`)
+  return setup.join('\n\n')
+}
+
+function httpFetchExpression(
+  request: ExecuteRequest,
+  context: InvocationContext,
+): string {
+  const options = [`method: ${JSON.stringify(request.method)}`, 'headers']
+  if (request.body !== undefined) {
+    options.push(
+      contentType(request).includes('application/x-www-form-urlencoded')
+        ? `body: new URLSearchParams(
+    Object.entries(input.body ?? {}).map(([name, value]) => [name, String(value)]),
+  )`
+        : 'body: JSON.stringify(input.body)',
+    )
+  }
+  return `fetch(url, {\n  ${options.join(',\n  ')},\n})`
+}
+
 export function toHttpExportSnippet(
   request: ExecuteRequest,
-  executable: Executable,
-  formData?: unknown,
+  context: InvocationContext,
 ): string {
-  const fetchCall = toFetch(request)
+  const outputSchema = httpBodyOutputSchema(context.executable.outputSchema)
+  const fetchCall = httpFetchExpression(request, context)
   return withZodExport({
-    name: executableSnippetName(executable),
-    inputSchema: executable.inputSchema,
-    outputSchema: executable.outputSchema,
-    input: formData,
-    expression: executable.outputSchema
-      ? `(await ${fetchCall}).json()`
-      : fetchCall,
+    name: executableSnippetName(context.executable),
+    inputSchema: context.executable.inputSchema,
+    outputSchema,
+    setup: httpSetup(request, context),
+    input: context.formData,
+    result: (outputSchemaName) =>
+      outputSchemaName
+        ? `const response = await ${fetchCall}
+const output = response.headers.get('content-type')?.includes('json')
+  ? await response.json()
+  : await response.text()
+const result = ${outputSchemaName}.parse(output)`
+        : `const result = await ${fetchCall}`,
   })
 }

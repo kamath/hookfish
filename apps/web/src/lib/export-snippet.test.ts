@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { z } from 'zod'
 import type { Executable } from './client-types.ts'
+import type { InvocationContext } from './executable-adapters.ts'
+import { mcpExecutableAdapter } from './mcp/executable.ts'
 import {
   authPlaceholder,
   executableSnippetName,
@@ -128,14 +131,33 @@ const addPet: Executable = {
   outputSchema: {
     type: 'object',
     properties: {
-      id: { type: 'integer' },
-      name: { type: 'string' },
+      200: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          name: { type: 'string' },
+        },
+        required: ['id', 'name'],
+      },
     },
-    required: ['id', 'name'],
   },
 }
 
 assert.equal(executableSnippetName(addPet), 'addPet')
+
+function httpContext(
+  executable: Executable,
+  target: string,
+  formData: unknown,
+): InvocationContext {
+  return {
+    source: { kind: 'openapi' } as InvocationContext['source'],
+    executable,
+    target,
+    formData,
+    credentials: {},
+  }
+}
 
 const zodHttp = toHttpExportSnippet(
   {
@@ -145,19 +167,52 @@ const zodHttp = toHttpExportSnippet(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: 'doggie', photoUrls: ['https://example.com/a'] }),
   },
-  addPet,
-  { body: { name: 'doggie', photoUrls: ['https://example.com/a'] } },
+  httpContext(addPet, 'https://example.com', {
+    body: { name: 'doggie', photoUrls: ['https://example.com/a'] },
+  }),
 )
 
 assert.match(zodHttp, /import \{ z \} from "zod"/)
 assert.match(zodHttp, /const addPetInputSchema = z\.object/)
 assert.match(zodHttp, /const addPetOutputSchema = z\.object/)
 assert.match(zodHttp, /const input = addPetInputSchema\.parse/)
+assert.match(zodHttp, /body: JSON\.stringify\(input\.body\)/)
 assert.match(
   zodHttp,
-  /const result = addPetOutputSchema\.parse\(await \(await fetch\("https:\/\/example.com\/pet"/,
+  /const response = await fetch\(url, \{/,
 )
-assert.match(zodHttp, /\.json\(\)\)/)
+assert.match(
+  zodHttp,
+  /const result = addPetOutputSchema\.parse\(output\)/,
+)
+
+let capturedRequest: { url: string; options: RequestInit } | undefined
+const runHttpSnippet = new Function(
+  'z',
+  'fetch',
+  `return (async () => {
+${zodHttp.replace('import { z } from "zod"', '')}
+return result
+})()`,
+) as (
+  zod: typeof z,
+  fetch: typeof globalThis.fetch,
+) => Promise<{ id: number; name: string }>
+const parsedHttpResult = await runHttpSnippet(
+  z,
+  (async (url: URL, options: RequestInit) => {
+    capturedRequest = { url: url.toString(), options }
+    return new Response(JSON.stringify({ id: 1, name: 'doggie' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }) as typeof globalThis.fetch,
+)
+assert.deepEqual(parsedHttpResult, { id: 1, name: 'doggie' })
+assert.equal(capturedRequest?.url, 'https://example.com/pet')
+assert.equal(
+  capturedRequest?.options.body,
+  JSON.stringify({ name: 'doggie', photoUrls: ['https://example.com/a'] }),
+)
 
 const getItems: Executable = {
   ...addPet,
@@ -175,12 +230,11 @@ const zodGet = toHttpExportSnippet(
     method: 'GET',
     url: 'https://example.com/items',
   },
-  getItems,
-  {},
+  httpContext(getItems, 'https://example.com', {}),
 )
 assert.match(zodGet, /const getItemsInputSchema = /)
 assert.doesNotMatch(zodGet, /OutputSchema/)
-assert.match(zodGet, /const result = await fetch\("https:\/\/example.com\/items"\)/)
+assert.match(zodGet, /const result = await fetch\(url, \{/)
 
 const refSchema = withZodExport({
   name: 'lookupPet',
@@ -197,7 +251,10 @@ const refSchema = withZodExport({
       },
     },
   },
-  expression: 'doTheThing(input)',
+  result: (outputSchemaName) =>
+    outputSchemaName
+      ? `const result = ${outputSchemaName}.parse(await doTheThing(input))`
+      : 'const result = await doTheThing(input)',
 })
 assert.match(refSchema, /"pet": z\.object\(\{ "id": z\.number\(\)\.int\(\) \}\)\.optional\(\)/)
 assert.match(refSchema, /const result = await doTheThing\(input\)/)
@@ -219,17 +276,57 @@ const weather = withZodExport({
   ],
   setup: 'await client.connect(transport)',
   input: { location: 'NYC' },
-  expression: `client.callTool({
+  result: (outputSchemaName) => `const response = await client.callTool({
   name: "get-weather",
   arguments: input,
-})`,
+})
+const result = ${outputSchemaName}.parse(response.structuredContent)`,
 })
 assert.ok(weather.startsWith('import { z } from "zod"\nimport { Client, StreamableHTTPClientTransport }'))
 assert.match(weather, /const getWeatherInputSchema = /)
 assert.match(weather, /const getWeatherOutputSchema = /)
 assert.match(
   weather,
-  /const result = getWeatherOutputSchema\.parse\(await client\.callTool\(\{/,
+  /const result = getWeatherOutputSchema\.parse\(response\.structuredContent\)/,
+)
+
+const mcpTool: Executable = {
+  id: 'tool:get-weather',
+  name: 'get-weather',
+  badge: 'TOOL',
+  accent: 'var(--accent-mcp-tool)',
+  groups: [],
+  binding: {
+    type: 'mcp',
+    kind: 'tool',
+    method: 'tools/call',
+    name: 'get-weather',
+  },
+  inputSchema: {
+    type: 'object',
+    properties: { location: { type: 'string' } },
+    required: ['location'],
+  },
+  inputUiSchema: {},
+  outputSchema: {
+    type: 'object',
+    properties: { temperature: { type: 'number' } },
+    required: ['temperature'],
+  },
+}
+const mcpSnippet = mcpExecutableAdapter.exportSnippet?.({
+  source: { id: 'weather', kind: 'mcp' } as InvocationContext['source'],
+  executable: mcpTool,
+  target: 'https://example.com/mcp',
+  formData: { location: 'NYC' },
+  credentials: {},
+})
+assert.ok(mcpSnippet)
+assert.match(mcpSnippet, /arguments: input/)
+assert.match(mcpSnippet, /const response = await client\.callTool/)
+assert.match(
+  mcpSnippet,
+  /const result = getWeatherOutputSchema\.parse\(response\.structuredContent\)/,
 )
 
 console.log('export-snippet ok')

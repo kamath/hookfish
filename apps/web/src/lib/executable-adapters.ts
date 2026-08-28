@@ -30,11 +30,7 @@ export type ExecutableAdapter = {
     requestState?: string,
   ) => Promise<ExecutionResult>
   preview: (context: Omit<InvocationContext, 'credentials'>) => string
-  exportSnippet?: (
-    invocation: unknown,
-    executable: Executable,
-    formData?: unknown,
-  ) => string
+  exportSnippet?: (context: InvocationContext) => string
 }
 
 const adapters = new Map<string, ExecutableAdapter>()
@@ -64,15 +60,18 @@ function asHttpInvocation(value: unknown): ExecuteRequest {
   return invocation as ExecuteRequest
 }
 
+function buildOpenApiInvocation(context: InvocationContext): ExecuteRequest {
+  return buildOperationRequest({
+    serverUrl: context.target,
+    operation: context.executable,
+    formData: context.formData,
+    auth: context.credentials,
+    authSchemes: openApiAuthSchemes(context.source),
+  })
+}
+
 registerExecutableAdapter('openapi', {
-  buildInvocation: ({ source, executable, target, formData, credentials }) =>
-    buildOperationRequest({
-      serverUrl: target,
-      operation: executable,
-      formData,
-      auth: credentials,
-      authSchemes: openApiAuthSchemes(source),
-    }),
+  buildInvocation: buildOpenApiInvocation,
   execute: async (invocation) => {
     const request = asHttpInvocation(invocation)
     return getCloudProxy()
@@ -98,8 +97,8 @@ registerExecutableAdapter('openapi', {
       return `${target}${binding.path}`
     }
   },
-  exportSnippet: (invocation, executable, formData) =>
-    toHttpExportSnippet(asHttpInvocation(invocation), executable, formData),
+  exportSnippet: (context) =>
+    toHttpExportSnippet(buildOpenApiInvocation(context), context),
 })
 
 registerExecutableAdapter('mcp', mcpExecutableAdapter)

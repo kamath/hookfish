@@ -146,8 +146,20 @@ async function executeMcp(
   )
 }
 
-function exportSnippet(invocation: unknown, executable: Executable) {
-  const value = asInvocation(invocation)
+function buildMcpInvocation(context: InvocationContext): McpInvocation {
+  const binding = mcpBinding(context.executable.binding)
+  return {
+    transport: 'mcp',
+    sourceId: context.source.id,
+    endpoint: context.target,
+    binding,
+    params: invocationParams(binding, context.formData),
+  }
+}
+
+function exportSnippet(context: InvocationContext) {
+  const value = buildMcpInvocation(context)
+  const executable: Executable = context.executable
   const input =
     value.binding.kind === 'tool' || value.binding.kind === 'prompt'
       ? asRecord(value.params).arguments
@@ -179,21 +191,16 @@ const transport = new StreamableHTTPClientTransport(
 
 await client.connect(transport)`,
     input,
-    expression: call,
+    result: (outputSchemaName) =>
+      outputSchemaName
+        ? `const response = await ${call}
+const result = ${outputSchemaName}.parse(response.structuredContent)`
+        : `const result = await ${call}`,
   })
 }
 
 export const mcpExecutableAdapter: ExecutableAdapter = {
-  buildInvocation: ({ source, executable, target, formData }) => {
-    const binding = mcpBinding(executable.binding)
-    return {
-      transport: 'mcp',
-      sourceId: source.id,
-      endpoint: target,
-      binding,
-      params: invocationParams(binding, formData),
-    } satisfies McpInvocation
-  },
+  buildInvocation: buildMcpInvocation,
   execute: executeMcp,
   continue: (invocation, inputResponses, requestState) =>
     executeMcp(invocation, { inputResponses, requestState }),
