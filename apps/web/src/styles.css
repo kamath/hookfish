@@ -245,6 +245,14 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
     min-height: 2.75rem;
     min-width: 2.75rem;
   }
+
+  /* iOS/Android zoom the page when a focused text control is under 16px.
+     Do not lock the viewport (maximum-scale / user-scalable) — that blocks pinch-zoom. */
+  input:not([type='button'], [type='submit'], [type='reset'], [type='checkbox'], [type='radio'], [type='hidden'], [type='range'], [type='file'], [type='image'], [type='color']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 [data-oc-mode='insert'] [data-oc-current='true'] {
