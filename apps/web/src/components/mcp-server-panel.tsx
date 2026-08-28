@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { ExecutableSource } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
 import { useMcpTrace } from '../lib/mcp/trace'
@@ -33,19 +32,6 @@ export function mcpChromeFacts(data: Record<string, unknown>): McpChromeFact[] {
     facts.push({ text: `server ${serverInfo.version}` })
   }
   return facts
-}
-
-function McpChromeLine({ parts }: { parts: ReactNode[] }) {
-  return (
-    <span className="text-mute">
-      {parts.map((part, index) => (
-        <span key={index}>
-          {index > 0 ? <span className="text-faint"> · </span> : null}
-          {part}
-        </span>
-      ))}
-    </span>
-  )
 }
 
 export function McpServerPanel({
@@ -101,52 +87,60 @@ function McpServerChrome({
     },
     { tools: 0, prompts: 0, resources: 0 },
   )
-  const extraCapabilities = capabilities.filter(
-    (capability) =>
-      capability !== 'tools' && capability !== 'prompts' && capability !== 'resources',
-  )
+  const facts = mcpChromeFacts(data)
 
   return (
     <section className="bg-ink/5 px-3 py-2 text-xs md:px-4">
-      <McpChromeLine
-        parts={[
-          ...mcpChromeFacts(data).map((fact) => (
-            <span key={fact.text} title={fact.title}>
-              {fact.text}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-mute">
+          {facts.map((fact, index) => (
+            <span key={`${fact.text}:${index}`}>
+              {index > 0 ? <span className="text-faint"> · </span> : null}
+              <span title={fact.title}>{fact.text}</span>
             </span>
-          )),
-          ...(['prompts', 'resources', 'tools'] as const).map((capability) => {
-            const enabled = capabilitySet.has(capability)
-            return (
-              <span
-                key={capability}
-                aria-disabled={!enabled}
-                className={enabled ? undefined : 'text-faint'}
-              >
-                {`${capability} ${enabled ? counts[capability] : 'disabled'}`}
-              </span>
-            )
-          }),
-          <button
-            key="traces"
-            type="button"
-            data-oc-trace-toggle
-            data-oc-command-focus="true"
-            aria-pressed={traceOpen}
-            aria-label={traceOpen ? 'Close protocol traces' : 'Open protocol traces'}
-            className={`inline-flex items-center gap-1.5 font-mono outline-none ${
-              traceOpen ? 'text-ink' : 'text-mute hover:text-ink'
-            }`}
-            onClick={onToggleTrace}
-          >
-            {`traces ${entries.length}`}
-            <Kbd hotkey="T" />
-          </button>,
-          ...extraCapabilities.map((capability) => (
-            <span key={capability}>{capability}</span>
-          )),
-        ]}
-      />
+          ))}
+        </span>
+        {(['prompts', 'resources', 'tools'] as const).map((capability) => {
+          const enabled = capabilitySet.has(capability)
+          return (
+            <span
+              key={capability}
+              aria-disabled={!enabled}
+              className={`px-1.5 py-0.5 font-mono ${
+                enabled ? 'bg-paper text-mute' : 'bg-ink/5 text-faint'
+              }`}
+            >
+              {capability} {enabled ? counts[capability] : 'disabled'}
+            </span>
+          )
+        })}
+        <button
+          type="button"
+          data-oc-trace-toggle
+          data-oc-command-focus="true"
+          aria-pressed={traceOpen}
+          aria-label={traceOpen ? 'Close protocol traces' : 'Open protocol traces'}
+          className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 font-mono ${
+            traceOpen ? 'bg-paper text-ink' : 'bg-paper text-mute hover:text-ink'
+          }`}
+          onClick={onToggleTrace}
+        >
+          traces {entries.length}
+          <Kbd hotkey="T" />
+        </button>
+        {capabilities
+          .filter(
+            (capability) =>
+              capability !== 'tools' &&
+              capability !== 'prompts' &&
+              capability !== 'resources',
+          )
+          .map((capability) => (
+            <span key={capability} className="bg-paper px-1.5 py-0.5 font-mono text-mute">
+              {capability}
+            </span>
+          ))}
+      </div>
     </section>
   )
 }
