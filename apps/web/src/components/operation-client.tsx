@@ -377,7 +377,7 @@ export function ExecutableClient({
       style={{ '--exec-color': operation.accent } as CSSProperties}
     >
       <section className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto">
-        <div className="oc-bar sticky top-0 z-10 flex flex-col gap-2 overflow-hidden px-3 py-2 md:flex-row md:items-center md:gap-3 md:px-4">
+        <div className="oc-bar sticky top-0 z-10 flex shrink-0 flex-col gap-2 overflow-hidden px-3 py-2 md:flex-row md:items-center md:gap-3 md:px-4">
           <div className="flex min-w-0 items-center gap-3">
             {onBack ? (
               <PaneBackButton label={backLabel ?? 'Back'} onClick={onBack} />
@@ -390,7 +390,7 @@ export function ExecutableClient({
               {operation.deprecated ? <span className="text-xs text-signal">deprecated</span> : null}
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto md:shrink-0 md:gap-3 [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
+          <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto [&>button]:max-md:min-w-[calc(50%-0.25rem)]">
             {onPrevious || onNext ? (
               <>
                 <button
@@ -419,7 +419,7 @@ export function ExecutableClient({
                 className="inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-ink/10 px-2 py-1 text-xs font-medium text-ink hover:bg-ink/15 md:flex-none"
                 onClick={showResponse}
               >
-                <span>View output</span>
+                View output
                 <Kbd hotkey="O" />
               </button>
             ) : null}
@@ -433,7 +433,7 @@ export function ExecutableClient({
               }`}
               onClick={toggleInspect}
             >
-              <span>{inspecting ? 'Call' : 'Inspect'}</span>
+              {inspecting ? 'Call' : 'Inspect'}
               <KeyHints>
                 <Kbd hotkey="V" />
               </KeyHints>
@@ -449,7 +449,7 @@ export function ExecutableClient({
                   void copyExport()
                 }}
               >
-                <span>{copied ? 'Copied' : api.labels.export}</span>
+                {copied ? 'Copied' : api.labels.export}
                 <KeyHints>
                   <Kbd hotkey="Y" />
                 </KeyHints>
@@ -459,7 +459,7 @@ export function ExecutableClient({
             <button
               type="button"
               data-oc-nav="action"
-              className={`${formPrimaryButtonClass} exec-solid flex-1 gap-2 whitespace-nowrap md:flex-none`}
+              className={`${formPrimaryButtonClass} exec-solid flex-1 whitespace-nowrap md:flex-none`}
               disabled={pending || authPending}
               onClick={() => submitForm('call-form')}
             >
@@ -469,10 +469,11 @@ export function ExecutableClient({
                 'Saving…'
               ) : (
                 <>
-                  <span>{showAuth ? 'Continue' : api.labels.execute}</span>
-                  <KeyHints className="inline-flex">
-                    <Kbd hotkey="Mod+Enter" />
+                  <KeyHints className="mr-2 inline-flex gap-1">
+                    <Kbd hotkey="Mod" />
+                    <Kbd hotkey="Enter" />
                   </KeyHints>
+                  {showAuth ? 'Continue' : api.labels.execute}
                 </>
               )}
             </button>
