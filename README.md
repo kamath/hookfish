@@ -81,6 +81,15 @@ CLI options are forwarded directly:
 pnpm cli --host 127.0.0.1 --port 4000
 ```
 
+Run the published `kamath/hookfish` tree for any branch: the script clones that
+branch, builds `apps/web` in node mode, and starts the same CLI server. Your
+working tree is left untouched.
+
+```bash
+pnpm cli:gh some-branch
+pnpm cli:gh some-branch -- --port 4000
+```
+
 To inspect the independently publishable npm tarball:
 
 ```bash
