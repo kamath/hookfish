@@ -472,7 +472,7 @@ export function ExecutableClient({
             className="oc-view-toggle inline-flex min-h-8 items-center gap-2 px-3 py-1 text-xs font-medium outline-none"
             onClick={toggleInspect}
           >
-            {inspecting ? 'Set up request' : 'View metadata'}
+            {inspecting ? 'View input' : 'View metadata'}
             <KeyHints>
               <Kbd hotkey="V" />
             </KeyHints>
