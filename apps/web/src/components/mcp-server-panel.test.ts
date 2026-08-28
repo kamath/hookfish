@@ -66,8 +66,12 @@ const stateless = renderToString(
 assert.match(stateless, /MCP 2026-07-28/)
 assert.match(stateless, / · /)
 assert.match(stateless, /modern\/stateless/)
+assert.match(stateless, /prompts disabled/)
+assert.match(stateless, /tools 1/)
+assert.match(stateless, /traces 0/)
 assert.doesNotMatch(stateless, /OAuth/)
 assert.doesNotMatch(stateless, /sessionless/)
+assert.doesNotMatch(stateless, /bg-paper/)
 assert.doesNotMatch(stateless, /ml-auto/)
 
 const stateful = renderToString(
@@ -87,7 +91,7 @@ assert.match(stateful, / · /)
 assert.match(stateful, /OAuth/)
 assert.match(stateful, /server 1.0.0/)
 assert.match(stateful, /title="legacy-session"/)
-assert.doesNotMatch(stateful, /bg-paper[^"]*">OAuth/)
+assert.doesNotMatch(stateful, /bg-paper/)
 assert.doesNotMatch(stateful, /sessionless/)
 
 console.log('mcp transport label ok')
