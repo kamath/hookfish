@@ -470,9 +470,8 @@ export function ExecutableClient({
               ) : (
                 <>
                   <span>{showAuth ? 'Continue' : api.labels.execute}</span>
-                  <KeyHints className="inline-flex gap-1">
-                    <Kbd hotkey="Mod" />
-                    <Kbd hotkey="Enter" />
+                  <KeyHints className="inline-flex">
+                    <Kbd hotkey="Mod+Enter" />
                   </KeyHints>
                 </>
               )}
