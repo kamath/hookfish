@@ -8,7 +8,7 @@ export const softButtonClass =
   'inline-flex min-h-11 items-center justify-center gap-2 bg-ink/10 px-4 py-2 text-sm text-ink hover:bg-ink/15 focus-visible:bg-ink/15 outline-none disabled:cursor-not-allowed disabled:opacity-40'
 
 export const formInputClass =
-  'w-full max-w-md min-h-8 appearance-none border border-rule bg-paper px-2.5 py-1.5 text-xs text-ink placeholder:text-faint outline-none'
+  'w-full max-w-md min-h-11 appearance-none border border-rule bg-paper px-2.5 py-1.5 text-base text-ink placeholder:text-faint outline-none md:min-h-8 md:text-xs'
 
 export const labelClass = 'text-xs text-mute'
 
