@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { MCP_PROXY_AUTHORIZATION_HEADER } from '@hookfish/api'
 import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
 import { setCloudProxy } from '../cloud'
 import { closeMcpConnection, getMcpTrace } from './client'
@@ -52,6 +53,7 @@ type SeenRequest = {
 }
 
 const seen: SeenRequest[] = []
+const proxiedAuthorizationHeaders: Headers[] = []
 const initializeCounts = new Map<string, number>()
 const invalidSessions = new Map<string, number>()
 
@@ -80,6 +82,14 @@ globalThis.fetch = async (input, init) => {
   const endpoint = proxyUrl.searchParams.get('url') ?? proxyUrl.toString()
   const method = init?.method ?? 'GET'
   const headers = new Headers(init?.headers)
+  if (proxyUrl.pathname.endsWith('/mcp-proxy')) {
+    proxiedAuthorizationHeaders.push(new Headers(headers))
+    const upstreamAuthorization = headers.get(MCP_PROXY_AUTHORIZATION_HEADER)
+    headers.delete(MCP_PROXY_AUTHORIZATION_HEADER)
+    if (upstreamAuthorization) {
+      headers.set('authorization', upstreamAuthorization)
+    }
+  }
   let message: Record<string, unknown> | undefined
   if (typeof init?.body === 'string') {
     try {
@@ -481,6 +491,13 @@ assert.ok(
     (request) =>
       request.endpoint === 'https://mcp.test/oauth' &&
       request.headers.get('authorization') === 'Bearer oauth-access-token',
+  ),
+)
+assert.ok(
+  proxiedAuthorizationHeaders.some(
+    (headers) =>
+      headers.get('authorization') === null &&
+      headers.get(MCP_PROXY_AUTHORIZATION_HEADER) === 'Bearer oauth-access-token',
   ),
 )
 

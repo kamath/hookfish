@@ -4,6 +4,7 @@ import {
   StreamableHTTPClientTransport,
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
+import { MCP_PROXY_AUTHORIZATION_HEADER } from '@hookfish/api'
 import { getApi } from '../api'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
@@ -82,10 +83,20 @@ function upstreamFetch(connection: TraceSink, cloudProxy: boolean) {
       detail: request.detail,
     })
     let fetchInput: string | URL | Request = input
+    let fetchInit = init
     if (cloudProxy) {
       fetchInput = getApi()['mcp-proxy'].$url({ query: { url: target } })
+      const headers = new Headers(input instanceof Request ? input.headers : init?.headers)
+      const authorization = headers.get('authorization')
+      if (authorization) {
+        // The deployment authenticates its own bearer credentials before this route runs.
+        // Carry the MCP server's credential under a private header and restore it in the proxy.
+        headers.delete('authorization')
+        headers.set(MCP_PROXY_AUTHORIZATION_HEADER, authorization)
+        fetchInit = { ...init, headers }
+      }
     }
-    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, init)
+    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, fetchInit)
     traceEntry(connection, {
       direction: 'in',
       kind: 'http',
