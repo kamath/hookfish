@@ -2,16 +2,19 @@ import { Hono } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import {
   applySetCookies,
+  createApiKeyRoute,
   handleNativeAuth,
   handleSession,
   handleSignIn,
   handleSignOut,
   handleSignUp,
+  listApiKeysRoute,
   sessionRoute,
   signInRoute,
   signOutRoute,
   signUpRoute,
 } from './auth-openapi'
+import { createApiKey, listApiKeys } from './api-keys'
 import { authBasePathForMount } from './auth-path'
 import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
@@ -33,6 +36,7 @@ import {
   withInternalFetchHeader,
 } from './self'
 import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
+import { authenticationMiddleware, type ApiVariables } from './request-auth'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
@@ -182,7 +186,7 @@ export function createApi(options: CreateApiOptions = {}) {
     database: options.database,
     authBasePath: options.authBasePath ?? '/auth',
   }
-  const app = new OpenAPIHono({
+  const app = new OpenAPIHono<{ Variables: ApiVariables }>({
     defaultHook: (result, c) => {
       if (!result.success) {
         const issue = result.error.issues[0]
@@ -190,6 +194,7 @@ export function createApi(options: CreateApiOptions = {}) {
       }
     },
   })
+  app.use('*', authenticationMiddleware(authOptions))
 
   const openApiConfig = {
     openapi: '3.1.0' as const,
@@ -240,6 +245,27 @@ export function createApi(options: CreateApiOptions = {}) {
         applySetCookies(c, result.cookies)
       }
       return c.json({ user: result.user }, 200)
+    })
+    .openapi(createApiKeyRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser || !authOptions.database) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      const created = await createApiKey(authOptions.database, {
+        userId: authenticatedUser.id,
+        ...c.req.valid('json'),
+      })
+      return c.json({ apiKey: created }, 201)
+    })
+    .openapi(listApiKeysRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser || !authOptions.database) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      return c.json(
+        { apiKeys: await listApiKeys(authOptions.database, authenticatedUser.id) },
+        200,
+      )
     })
     .openapi(specRoute, async (c) => {
       try {

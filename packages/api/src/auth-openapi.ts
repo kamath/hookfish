@@ -1,22 +1,18 @@
 import type { Context } from 'hono'
 import { createRoute } from '@hono/zod-openapi'
-import { getAuth } from './auth'
-import { resolveRuntimeEnv } from './db/env'
-import type { DatabaseInput } from './db/types'
-import type { RuntimeEnv } from './db/url'
+import { getAuthForRequest, type AuthOptions } from './auth'
 import {
+  apiKeyListSchema,
   authSessionSchema,
+  createApiKeyRequestSchema,
+  createApiKeyResponseSchema,
   errorSchema,
   okSchema,
   signInRequestSchema,
   signUpRequestSchema,
 } from './schemas'
 
-export type AuthRouteOptions = {
-  env?: RuntimeEnv
-  database?: DatabaseInput
-  authBasePath?: string
-}
+export type AuthRouteOptions = AuthOptions
 
 export const signUpRoute = createRoute({
   method: 'post',
@@ -122,6 +118,66 @@ export const sessionRoute = createRoute({
   },
 })
 
+export const createApiKeyRoute = createRoute({
+  method: 'post',
+  path: '/auth/api-keys',
+  tags: ['Auth'],
+  summary: 'Create an API key',
+  request: {
+    body: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: createApiKeyRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'API key secret, returned only at creation time',
+      content: {
+        'application/json': {
+          schema: createApiKeyResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Authentication is required',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
+
+export const listApiKeysRoute = createRoute({
+  method: 'get',
+  path: '/auth/api-keys',
+  tags: ['Auth'],
+  summary: 'List API key names and expirations',
+  responses: {
+    200: {
+      description: 'API key metadata without secrets',
+      content: {
+        'application/json': {
+          schema: apiKeyListSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Authentication is required',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
+
 function applySetCookies(c: Context, response: Response) {
   for (const cookie of response.headers.getSetCookie()) {
     c.header('Set-Cookie', cookie, { append: true })
@@ -164,19 +220,7 @@ function asUser(value: unknown) {
 }
 
 async function authForRequest(c: Context, options: AuthRouteOptions) {
-  if (!options.database) {
-    throw new Error(
-      'A configured database is required for authentication. Pass database to createApi or mountApi.',
-    )
-  }
-  const env = await resolveRuntimeEnv(options.env)
-  const baseURL = env.BETTER_AUTH_URL ?? new URL(c.req.url).origin
-  return getAuth(
-    options.database,
-    env,
-    baseURL,
-    options.authBasePath ?? '/auth',
-  )
+  return getAuthForRequest(c.req.raw, options)
 }
 
 function userFromPayload(payload: unknown) {

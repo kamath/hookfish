@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi'
+import { apiKeyExpirations } from './api-keys'
 
 export const errorSchema = z
   .object({
@@ -95,6 +96,40 @@ export const authSessionSchema = z
   })
   .openapi('AuthSession')
 
+export const apiKeyExpirationSchema = z.enum(apiKeyExpirations).openapi('ApiKeyExpiration')
+
+export const createApiKeyRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    expiration: apiKeyExpirationSchema,
+  })
+  .openapi('CreateApiKeyRequest')
+
+export const apiKeySummarySchema = z
+  .object({
+    name: z.string(),
+    expiresAt: z.iso.datetime().nullable(),
+  })
+  .openapi('ApiKeySummary')
+
+export const createdApiKeySchema = apiKeySummarySchema
+  .extend({
+    key: z.string(),
+  })
+  .openapi('CreatedApiKey')
+
+export const createApiKeyResponseSchema = z
+  .object({
+    apiKey: createdApiKeySchema,
+  })
+  .openapi('CreateApiKeyResponse')
+
+export const apiKeyListSchema = z
+  .object({
+    apiKeys: z.array(apiKeySummarySchema),
+  })
+  .openapi('ApiKeyList')
+
 export const okSchema = z
   .object({
     ok: z.literal(true),
@@ -107,3 +142,5 @@ export type SignUpRequest = z.infer<typeof signUpRequestSchema>
 export type SignInRequest = z.infer<typeof signInRequestSchema>
 export type AuthUser = z.infer<typeof authUserSchema>
 export type AuthSession = z.infer<typeof authSessionSchema>
+export type CreateApiKeyRequest = z.infer<typeof createApiKeyRequestSchema>
+export type ApiKeySummary = z.infer<typeof apiKeySummarySchema>
