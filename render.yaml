@@ -23,3 +23,5 @@ services:
           property: connectionString
       - key: BETTER_AUTH_SECRET
         generateValue: true
+      - key: BETTER_AUTH_URL
+        sync: false
