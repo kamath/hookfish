@@ -13,8 +13,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/bundle-web.mjs",
+    "gh": "tsc -p tsconfig.json && node dist/gh.js",
     "start": "node dist/index.js",
-    "test": "node --test scripts/cli.test.mjs",
+    "test": "node --test scripts/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
