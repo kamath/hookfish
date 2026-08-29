@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict'
 import { API_BASE_URL } from './api'
-import { OPENAPI_CATALOG, catalogSourceUrl } from './catalog'
+import { OPENAPI_CATALOG } from './catalog.server'
+import { catalogSourceUrl } from './catalog'
 
 assert.deepEqual(
   OPENAPI_CATALOG.map((entry) => [entry.hotkey, entry.id, entry.title]),
   [
-    ['6', 'arcade-api', 'Arcade API'],
-    ['7', 'smithery-api', 'Smithery API'],
-    ['8', 'petstore', 'Swagger Petstore'],
-    ['9', 'openai', 'OpenAI'],
-    ['0', 'anthropic', 'Anthropic'],
+    ['1', 'arcade-api', 'Arcade API'],
+    ['2', 'smithery-api', 'Smithery API'],
+    ['3', 'petstore', 'Swagger Petstore'],
+    ['4', 'openai', 'OpenAI'],
+    ['5', 'anthropic', 'Anthropic'],
   ],
 )
 assert.equal(
