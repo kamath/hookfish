@@ -59,15 +59,10 @@ await assert.rejects(
   apiJson(
     new Response('<!DOCTYPE html><title>Just a moment...</title>', {
       status: 403,
-      headers: {
-        'content-type': 'text/html',
-        'cf-mitigated': 'challenge',
-      },
+      headers: { 'content-type': 'text/html' },
     }),
   ),
-  {
-    message: 'A security check blocked this request. Reload the page and try again.',
-  },
+  { message: 'Request failed (403)' },
 )
 await assert.rejects(
   apiJson(
