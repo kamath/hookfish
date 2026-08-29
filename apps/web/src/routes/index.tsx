@@ -78,6 +78,7 @@ function Home() {
   const [url, setUrl] = useState('')
   const [urlFocused, setUrlFocused] = useState(false)
   const [activeRow, setActiveRow] = useState(0)
+  const [activeItems, setActiveItems] = useState<Record<string, number>>({})
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
     return pending
@@ -154,8 +155,8 @@ function Home() {
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
       : undefined
-  const canStepDown = activeRow < carouselRows.length - 1
-  const canStepUp = activeRow > 0
+  const canSelectNextList = activeRow < carouselRows.length - 1
+  const canSelectPreviousList = activeRow > 0
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -172,10 +173,41 @@ function Home() {
     activate('specs', 'command')
   }, [])
 
-  function move(delta: number) {
+  function moveList(delta: number) {
     setActiveRow((index) => {
       const last = Math.max(carouselRows.length - 1, 0)
-      return Math.min(Math.max(index + delta, 0), last)
+      const nextIndex = Math.min(Math.max(index + delta, 0), last)
+      const nextRow = carouselRows[nextIndex]
+      if (nextRow) {
+        requestAnimationFrame(() => {
+          carouselRefs.current[nextRow.id]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+          })
+        })
+      }
+      return nextIndex
+    })
+  }
+
+  function moveItem(delta: number) {
+    const row = carouselRows[activeRow]
+    if (!row || row.items.length === 0) {
+      return
+    }
+    setActiveItems((current) => {
+      const nextIndex = Math.min(
+        Math.max((current[row.id] ?? 0) + delta, 0),
+        row.items.length - 1,
+      )
+      requestAnimationFrame(() => {
+        carouselRefs.current[row.id]?.children[nextIndex]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        })
+      })
+      return { ...current, [row.id]: nextIndex }
     })
   }
 
@@ -188,13 +220,6 @@ function Home() {
       left: delta * (carousel.clientWidth / 2),
       behavior: 'smooth',
     })
-  }
-
-  function scrollActiveCarousel(delta: number) {
-    const row = carouselRows[activeRow]
-    if (row) {
-      scrollCarousel(row.id, delta)
-    }
   }
 
   function cancelAuthorization() {
@@ -268,7 +293,7 @@ function Home() {
     hasAuthRedirect: Boolean(pendingAuth),
     hasRemoveConfirm: Boolean(pendingRemove),
   })
-  useStepKeys('specs', move, carouselRows.length > 0 && !dialogOpen)
+  useStepKeys('specs', moveItem, carouselRows.length > 0 && !dialogOpen)
   usePaneActions('specs', {
     ...Object.fromEntries(
       [0, 1, 2, 3, 4].map((index) => [
@@ -284,13 +309,26 @@ function Home() {
         },
       ]),
     ),
+    open: {
+      callback: () => {
+        const row = carouselRows[activeRow]
+        if (!row) {
+          return
+        }
+        const item = row.items[activeItems[row.id] ?? 0]
+        if (item) {
+          openCarouselItem(item)
+        }
+      },
+      enabled: !dialogOpen && Boolean(carouselRows[activeRow]?.items.length),
+    },
     carouselPrevious: {
-      callback: () => scrollActiveCarousel(-1),
-      enabled: !dialogOpen,
+      callback: () => moveList(-1),
+      enabled: !dialogOpen && canSelectPreviousList,
     },
     carouselNext: {
-      callback: () => scrollActiveCarousel(1),
-      enabled: !dialogOpen,
+      callback: () => moveList(1),
+      enabled: !dialogOpen && canSelectNextList,
     },
     confirmRemove,
     cancelRemove,
@@ -346,16 +384,20 @@ function Home() {
           <h2 className="font-mono text-[11px] text-mute">{row.title}</h2>
           {active && showKeybindings ? (
             <KeyHints className="flex items-center gap-2 text-faint">
-              {canStepUp ? (
+              {canSelectPreviousList ? (
                 <span className="inline-flex items-center gap-1">
-                  <Kbd hotkey="K" /> up
+                  <Kbd hotkey="H" /> previous list
                 </span>
               ) : null}
-              {canStepDown ? (
+              {canSelectNextList ? (
                 <span className="inline-flex items-center gap-1">
-                  <Kbd hotkey="J" /> down
+                  <Kbd hotkey="L" /> next list
                 </span>
               ) : null}
+              <span className="inline-flex items-center gap-1">
+                <Kbd hotkey="J" />
+                <Kbd hotkey="K" /> items
+              </span>
             </KeyHints>
           ) : null}
           <div className="ml-auto flex items-center gap-1">
@@ -366,7 +408,6 @@ function Home() {
               onClick={() => scrollCarousel(row.id, -1)}
             >
               <span aria-hidden="true">‹</span>
-              {active ? <Kbd hotkey="H" /> : null}
             </button>
             <button
               type="button"
@@ -374,7 +415,6 @@ function Home() {
               aria-label={`Scroll ${row.title} right`}
               onClick={() => scrollCarousel(row.id, 1)}
             >
-              {active ? <Kbd hotkey="L" /> : null}
               <span aria-hidden="true">›</span>
             </button>
           </div>
@@ -387,6 +427,7 @@ function Home() {
             className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {row.items.map((item, index) => {
+              const itemActive = active && (activeItems[row.id] ?? 0) === index
               const status = item.type === 'catalog' ? entryStatus(item.entry) : undefined
               const added =
                 item.type === 'catalog' &&
@@ -400,7 +441,7 @@ function Home() {
                 <li
                   key={item.id}
                   className={`relative w-[calc((100%-0.75rem)/2)] shrink-0 snap-start ${
-                    added ? 'bg-ink/10' : 'bg-paper/70'
+                    itemActive ? 'bg-signal/20' : added ? 'bg-ink/10' : 'bg-paper/70'
                   }`}
                 >
                 <button
@@ -408,6 +449,10 @@ function Home() {
                     className="flex min-h-24 w-full items-start gap-3 px-3 py-3 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
                   disabled={openSource.isPending || dialogOpen}
                     onClick={() => openCarouselItem(item)}
+                    onFocus={() => {
+                      setActiveRow(rowIndex)
+                      setActiveItems((current) => ({ ...current, [row.id]: index }))
+                    }}
                 >
                   <span className="min-w-0 flex-1">
                       <span className="block truncate pr-7 text-sm text-ink">

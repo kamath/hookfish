@@ -71,10 +71,11 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   specs: {
     path: '/',
     bindings: [
-      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next row', flag: 'hasCarousel' },
-      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous row', flag: 'hasCarousel' },
-      { id: 'carouselPrevious', hotkey: 'H', label: 'scroll left', flag: 'hasCarousel' },
-      { id: 'carouselNext', hotkey: 'L', label: 'scroll right', flag: 'hasCarousel' },
+      { id: 'open', hotkey: 'Enter', label: 'open item', flag: 'hasCarousel' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next item', flag: 'hasCarousel' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous item', flag: 'hasCarousel' },
+      { id: 'carouselPrevious', hotkey: 'H', label: 'previous list', flag: 'hasCarousel' },
+      { id: 'carouselNext', hotkey: 'L', label: 'next list', flag: 'hasCarousel' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
       { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
