@@ -9,9 +9,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 // The Cloudflare plugin resolves the `workers` export condition and builds the SSR
 // environment for workerd, so `vite build` emits a Worker that `wrangler deploy` ships.
 const config = defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-  },
+  resolve: { tsconfigPaths: true },
   optimizeDeps: {
     include: ['@tanstack/react-query'],
   },
