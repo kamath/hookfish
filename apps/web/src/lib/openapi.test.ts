@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict'
-import { specToClient } from './openapi.ts'
+import { isOpenApiDocument, specToClient } from './openapi.ts'
+
+assert.equal(isOpenApiDocument({ openapi: '3.1.0', paths: {} }), true)
+assert.equal(isOpenApiDocument({ swagger: '2.0', info: { title: 'S' } }), true)
+assert.equal(
+  isOpenApiDocument({ info: { title: 'No version field' }, paths: { '/x': {} } }),
+  true,
+)
+assert.equal(isOpenApiDocument({ paths: { '/x': {} } }), false)
+assert.equal(isOpenApiDocument({ jsonrpc: '2.0', result: {} }), false)
+assert.equal(isOpenApiDocument('openapi: 3.1.0'), false)
+assert.equal(isOpenApiDocument(null), false)
 
 const api = specToClient(
   {
@@ -39,5 +50,10 @@ assert.deepEqual(api.executables[0]?.outputSchema, {
     },
   },
 })
+
+assert.throws(
+  () => specToClient({ jsonrpc: '2.0', result: {} }, 'https://example.test/rpc', 'rpc'),
+  /OpenAPI or Swagger document/,
+)
 
 console.log('openapi output schema ok')

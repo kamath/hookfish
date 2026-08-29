@@ -21,6 +21,36 @@ assert.deepEqual(
     info: { title: 'Local API' },
   },
 )
+assert.match(
+  String(new Headers(seen[0]?.init?.headers).get('accept')),
+  /application\/json/,
+)
+assert.equal(
+  String(new Headers(seen[0]?.init?.headers).get('accept')).includes('*/*'),
+  false,
+  'spec fetch must not accept event streams via */*',
+)
+
+{
+  let cancelled = false
+  const sseFetch: typeof fetch = async () =>
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: ping\n\n'))
+        },
+        cancel() {
+          cancelled = true
+        },
+      }),
+      { headers: { 'content-type': 'text/event-stream' } },
+    )
+  await assert.rejects(
+    () => fetchUpstreamSpec('http://localhost:8787/mcp', sseFetch),
+    /event stream/,
+  )
+  assert.equal(cancelled, true, 'SSE body is cancelled instead of being consumed')
+}
 
 const result = await executeUpstreamRequest(
   {

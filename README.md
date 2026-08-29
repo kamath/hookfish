@@ -15,15 +15,15 @@ pnpm dev
 
 Open `http://localhost:3000`. The launcher opens ten curated sources from command mode:
 `1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
-bar and press `Enter` to connect to it as an MCP server or `Cmd`/`Ctrl`+`Enter` to read it as
-an OpenAPI document.
+bar and press `Enter`. Hookfish probes the URL to decide whether it is an MCP server or an
+OpenAPI document.
 
 ## Adding a source type
 
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
 `apps/web/src/lib/client-types.ts`. Register source discovery/loading in
-`apps/web/src/lib/source-adapters.ts`; the launcher's submit buttons and their shortcuts come
-from that registry. A source parser supplies executable names, badges, accent colors, JSON
+`apps/web/src/lib/source-adapters.ts`. The launcher infers whether a pasted URL is MCP or
+OpenAPI; curated catalog entries still declare a kind. A source parser supplies executable names, badges, accent colors, JSON
 Schema inputs, targets, credentials, and UI labels. Curated entries and their number keys live
 in `apps/web/src/lib/catalog.ts`; adding a row there also registers its keybinding.
 
@@ -37,7 +37,7 @@ changes.
 
 ## MCP inspector
 
-Pick an MCP server from the launcher or enter a Streamable HTTP endpoint and press `Enter`.
+Pick an MCP server from the launcher or enter a Streamable HTTP endpoint.
 Hookfish uses the official MCP TypeScript client with automatic protocol negotiation:
 
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions

@@ -48,10 +48,16 @@ export async function fetchUpstreamSpec(
 
   const response = await upstreamFetch(specUrl, {
     headers: {
-      Accept: 'application/json, application/yaml, text/yaml, text/plain, */*',
+      Accept: 'application/json, application/yaml, text/yaml, text/plain',
     },
     signal: AbortSignal.timeout(15_000),
   })
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('text/event-stream')) {
+    await response.body?.cancel()
+    throw new Error('The URL returned an event stream instead of an OpenAPI document.')
+  }
 
   if (!response.ok) {
     throw new Error(`Could not fetch the spec (${response.status}).`)
