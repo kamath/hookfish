@@ -41,6 +41,73 @@ jobs:
             echo "previous_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Mark preview deployment as WIP
+        uses: actions/github-script@v8
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          PREVIOUS_EXISTS: ${{ steps.preview.outputs.previous_exists }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = '<!-- smithery-preview-deployment -->'
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            })
+
+            if (pull.head.sha !== process.env.COMMIT_SHA) {
+              core.info('A newer commit is already at the head of this pull request; skipping the WIP comment.')
+              return
+            }
+
+            const lines = [
+              marker,
+              '### 🚧 WIP: Preview build/deploy in progress',
+              '',
+              `Commit: \`${process.env.COMMIT_SHA.slice(0, 7)}\``,
+              `[View build logs](${process.env.RUN_URL})`,
+            ]
+
+            if (process.env.PREVIOUS_EXISTS === 'true') {
+              lines.splice(
+                3,
+                0,
+                `The **[previous deployment remains available](${process.env.PREVIEW_URL})** until this one is ready.`,
+                '',
+              )
+            }
+
+            const body = lines.join('\n')
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.type === 'Bot' &&
+                comment.body?.includes(marker),
+            )
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
+
       - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
@@ -49,6 +116,14 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Restore or save Turborepo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - run: pnpm install --frozen-lockfile
 
@@ -132,6 +207,17 @@ jobs:
         with:
           script: |
             const marker = '<!-- smithery-preview-deployment -->'
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            })
+
+            if (pull.head.sha !== process.env.COMMIT_SHA) {
+              core.info('A newer commit is already at the head of this pull request; skipping the final comment.')
+              return
+            }
+
             const succeeded = process.env.JOB_STATUS === 'success'
             const previousExists = process.env.PREVIOUS_EXISTS === 'true'
             const previewUrl = process.env.PREVIEW_URL
