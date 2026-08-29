@@ -40,6 +40,12 @@ export function AccountMenu() {
       <span className="max-w-40 truncate px-1 text-sm text-mute" title={user.email}>
         {user.email}
       </span>
+      <Link
+        to="/api-keys"
+        className="inline-flex h-8 items-center px-2 text-sm text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
+      >
+        Create API key
+      </Link>
       <button
         type="button"
         className="inline-flex h-8 items-center px-2 text-sm text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink disabled:opacity-40"

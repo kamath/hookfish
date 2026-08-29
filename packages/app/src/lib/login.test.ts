@@ -18,6 +18,7 @@ assert.match(login, /hotkey="Enter"/)
 assert.match(login, />\s*Cancel\s*/)
 assert.match(login, /<Kbd hotkey="Escape" \/>/)
 assert.match(login, /data-oc-enter-submit="true"/)
+assert.doesNotMatch(login, /CreateApiKeyForm/)
 
 const bindings = paneConfig.login.bindings
 assert.equal(paneConfig.login.parent, 'specs')

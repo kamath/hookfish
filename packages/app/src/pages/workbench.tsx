@@ -63,7 +63,7 @@ export type WorkbenchRouteProps = {
   onSearchChange: (search: Search) => void
 }
 
-type WorkbenchPane = Exclude<Pane, 'specs' | 'login'>
+type WorkbenchPane = Exclude<Pane, 'specs' | 'login' | 'apiKeys'>
 
 function readPane(value: string, operationId?: string): WorkbenchPane {
   if (value === 'trace') {

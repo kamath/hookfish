@@ -44,6 +44,93 @@ const session = await api.request('/auth/session', {
 assert.equal(session.status, 200)
 assert.equal((await session.json()).user?.email, email)
 
+const createdKeyResponse = await api.request('/auth/api-keys', {
+  method: 'POST',
+  headers: {
+    cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({ name: 'Automation', expiration: '7 days' }),
+})
+assert.equal(createdKeyResponse.status, 201, await createdKeyResponse.clone().text())
+const createdKeyBody = (await createdKeyResponse.json()) as {
+  apiKey: { name: string; expiresAt: string | null; key: string }
+}
+assert.equal(createdKeyBody.apiKey.name, 'Automation')
+assert.ok(createdKeyBody.apiKey.expiresAt)
+assert.match(createdKeyBody.apiKey.key, /^hf_[A-Za-z0-9_-]{43}$/)
+
+const neverKeyResponse = await api.request('/auth/api-keys', {
+  method: 'POST',
+  headers: {
+    cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({ name: 'Permanent', expiration: 'never' }),
+})
+assert.equal(neverKeyResponse.status, 201, await neverKeyResponse.clone().text())
+assert.equal(((await neverKeyResponse.json()) as { apiKey: { expiresAt: string | null } }).apiKey.expiresAt, null)
+
+const listedWithSession = await api.request('/auth/api-keys', {
+  headers: { cookie, origin: 'http://hookfish.test' },
+})
+assert.equal(listedWithSession.status, 200)
+const listedBody = (await listedWithSession.json()) as {
+  apiKeys: Array<{ name: string; expiresAt: string | null }>
+}
+assert.deepEqual(
+  listedBody.apiKeys.map((key) => key.name),
+  ['Permanent', 'Automation'],
+)
+assert.equal(JSON.stringify(listedBody).includes(createdKeyBody.apiKey.key), false)
+assert.equal(listedBody.apiKeys.some((key) => 'key' in key), false)
+
+const listedWithApiKey = await api.request('/auth/api-keys', {
+  headers: { 'x-api-key': createdKeyBody.apiKey.key },
+})
+assert.equal(listedWithApiKey.status, 200)
+assert.deepEqual(await listedWithApiKey.json(), listedBody)
+
+const tokenResponse = await api.request('/auth/token', {
+  headers: { cookie, origin: 'http://hookfish.test' },
+})
+assert.equal(tokenResponse.status, 200, await tokenResponse.clone().text())
+const jwt = ((await tokenResponse.json()) as { token: string }).token
+assert.equal(jwt.split('.').length, 3)
+
+const listedWithJwt = await api.request('/auth/api-keys', {
+  headers: { authorization: `Bearer ${jwt}` },
+})
+assert.equal(listedWithJwt.status, 200)
+assert.deepEqual(await listedWithJwt.json(), listedBody)
+
+const createdThroughViewer = await api.request('/execute', {
+  method: 'POST',
+  headers: {
+    cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    transport: 'http',
+    method: 'post',
+    url: 'http://localhost/auth/api-keys',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'OpenAPI viewer', expiration: '1 day' }),
+  }),
+})
+assert.equal(createdThroughViewer.status, 200)
+const viewerResult = await createdThroughViewer.json()
+assert.equal(viewerResult.status.code, 201)
+assert.equal(JSON.parse(viewerResult.body).apiKey.name, 'OpenAPI viewer')
+
+const invalidApiKey = await api.request('/auth/api-keys', {
+  headers: { 'x-api-key': 'hf_invalid' },
+})
+assert.equal(invalidApiKey.status, 401)
+
 const signedIn = await client.auth['sign-in'].$post({
   json: { email, password: 'password1' },
 })

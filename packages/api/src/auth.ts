@@ -1,12 +1,20 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth } from 'better-auth'
+import { jwt } from 'better-auth/plugins'
 import {
   resolveDatabase,
   type AppDatabase,
   type DatabaseInput,
 } from './db/types'
+import { resolveRuntimeEnv } from './db/env'
 import { isCloudflareProduction, type RuntimeEnv } from './db/url'
 import { schema } from './db/schema'
+
+export type AuthOptions = {
+  env?: RuntimeEnv
+  database?: DatabaseInput
+  authBasePath?: string
+}
 
 function authSecret(env: RuntimeEnv) {
   if (env.BETTER_AUTH_SECRET) {
@@ -36,6 +44,16 @@ async function createAuth(
     emailAndPassword: {
       enabled: true,
     },
+    plugins: [
+      jwt({
+        jwt: {
+          definePayload: ({ user }) => ({
+            email: user.email,
+            name: user.name,
+          }),
+        },
+      }),
+    ],
   })
 }
 
@@ -65,6 +83,17 @@ export async function getAuth(
   const created = createAuth(db, env, baseURL, basePath)
   databaseCache.set(key, created)
   return created
+}
+
+export async function getAuthForRequest(request: Request, options: AuthOptions) {
+  if (!options.database) {
+    throw new Error(
+      'A configured database is required for authentication. Pass database to createApi or mountApi.',
+    )
+  }
+  const env = await resolveRuntimeEnv(options.env)
+  const baseURL = env.BETTER_AUTH_URL ?? new URL(request.url).origin
+  return getAuth(options.database, env, baseURL, options.authBasePath ?? '/auth')
 }
 
 export async function handleAuthRequest(

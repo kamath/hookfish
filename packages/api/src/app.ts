@@ -2,16 +2,19 @@ import { Hono } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import {
   applySetCookies,
+  createApiKeyRoute,
   handleNativeAuth,
   handleSession,
   handleSignIn,
   handleSignOut,
   handleSignUp,
+  listApiKeysRoute,
   sessionRoute,
   signInRoute,
   signOutRoute,
   signUpRoute,
 } from './auth-openapi'
+import { createApiKey, listApiKeys } from './api-keys'
 import { authBasePathForMount } from './auth-path'
 import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
@@ -33,6 +36,7 @@ import {
   withInternalFetchHeader,
 } from './self'
 import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
+import { authenticationMiddleware, type ApiVariables } from './request-auth'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
@@ -182,13 +186,20 @@ export function createApi(options: CreateApiOptions = {}) {
     database: options.database,
     authBasePath: options.authBasePath ?? '/auth',
   }
-  const app = new OpenAPIHono({
+  const app = new OpenAPIHono<{ Variables: ApiVariables }>({
     defaultHook: (result, c) => {
       if (!result.success) {
         const issue = result.error.issues[0]
         return c.json({ error: issue?.message ?? 'Invalid request.' }, 400)
       }
     },
+  })
+  app.use('*', authenticationMiddleware(authOptions))
+  app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', {
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT or API key',
+    description: 'A user JWT or an API key returned by POST /auth/api-keys.',
   })
 
   const openApiConfig = {
@@ -200,8 +211,12 @@ export function createApi(options: CreateApiOptions = {}) {
     servers: options.openapi?.servers ?? [{ url: '/' }],
   }
 
-  const fetchOwnOrUpstream: (requestUrl: string, nested: boolean) => typeof fetch =
-    (requestUrl, nested) =>
+  const fetchOwnOrUpstream: (
+    requestUrl: string,
+    nested: boolean,
+    authenticationHeaders?: Headers,
+  ) => typeof fetch =
+    (requestUrl, nested, authenticationHeaders) =>
       async (input, init) => {
         const own = ownApiRequest(input, init, requestUrl)
         if (!own) {
@@ -210,7 +225,7 @@ export function createApi(options: CreateApiOptions = {}) {
         if (nested && new URL(own.url).pathname === '/execute') {
           throw new Error("Cannot proxy this API's execute endpoint through itself.")
         }
-        return app.fetch(withInternalFetchHeader(own))
+        return app.fetch(withInternalFetchHeader(own, authenticationHeaders))
       }
 
   const routes = app
@@ -241,13 +256,37 @@ export function createApi(options: CreateApiOptions = {}) {
       }
       return c.json({ user: result.user }, 200)
     })
+    .openapi(createApiKeyRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser || !authOptions.database) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      const created = await createApiKey(authOptions.database, {
+        userId: authenticatedUser.id,
+        ...c.req.valid('json'),
+      })
+      return c.json({ apiKey: created }, 201)
+    })
+    .openapi(listApiKeysRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser || !authOptions.database) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      return c.json(
+        { apiKeys: await listApiKeys(authOptions.database, authenticatedUser.id) },
+        200,
+      )
+    })
     .openapi(specRoute, async (c) => {
       try {
         const specUrl = c.req.valid('json').url
         if (isOwnOpenApiUrl(specUrl, c.req.url)) {
           return c.json(app.getOpenAPI31Document(openApiConfig), 200)
         }
-        const document = await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
+        const document = await fetchUpstreamSpec(
+          specUrl,
+          fetchOwnOrUpstream(c.req.url, true, c.req.raw.headers),
+        )
         return c.json(document, 200)
       } catch (error) {
         return c.json({ error: errorMessage(error, 'Could not fetch the spec.') }, 400)
@@ -262,7 +301,7 @@ export function createApi(options: CreateApiOptions = {}) {
             ...data,
             headers: data.headers ?? {},
           },
-          fetchOwnOrUpstream(c.req.url, nested),
+          fetchOwnOrUpstream(c.req.url, nested, c.req.raw.headers),
         )
         return c.json(result, 200)
       } catch (error) {
