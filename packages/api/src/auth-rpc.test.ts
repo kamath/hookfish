@@ -116,7 +116,7 @@ const createdThroughViewer = await api.request('/execute', {
   body: JSON.stringify({
     transport: 'http',
     method: 'post',
-    url: 'http://hookfish.test/auth/api-keys',
+    url: 'http://localhost/auth/api-keys',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name: 'OpenAPI viewer', expiration: '1 day' }),
   }),
