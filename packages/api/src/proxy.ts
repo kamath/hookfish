@@ -1,5 +1,7 @@
 import { isHttpUrl } from './http'
 
+export const MCP_PROXY_AUTHORIZATION_HEADER = 'x-hookfish-mcp-authorization'
+
 const REQUEST_HEADER_BLOCKLIST = new Set([
   'connection',
   'content-length',
@@ -11,6 +13,7 @@ const REQUEST_HEADER_BLOCKLIST = new Set([
   'x-forwarded-for',
   'x-forwarded-host',
   'x-forwarded-proto',
+  MCP_PROXY_AUTHORIZATION_HEADER,
 ])
 
 const RESPONSE_HEADER_BLOCKLIST = new Set([
@@ -44,6 +47,10 @@ export async function proxyMcpRequest(
   }
 
   const headers = filteredHeaders(request.headers, REQUEST_HEADER_BLOCKLIST)
+  const upstreamAuthorization = request.headers.get(MCP_PROXY_AUTHORIZATION_HEADER)
+  if (upstreamAuthorization) {
+    headers.set('authorization', upstreamAuthorization)
+  }
   const body =
     request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body
   const response = await upstreamFetch(target, {

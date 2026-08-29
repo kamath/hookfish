@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { hc } from 'hono/client'
 import { createApi, mountApi, type AppType } from './app'
 import { mcpOAuthClientMetadata } from './oauth'
+import { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
 
 const seen: Array<{ url: string; init?: RequestInit }> = []
 
@@ -82,6 +83,20 @@ const proxied = await client['mcp-proxy'].$post({ query: { url: 'https://mcp.tes
 assert.equal(proxied.status, 200)
 assert.equal(proxied.headers.get('mcp-session-id'), 'session-1')
 assert.equal(seen.at(-1)?.url, 'https://mcp.test/sse')
+
+const authorizedProxy = await api.request(
+  '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fauthorized',
+  {
+    method: 'POST',
+    headers: {
+      [MCP_PROXY_AUTHORIZATION_HEADER]: 'Bearer upstream-token',
+    },
+  },
+)
+assert.equal(authorizedProxy.status, 200)
+const authorizedHeaders = new Headers(seen.at(-1)?.init?.headers)
+assert.equal(authorizedHeaders.get('authorization'), 'Bearer upstream-token')
+assert.equal(authorizedHeaders.get(MCP_PROXY_AUTHORIZATION_HEADER), null)
 
 const rejectedProxy = await client['mcp-proxy'].$get({ query: { url: 'file:///tmp/mcp' } })
 assert.equal(rejectedProxy.status, 400)
