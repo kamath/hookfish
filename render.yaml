@@ -1,0 +1,25 @@
+databases:
+  - name: smithery-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: smithery
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm turbo run build --filter=@hookfish/example-node
+    preDeployCommand: pnpm --filter @hookfish/api db:migrate:prod
+    startCommand: pnpm --filter @hookfish/example-node start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: smithery-db
+          property: connectionString
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
