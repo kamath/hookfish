@@ -491,16 +491,16 @@ export function HomePage() {
           ) : null}
           {!showSubmitButtons && !url.trim() ? (
             <p className="mt-2 text-center text-sm text-mute">
+              MIT License.{' '}
               <a
                 href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium text-signal underline underline-offset-2"
+                onFocus={(event) => event.stopPropagation()}
               >
-                100% open source
+                Run it yourself
               </a>
-              {' '}
-              (MIT License)
             </p>
           ) : null}
           {urlError ? (
