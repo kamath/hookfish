@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm'
 import {
   boolean,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -67,6 +68,14 @@ export const verification = pgTable('verification', {
   updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
 })
 
+export const registryEntry = pgTable('registry_entry', {
+  url: text('url').primaryKey(),
+  kind: text('kind', { enum: ['mcp', 'openapi'] }).notNull(),
+  document: jsonb('document'),
+  createdAt: timestampColumn('created_at').defaultNow().notNull(),
+  updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
+})
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -91,6 +100,7 @@ export const schema = {
   session,
   account,
   verification,
+  registryEntry,
   userRelations,
   sessionRelations,
   accountRelations,

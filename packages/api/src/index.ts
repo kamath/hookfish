@@ -7,6 +7,8 @@ export {
   authUserSchema,
   executeRequestSchema,
   executeResultSchema,
+  registryQuerySchema,
+  registryResultSchema,
   signInRequestSchema,
   signUpRequestSchema,
   type AuthSession,

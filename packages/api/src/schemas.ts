@@ -64,6 +64,24 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
+export const registryQuerySchema = z.object({
+  url: z.string().trim().min(1),
+})
+
+export const registryResultSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      url: z.string(),
+      kind: z.literal('mcp'),
+    }),
+    z.object({
+      url: z.string(),
+      kind: z.literal('openapi'),
+      document: z.any(),
+    }),
+  ])
+  .openapi('RegistryResult')
+
 export const signUpRequestSchema = z
   .object({
     name: z.string().trim().min(1),
