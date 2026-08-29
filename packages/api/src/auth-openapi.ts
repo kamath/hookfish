@@ -123,6 +123,7 @@ export const createApiKeyRoute = createRoute({
   path: '/auth/api-keys',
   tags: ['Auth'],
   summary: 'Create an API key',
+  security: [{ Bearer: [] }],
   request: {
     body: {
       required: true,
@@ -158,6 +159,7 @@ export const listApiKeysRoute = createRoute({
   path: '/auth/api-keys',
   tags: ['Auth'],
   summary: 'List API key names and expirations',
+  security: [{ Bearer: [] }],
   responses: {
     200: {
       description: 'API key metadata without secrets',

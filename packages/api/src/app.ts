@@ -203,6 +203,16 @@ export function createApi(options: CreateApiOptions = {}) {
       version: options.openapi?.version ?? '1.0.0',
     },
     servers: options.openapi?.servers ?? [{ url: '/' }],
+    components: {
+      securitySchemes: {
+        Bearer: {
+          type: 'http' as const,
+          scheme: 'bearer',
+          bearerFormat: 'JWT or API key',
+          description: 'A user JWT or an API key returned by POST /auth/api-keys.',
+        },
+      },
+    },
   }
 
   const fetchOwnOrUpstream: (

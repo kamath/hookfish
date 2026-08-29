@@ -92,6 +92,9 @@ const document = (await openapi.json()) as {
   openapi: string
   paths: Record<string, unknown>
   servers?: Array<{ url: string }>
+  components?: {
+    securitySchemes?: Record<string, unknown>
+  }
 }
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
@@ -103,6 +106,18 @@ assert.ok(document.paths['/auth/sign-in'])
 assert.ok(document.paths['/auth/sign-out'])
 assert.ok(document.paths['/auth/session'])
 assert.ok(document.paths['/auth/api-keys'])
+assert.deepEqual(document.components?.securitySchemes?.Bearer, {
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT or API key',
+  description: 'A user JWT or an API key returned by POST /auth/api-keys.',
+})
+const apiKeyOperations = document.paths['/auth/api-keys'] as {
+  get?: { security?: Array<Record<string, unknown>> }
+  post?: { security?: Array<Record<string, unknown>> }
+}
+assert.deepEqual(apiKeyOperations.get?.security, [{ Bearer: [] }])
+assert.deepEqual(apiKeyOperations.post?.security, [{ Bearer: [] }])
 
 assert.equal(client.auth['sign-up'].$url().toString(), 'http://hookfish.test/auth/sign-up')
 assert.equal(client.auth['sign-in'].$url().toString(), 'http://hookfish.test/auth/sign-in')
