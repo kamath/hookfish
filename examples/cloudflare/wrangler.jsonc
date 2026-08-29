@@ -8,6 +8,9 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  // Production only. `pnpm dev` runs Vite on Node with PGlite and does not
+  // load this binding. Do not add localConnectionString here — that would make
+  // local Vite use Postgres instead of PGlite.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

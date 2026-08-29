@@ -15,7 +15,10 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The launcher opens ten curated sources from command mode:
+Open `http://127.0.0.1:3000`. Local Vite runs on Node with PGlite — it does not
+use Cloudflare Hyperdrive or require Postgres. `pnpm dev` and `pnpm cli` both
+default to port 3000; do not run them at the same time. If the page stays up
+after you stop the CLI, Vite from `pnpm dev` is still serving that port.
 `1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
 bar and press `Enter`. Smithery probes the URL to decide whether it is an MCP server or an
 OpenAPI document.
@@ -117,6 +120,8 @@ pnpm db:studio:prod
 
 On Cloudflare, bind Hyperdrive as `HYPERDRIVE` (it wins over `POSTGRES_URL`). Set
 `BETTER_AUTH_SECRET` in production. PGlite is not bundled into the Cloudflare worker.
+Do not add `localConnectionString` to the Hyperdrive binding unless you want local
+Wrangler to use Postgres instead of PGlite.
 
 Build every workspace package:
 

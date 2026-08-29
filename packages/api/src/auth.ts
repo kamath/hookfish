@@ -1,14 +1,14 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth } from 'better-auth'
 import { getDb } from './db'
-import { isCloudflareWorker, type RuntimeEnv } from './db/url'
+import { isCloudflareProduction, type RuntimeEnv } from './db/url'
 import { schema } from './db/schema'
 
 function authSecret(env: RuntimeEnv) {
   if (env.BETTER_AUTH_SECRET) {
     return env.BETTER_AUTH_SECRET
   }
-  if (isCloudflareWorker()) {
+  if (isCloudflareProduction()) {
     throw new Error('BETTER_AUTH_SECRET is required on Cloudflare.')
   }
   return 'hookfish-dev-secret-change-me'

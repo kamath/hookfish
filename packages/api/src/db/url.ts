@@ -40,6 +40,20 @@ export function isCloudflareWorker(): boolean {
   return typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
 }
 
+export function isViteDevRuntime(): boolean {
+  return Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV)
+}
+
+export function isCloudflareProduction(
+  options: { cloudflare?: boolean; localDev?: boolean } = {},
+): boolean {
+  if (options.localDev ?? isViteDevRuntime()) {
+    return false
+  }
+
+  return options.cloudflare ?? isCloudflareWorker()
+}
+
 export function resolvePgliteDataDir(env: RuntimeEnv = {}, moduleUrl = import.meta.url) {
   if (env.PGLITE_DATA_DIR) {
     return env.PGLITE_DATA_DIR
@@ -55,7 +69,7 @@ export function resolvePgliteDataDir(env: RuntimeEnv = {}, moduleUrl = import.me
 
 export function resolveDatabaseTarget(
   env: RuntimeEnv = {},
-  options: { moduleUrl?: string; cloudflare?: boolean } = {},
+  options: { moduleUrl?: string; cloudflare?: boolean; localDev?: boolean } = {},
 ): DatabaseTarget {
   const hyperdrive = env.HYPERDRIVE?.connectionString
   if (hyperdrive) {
@@ -70,8 +84,7 @@ export function resolveDatabaseTarget(
     throw new Error('POSTGRES_URL is required for production database commands.')
   }
 
-  const onCloudflare = options.cloudflare ?? isCloudflareWorker()
-  if (onCloudflare) {
+  if (isCloudflareProduction(options)) {
     throw new Error('Cloudflare requires a Hyperdrive binding or POSTGRES_URL.')
   }
 

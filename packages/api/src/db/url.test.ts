@@ -57,6 +57,14 @@ assert.deepEqual(resolveDatabaseTarget({}, { moduleUrl: apiModuleUrl }), {
   dataDir: fileURLToPathFromHref('file:///workspace/packages/api/.data'),
 })
 
+assert.deepEqual(
+  resolveDatabaseTarget({}, { cloudflare: true, localDev: true, moduleUrl: apiModuleUrl }),
+  {
+    kind: 'pglite',
+    dataDir: fileURLToPathFromHref('file:///workspace/packages/api/.data'),
+  },
+)
+
 function fileURLToPathFromHref(href: string) {
   return new URL(href).pathname
 }
