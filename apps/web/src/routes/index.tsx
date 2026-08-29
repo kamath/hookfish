@@ -161,7 +161,7 @@ function Home() {
     mutationFn: async (id: string) => {
       removeApi(id)
     },
-    onSuccess: async (_, id) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
