@@ -11,7 +11,13 @@ const toolbar = root.slice(root.indexOf('function AppToolbar'), root.indexOf('fu
 assert.match(toolbar, /useSourceToolbarValue/)
 assert.match(toolbar, /Clear auth/)
 assert.match(toolbar, /Mod\+Backspace/)
-assert.match(toolbar, /className="flex shrink-0 items-center/)
+assert.match(toolbar, /AccountMenu/)
+
+const account = readFileSync(new URL('../components/account-menu.tsx', import.meta.url), 'utf8')
+assert.match(account, /to="\/login"/)
+assert.match(account, /hotkey="S"/)
+assert.match(account, /bg-ink\/10/)
+assert.doesNotMatch(toolbar, /CloudToggle/)
 assert.doesNotMatch(toolbar, /className="oc-bar[\s"]/, 'navbar keeps the paper background')
 
 const page = readFileSync(

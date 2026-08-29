@@ -9,6 +9,9 @@ pnpm --filter @hookfish/example-node build
 pnpm --filter @hookfish/example-node start    # PORT=3000 HOST=0.0.0.0
 ```
 
+Set `POSTGRES_URL=postgres://...` to pass Postgres to `mountApi`. When it is
+unset, this example uses PGlite.
+
 `ssr.noExternal: true` inlines dependencies into `dist/server/server.js`, so the build output
 plus `srvx` is everything the process needs — the `dist/` directory can be copied to a host
 that never runs `pnpm install`.

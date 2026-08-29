@@ -2,14 +2,13 @@ import { useNavigate } from '@tanstack/react-router'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from './components/brand'
-import { CloudToggle } from './components/cloud-toggle'
+import { AccountMenu } from './components/account-menu'
 import { GitHubLink } from './components/github-link'
 import { Kbd } from './components/hints'
 import { BackCaret } from './components/pane-back-button'
 import { QueryStatus } from './components/query-status'
 import { ThemeToggle } from './components/theme-toggle'
 import { configureApp } from './config'
-import { hydrateCloudProxy } from './lib/cloud'
 import { bindEnterMode, useGlobalKeybindings } from './lib/keymap'
 import { bindModeFromFocus } from './lib/mode'
 import { bindTheme } from './lib/theme'
@@ -29,7 +28,6 @@ export function App({ apiBaseUrl, children }: AppProps) {
   useLayoutEffect(() => bindTheme(), [])
 
   useEffect(() => {
-    hydrateCloudProxy()
     const unbindFocus = bindModeFromFocus()
     const unbindEnter = bindEnterMode()
     return () => {
@@ -95,7 +93,7 @@ function AppToolbar() {
             <Kbd hotkey="Escape" />
           </button>
         ) : null}
-        <CloudToggle />
+        <AccountMenu />
         <GitHubLink />
         <ThemeToggle />
       </div>

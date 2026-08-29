@@ -8,6 +8,14 @@ docker build -f examples/docker/Dockerfile -t smithery-example .
 docker run --rm -p 3000:3000 smithery-example
 ```
 
+`POSTGRES_URL` is required. Pass it through the container environment:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e POSTGRES_URL=postgres://user:password@host/database \
+  smithery-example
+```
+
 [`Dockerfile`](./Dockerfile) is two stages. The build stage installs the workspace and runs
 `turbo run build --filter=@hookfish/example-docker`, then `pnpm deploy --legacy` resolves a
 production-only `node_modules` (just `srvx` — `ssr.noExternal` put everything else inside the
