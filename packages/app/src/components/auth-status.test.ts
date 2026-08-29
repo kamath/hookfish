@@ -45,7 +45,7 @@ assert.match(takeover, /flex-1/)
 assert.match(takeover, /Sign in to Linear/)
 assert.doesNotMatch(takeover, /absolute/)
 
-const home = readFileSync(new URL('../routes/index.tsx', import.meta.url), 'utf8')
+const home = readFileSync(new URL('../pages/home.tsx', import.meta.url), 'utf8')
 assert.match(home, /StatusPane/)
 assert.doesNotMatch(home, /absolute inset-0 z-10/)
 

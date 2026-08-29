@@ -6,7 +6,7 @@ import { sourceToolbarAtom } from './toolbar.ts'
 const store = getDefaultStore()
 assert.equal(store.get(sourceToolbarAtom), null, 'toolbar starts empty off a source page')
 
-const root = readFileSync(new URL('../routes/__root.tsx', import.meta.url), 'utf8')
+const root = readFileSync(new URL('../app.tsx', import.meta.url), 'utf8')
 const toolbar = root.slice(root.indexOf('function AppToolbar'), root.indexOf('function TrashIcon'))
 assert.match(toolbar, /useSourceToolbarValue/)
 assert.match(toolbar, /Clear auth/)
@@ -15,7 +15,7 @@ assert.match(toolbar, /className="flex shrink-0 items-center/)
 assert.doesNotMatch(toolbar, /className="oc-bar[\s"]/, 'navbar keeps the paper background')
 
 const page = readFileSync(
-  new URL('../routes/apis.$apiId.$pane.{-$operationId}.tsx', import.meta.url),
+  new URL('../pages/workbench.tsx', import.meta.url),
   'utf8',
 )
 assert.match(page, /useSourceToolbar/)

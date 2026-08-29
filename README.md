@@ -1,10 +1,11 @@
 # Smithery
 
-A fully local [TanStack Start](https://tanstack.com/start) app for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
+A fully local client for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
 
 This repository is a pnpm/Turborepo workspace:
 
-- `apps/web` contains the TanStack Start app.
+- `packages/app` contains the reusable Vite client application and TanStack Router. Its `mountApp` export accepts an API base URL.
+- `apps/web` is the TanStack Start deployment shell that mounts the client application.
 - `packages/api` is a mountable Hono API with OpenAPI docs and Hono RPC. TanStack Start forwards `/api/*` into it.
 - `packages/cli` builds the `hookfish` npm package and bundles the production web app.
 
@@ -18,17 +19,42 @@ Open `http://localhost:3000`. The launcher opens ten curated sources from comman
 bar and press `Enter`. Smithery probes the URL to decide whether it is an MCP server or an
 OpenAPI document.
 
+## Embedding the client
+
+`@hookfish/app` and `@hookfish/api` build as independently consumable packages. A deployment
+repository can mount the client without importing this workspace's source:
+
+```ts
+import { mountApp } from '@hookfish/app'
+import '@hookfish/app/styles.css'
+
+mountApp(document.getElementById('app')!, {
+  apiBaseUrl: '/api',
+})
+```
+
+Mount `@hookfish/api` at the matching path in the deployment platform's request handler:
+
+```ts
+import { mountApi } from '@hookfish/api'
+
+export default mountApi('/api')
+```
+
+The deployment repository owns only its HTML/document shell, static asset delivery, and
+Vercel or Cloudflare adapter.
+
 ## Adding a source type
 
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
-`apps/web/src/lib/client-types.ts`. Register source discovery/loading in
-`apps/web/src/lib/source-adapters.ts`. The launcher infers whether a pasted URL is MCP or
+`packages/app/src/lib/client-types.ts`. Register source discovery/loading in
+`packages/app/src/lib/source-adapters.ts`. The launcher infers whether a pasted URL is MCP or
 OpenAPI; curated catalog entries still declare a kind. A source parser supplies executable names, badges, accent colors, JSON
 Schema inputs, targets, credentials, and UI labels. Curated entries and their number keys live
-in `apps/web/src/lib/catalog.ts`; adding a row there also registers its keybinding.
+in `packages/app/src/lib/catalog.ts`; adding a row there also registers its keybinding.
 
 Register execution behavior with `registerExecutableAdapter()` in
-`apps/web/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
+`packages/app/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
 previews it, executes it, and can optionally export a code snippet. For example, an MCP
 adapter can map tools/resources/prompts to executables, use their names and input schemas
 directly, execute JSON-RPC through the MCP client and Hono RPC API, and export client/call setup code.
@@ -51,8 +77,8 @@ Smithery uses the official MCP TypeScript client with automatic protocol negotia
 
 The `/api/mcp-proxy` route streams requests and responses without retaining state. MCP
 connections, OAuth credentials, legacy session identifiers, and cached listings remain in
-the browser. The UI talks to `/api` exclusively through Hono RPC, using a single
-`API_BASE_URL`. Auto-generated OpenAPI is served at `/api/openapi.json`.
+the browser. The UI talks to the `App` component's `apiBaseUrl` through Hono RPC; the web
+shell mounts it at `/api`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
 Build every workspace package:

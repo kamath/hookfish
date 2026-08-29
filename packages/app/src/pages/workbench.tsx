@@ -1,6 +1,6 @@
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, createFileRoute, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
+import { Link, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
 import {
   useDeferredValue,
   useEffect,
@@ -47,13 +47,21 @@ type Search = {
   q?: string
 }
 
-export const Route = createFileRoute('/apis/$apiId/$pane/{-$operationId}')({
-  ssr: false,
-  validateSearch: (search: Record<string, unknown>): Search => ({
+export function validateWorkbenchSearch(search: Record<string, unknown>): Search {
+  return {
     q: typeof search.q === 'string' ? search.q : undefined,
-  }),
-  component: ApiClientPage,
-})
+  }
+}
+
+export type WorkbenchRouteProps = {
+  params: {
+    apiId: string
+    pane: string
+    operationId?: string
+  }
+  search: Search
+  onSearchChange: (search: Search) => void
+}
 
 type WorkbenchPane = Exclude<Pane, 'specs'>
 
@@ -135,8 +143,8 @@ function hasAuthFields(schema: JsonSchema | undefined) {
   return Object.keys(asRecord(schema?.properties)).length > 0
 }
 
-function ApiClientPage() {
-  const { apiId } = Route.useParams()
+export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRouteProps) {
+  const { apiId } = params
   const navigate = useNavigate()
   const apiQuery = useQuery(apiQueryOptions(apiId))
   const queryClient = useQueryClient()
@@ -222,6 +230,9 @@ function ApiClientPage() {
   return (
     <ApiWorkbench
       api={api}
+      routeParams={params}
+      routeSearch={search}
+      onSearchChange={onSearchChange}
       needsAuth={needsAuth}
       onClearAuth={
         canAuth && api.credentialsStored
@@ -241,6 +252,9 @@ function ApiClientPage() {
 
 function ApiWorkbench({
   api,
+  routeParams,
+  routeSearch,
+  onSearchChange,
   needsAuth,
   onClearAuth,
   onSaveAuth,
@@ -248,16 +262,19 @@ function ApiWorkbench({
   authError,
 }: {
   api: ExecutableSource
+  routeParams: WorkbenchRouteProps['params']
+  routeSearch: WorkbenchRouteProps['search']
+  onSearchChange: WorkbenchRouteProps['onSearchChange']
   needsAuth: boolean
   onClearAuth?: () => Promise<void>
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
   authPending: boolean
   authError: unknown
 }) {
-  const { operationId, pane: paneParam } = Route.useParams()
+  const { operationId, pane: paneParam } = routeParams
   const routePane = readPane(paneParam, operationId)
-  const search = Route.useSearch()
-  const navigate = Route.useNavigate()
+  const search = routeSearch
+  const navigate = useNavigate()
   const home = useNavigate()
   const queryClient = useQueryClient()
   const activePane = usePane()
@@ -300,17 +317,10 @@ function ApiWorkbench({
     }
     const timer = window.setTimeout(() => {
       committedFilterRef.current = filterValue
-      void navigate({
-        search: (previous) => ({
-          ...previous,
-          q: filterValue || undefined,
-        }),
-        replace: true,
-        resetScroll: false,
-      })
+      onSearchChange({ q: filterValue || undefined })
     }, 120)
     return () => window.clearTimeout(timer)
-  }, [filterValue, navigate, search.q])
+  }, [filterValue, onSearchChange, search.q])
 
   const ranked = useMemo(() => {
     const query = deferredFilterValue.trim()
