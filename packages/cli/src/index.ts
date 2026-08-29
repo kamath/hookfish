@@ -88,6 +88,13 @@ const program = new Command()
   .allowExcessArguments()
   .option('-p, --port <number>', 'port to listen on', parsePort, 3000)
   .option('--host <host>', 'host to listen on', '127.0.0.1')
-  .action(startServer)
+  .action(async (options) => {
+    try {
+      await startServer(options)
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error)
+      process.exitCode = 1
+    }
+  })
 
 await program.parseAsync()
