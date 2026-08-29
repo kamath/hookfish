@@ -16,7 +16,7 @@ import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
-import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
+import { apiAuthStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import { listApis } from '../lib/apis'
 import type {
   Executable,
@@ -145,6 +145,7 @@ function hasAuthFields(schema: JsonSchema | undefined) {
 
 export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRouteProps) {
   const { apiId } = params
+  const routePane = readPane(params.pane, params.operationId)
   const navigate = useNavigate()
   const apiQuery = useQuery(apiQueryOptions(apiId))
   const queryClient = useQueryClient()
@@ -176,6 +177,23 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     },
   })
   const [authDismissed, setAuthDismissed] = useState(false)
+  const canClearAuth = apiAuthStored(apiId) || Boolean(apiQuery.data?.credentialsStored)
+
+  useEffect(() => {
+    activate(routePane, 'command')
+  }, [apiId, routePane])
+
+  usePaneFlags(routePane, { canClear: canClearAuth })
+  usePaneActions(routePane, {
+    clearAuth: {
+      callback: () => {
+        if (!clearAuth.isPending) {
+          void clearAuth.mutateAsync()
+        }
+      },
+      ignoreInputs: false,
+    },
+  })
 
   if (apiQuery.isPending) {
     return isMcpOAuthCallback() ? (
@@ -560,15 +578,12 @@ function ApiWorkbench({
     }
   }
 
-  const canClear = Boolean(onClearAuth)
   const hasTrace = api.kind === 'mcp'
   usePaneFlags('routes', {
-    canClear,
     manyServers,
     hasTrace,
   })
   usePaneFlags('input', {
-    canClear,
     canNextRoute: canNextOperation,
     canPreviousRoute: canPreviousOperation,
     manyServers,
@@ -576,9 +591,6 @@ function ApiWorkbench({
   })
   usePaneFlags('response', {
     hasTrace,
-  })
-  usePaneFlags('trace', {
-    canClear,
   })
   useStepKeys('routes', move)
   useFormPaneNavigation('input', 'call-form')
@@ -589,14 +601,6 @@ function ApiWorkbench({
     },
     input: () => {
       openSelected()
-    },
-    clearAuth: {
-      callback: () => {
-        if (!authPending) {
-          void onClearAuth?.()
-        }
-      },
-      ignoreInputs: false,
     },
     parent: () => {
       stepBack()
@@ -616,14 +620,6 @@ function ApiWorkbench({
   usePaneActions('input', {
     previousRoute: () => navigateOperation(-1),
     nextRoute: () => navigateOperation(1),
-    clearAuth: {
-      callback: () => {
-        if (!authPending) {
-          void onClearAuth?.()
-        }
-      },
-      ignoreInputs: false,
-    },
     parent: () => {
       stepBack()
     },
@@ -641,14 +637,6 @@ function ApiWorkbench({
   })
 
   usePaneActions('trace', {
-    clearAuth: {
-      callback: () => {
-        if (!authPending) {
-          void onClearAuth?.()
-        }
-      },
-      ignoreInputs: false,
-    },
     parent: () => {
       stepBack()
     },
