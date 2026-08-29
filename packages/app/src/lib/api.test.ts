@@ -29,6 +29,10 @@ assert.equal(
   getApi().auth['sign-in'].$url().toString(),
   'https://hookfish.test/api/auth/sign-in',
 )
+assert.equal(
+  getApi().auth['api-keys'].$url().toString(),
+  'https://hookfish.test/api/auth/api-keys',
+)
 
 assert.equal(isOwnOpenApiUrl('/api/openapi.json'), true)
 assert.equal(isOwnOpenApiUrl('https://hookfish.test/api/openapi.json'), true)
