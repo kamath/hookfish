@@ -8,7 +8,7 @@ docker build -f examples/docker/Dockerfile -t smithery-example .
 docker run --rm -p 3000:3000 smithery-example
 ```
 
-Pass Postgres through the container environment:
+`POSTGRES_URL` is required. Pass it through the container environment:
 
 ```bash
 docker run --rm -p 3000:3000 \

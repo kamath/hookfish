@@ -66,9 +66,6 @@ importers:
 
   examples/docker:
     dependencies:
-      '@electric-sql/pglite':
-        specifier: ^0.5.8
-        version: 0.5.8
       '@hookfish/api':
         specifier: workspace:*
         version: link:../../packages/api

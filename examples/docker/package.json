@@ -16,7 +16,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@hookfish/api": "workspace:*",
     "@hookfish/app": "workspace:*",
     "@tanstack/react-router": "latest",

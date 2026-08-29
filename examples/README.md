@@ -19,9 +19,9 @@ document and mounts the client; `src/routes/api.$.ts` forwards `/api/*` into the
 `vite.config.ts` and the platform's own config file.
 
 Each `src/routes/api.$.ts` constructs a database and passes that configured
-object to `mountApi`. Node and Docker choose Postgres from `POSTGRES_URL` or
-local PGlite; Vercel requires `POSTGRES_URL`; Cloudflare requires its
-`HYPERDRIVE` binding and does not include PGlite.
+object to `mountApi`. Node chooses Postgres from `POSTGRES_URL` or local
+PGlite; Docker and Vercel require `POSTGRES_URL`; Cloudflare requires its
+`HYPERDRIVE` binding. Only the Node example includes PGlite.
 
 CI builds all four on every pull request, so a dependency that stops working on one runtime
 fails the build rather than being discovered at deploy time.
