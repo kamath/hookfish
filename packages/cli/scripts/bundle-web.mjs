@@ -3,11 +3,11 @@ import { constants } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const webOutput = fileURLToPath(
-  new URL('../../../apps/web/dist-node/', import.meta.url),
+  new URL('../../../examples/node/dist/', import.meta.url),
 )
 const bundledWeb = fileURLToPath(new URL('../web/', import.meta.url))
 const serverEntry = fileURLToPath(
-  new URL('../../../apps/web/dist-node/server/server.js', import.meta.url),
+  new URL('../../../examples/node/dist/server/server.js', import.meta.url),
 )
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url))
 
@@ -15,7 +15,7 @@ try {
   await access(serverEntry, constants.R_OK)
 } catch {
   throw new Error(
-    'The web app has not been built. Run `pnpm --filter @hookfish/web build` first.',
+    'The web app has not been built. Run `pnpm --filter @hookfish/example-node build` first.',
   )
 }
 
