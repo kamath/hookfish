@@ -1,38 +1,93 @@
 import assert from 'node:assert/strict'
-import { hintSourceKind, neitherSourceError, sourceProbeOrder } from './source-kind.ts'
+import { neitherSourceError, probeSource } from './source-kind.ts'
 
-assert.equal(hintSourceKind('https://mcp.linear.app/mcp'), 'mcp')
-assert.equal(hintSourceKind('https://mcp.notion.com/mcp'), 'mcp')
-assert.equal(hintSourceKind('https://omni.arcade.dev/mcp'), 'mcp')
-assert.equal(hintSourceKind('https://api.bosslevel.dev/mcp/gw_3F3PbNNz9DdEJ6zdHqbegVC7mMo'), 'mcp')
-assert.equal(hintSourceKind('https://example.com/v1/mcp/'), 'mcp')
+{
+  const calls: string[] = []
+  const source = await probeSource({
+    readOpenApi: async () => {
+      calls.push('read-openapi')
+      return { openapi: '3.1.0' }
+    },
+    loadOpenApi: () => {
+      calls.push('load-openapi')
+      return 'openapi'
+    },
+    loadMcp: async () => {
+      calls.push('load-mcp')
+      return 'mcp'
+    },
+    isMcpAuthorization: () => false,
+  })
+  assert.equal(source, 'openapi')
+  assert.deepEqual(calls, ['read-openapi', 'load-openapi'])
+}
 
-assert.equal(hintSourceKind('https://petstore3.swagger.io/api/v3/openapi.json'), 'openapi')
-assert.equal(hintSourceKind('https://api.arcade.dev/v1/swagger'), 'openapi')
-assert.equal(
-  hintSourceKind(
-    'https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/main/openapi.json',
-  ),
-  'openapi',
+{
+  const calls: string[] = []
+  const source = await probeSource({
+    readOpenApi: async () => {
+      calls.push('read-openapi')
+      return undefined
+    },
+    loadOpenApi: () => 'openapi',
+    loadMcp: async () => {
+      calls.push('load-mcp')
+      return 'mcp'
+    },
+    isMcpAuthorization: () => false,
+  })
+  assert.equal(source, 'mcp')
+  assert.deepEqual(calls, ['read-openapi', 'load-mcp'])
+}
+
+{
+  const parserError = new Error('No operations were found in this spec.')
+  let mcpCalled = false
+  await assert.rejects(
+    probeSource({
+      readOpenApi: async () => ({ openapi: '3.1.0' }),
+      loadOpenApi: () => {
+        throw parserError
+      },
+      loadMcp: async () => {
+        mcpCalled = true
+        return 'mcp'
+      },
+      isMcpAuthorization: () => false,
+    }),
+    (error) => error === parserError,
+  )
+  assert.equal(mcpCalled, false, 'an identified OpenAPI document is not retried as MCP')
+}
+
+{
+  const authorization = new Error('authorization required')
+  await assert.rejects(
+    probeSource({
+      readOpenApi: async () => undefined,
+      loadOpenApi: () => 'openapi',
+      loadMcp: async () => {
+        throw authorization
+      },
+      isMcpAuthorization: (error) => error === authorization,
+    }),
+    (error) => error === authorization,
+  )
+}
+
+await assert.rejects(
+  probeSource({
+    readOpenApi: async () => {
+      throw new Error('Could not fetch the spec (404).')
+    },
+    loadOpenApi: () => 'openapi',
+    loadMcp: async () => {
+      throw new Error('bare unauthorized response')
+    },
+    isMcpAuthorization: () => false,
+  }),
+  /not an OpenAPI document or an MCP server/,
 )
-assert.equal(
-  hintSourceKind(
-    'https://raw.githubusercontent.com/api-evangelist/anthropic/refs/heads/main/openapi/anthropic-messages-api-openapi.yml',
-  ),
-  'openapi',
-)
-assert.equal(hintSourceKind('https://example.com/spec.yaml'), 'openapi')
-assert.equal(hintSourceKind('https://example.com/openapi'), 'openapi')
-
-assert.equal(hintSourceKind('https://server.smithery.ai/gmail'), undefined)
-assert.equal(hintSourceKind('https://example.com/api'), undefined)
-assert.equal(hintSourceKind('https://example.com/mcp/openapi.json'), undefined)
-assert.equal(hintSourceKind('not a url'), undefined)
-
-assert.deepEqual(sourceProbeOrder('https://mcp.linear.app/mcp'), ['mcp', 'openapi'])
-assert.deepEqual(sourceProbeOrder('https://example.com/openapi.json'), ['openapi', 'mcp'])
-assert.deepEqual(sourceProbeOrder('https://server.smithery.ai/gmail'), ['openapi', 'mcp'])
-assert.deepEqual(sourceProbeOrder('https://example.com/mcp/openapi.json'), ['openapi', 'mcp'])
 
 assert.equal(
   neitherSourceError([new Error('Could not fetch the spec (404).')]).message,
@@ -44,6 +99,13 @@ assert.equal(
     new Error('Error POSTing to endpoint'),
   ]).message,
   'Likely CORS error. Cloud mode may help.',
+)
+assert.equal(
+  neitherSourceError([
+    new Error('Could not fetch the spec (401).'),
+    new Error('bare unauthorized response'),
+  ]).message,
+  'This URL requires authentication, so its source type could not be detected.',
 )
 
 console.log('source kind inference ok')

@@ -9,7 +9,11 @@ import {
 } from './auth'
 import { loadSource, sourceAdapterFor } from './source-adapters'
 import { closeMcpConnection } from './mcp/client'
-import { clearMcpOAuth, hasMcpOAuthTokens } from './mcp/oauth'
+import {
+  clearMcpOAuth,
+  hasMcpOAuthTokens,
+  pendingMcpAuthorization,
+} from './mcp/oauth'
 import { readApisJson, writeApisJson } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
@@ -111,12 +115,16 @@ export async function addApi(
   try {
     client = await loadSource(url, id, credentials, kind, () => rememberProvisional(id, url))
   } catch (error) {
-    if (UnauthorizedError.isInstance(error)) {
+    if (
+      UnauthorizedError.isInstance(error) &&
+      pendingMcpAuthorization()?.sourceId === id
+    ) {
       throw error
     }
     saveApis(loadApis().filter((api) => api.id !== id))
     clearMcpOAuth(id)
     clearApiAuth(id)
+    await closeMcpConnection(id)
     throw error
   }
   const apis = loadApis()

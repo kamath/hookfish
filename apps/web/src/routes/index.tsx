@@ -63,7 +63,11 @@ function Home() {
   const openSource = useMutation({
     mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
       const key = sourceUrlKey(sourceUrl)
-      const existing = apis.find((api) => sourceUrlKey(api.sourceUrl) === key)
+      const existing = apis.find(
+        (api) =>
+          sourceUrlKey(api.sourceUrl) === key &&
+          (kind === undefined || api.kind === kind),
+      )
       return existing ? { id: existing.id } : addApi(sourceUrl, kind)
     },
     onSuccess: async ({ id }) => {

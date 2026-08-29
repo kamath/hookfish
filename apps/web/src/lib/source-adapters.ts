@@ -3,9 +3,10 @@ import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { apiJson, getApi, isOwnOpenApiUrl } from './api'
 import type { ExecutableSource } from './client-types'
 import { getCloudProxy } from './cloud'
+import { pendingMcpAuthorization } from './mcp/oauth'
 import { loadMcpSource } from './mcp/source'
 import { isOpenApiDocument, specToClient } from './openapi'
-import { neitherSourceError, sourceProbeOrder } from './source-kind'
+import { probeSource } from './source-kind'
 import { localUpstreamFetch } from './upstream'
 
 export type SourceAdapter = {
@@ -40,18 +41,6 @@ async function readOpenApiDocument(sourceUrl: string): Promise<unknown> {
       : fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
 }
 
-async function tryReadOpenApiDocument(sourceUrl: string) {
-  try {
-    const document = await readOpenApiDocument(sourceUrl)
-    if (isOpenApiDocument(document)) {
-      return { document }
-    }
-    return { error: new Error('The URL did not return an OpenAPI or Swagger document.') }
-  } catch (error) {
-    return { error }
-  }
-}
-
 registerSourceAdapter({
   kind: 'mcp',
   label: 'MCP',
@@ -70,30 +59,20 @@ export async function loadInferredSource(
   credentials: Record<string, string>,
   beforeMcp?: () => void,
 ): Promise<ExecutableSource> {
-  const errors: unknown[] = []
-
-  for (const kind of sourceProbeOrder(sourceUrl)) {
-    if (kind === 'openapi') {
-      const result = await tryReadOpenApiDocument(sourceUrl)
-      if ('document' in result) {
-        return specToClient(result.document, sourceUrl, id)
-      }
-      errors.push(result.error)
-      continue
-    }
-
-    beforeMcp?.()
-    try {
-      return await loadMcpSource(sourceUrl, id, credentials)
-    } catch (error) {
-      if (UnauthorizedError.isInstance(error)) {
-        throw error
-      }
-      errors.push(error)
-    }
-  }
-
-  throw neitherSourceError(errors)
+  return probeSource({
+    readOpenApi: async () => {
+      const document = await readOpenApiDocument(sourceUrl)
+      return isOpenApiDocument(document) ? document : undefined
+    },
+    loadOpenApi: (document) => specToClient(document, sourceUrl, id),
+    loadMcp: async () => {
+      beforeMcp?.()
+      return loadMcpSource(sourceUrl, id, credentials)
+    },
+    isMcpAuthorization: (error) =>
+      UnauthorizedError.isInstance(error) &&
+      pendingMcpAuthorization()?.sourceId === id,
+  })
 }
 
 export async function loadSource(
