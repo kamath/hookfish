@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { configureApp } from '../config'
-import { API_BASE_URL, getApi, getApiBaseUrl, isOwnOpenApiUrl } from './api'
+import { API_BASE_URL, apiJson, getApi, getApiBaseUrl, isOwnOpenApiUrl } from './api'
 
 Object.defineProperty(globalThis, 'window', {
   value: { location: { origin: 'https://hookfish.test' } },
@@ -46,5 +46,32 @@ assert.equal(
 )
 assert.equal(isOwnOpenApiUrl('https://backend.test/v1/openapi.json'), true)
 configureApp({})
+
+assert.deepEqual(
+  await apiJson<{ ok: boolean }>(
+    new Response(JSON.stringify({ ok: true }), {
+      headers: { 'content-type': 'application/json' },
+    }),
+  ),
+  { ok: true },
+)
+await assert.rejects(
+  apiJson(
+    new Response('<!DOCTYPE html><title>Just a moment...</title>', {
+      status: 403,
+      headers: { 'content-type': 'text/html' },
+    }),
+  ),
+  { message: 'Request failed (403)' },
+)
+await assert.rejects(
+  apiJson(
+    new Response('<!DOCTYPE html><title>Bad gateway</title>', {
+      status: 502,
+      headers: { 'content-type': 'text/html' },
+    }),
+  ),
+  { message: 'Request failed (502)' },
+)
 
 console.log('api client tests passed')
