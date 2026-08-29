@@ -23,10 +23,9 @@ export {
   type SignInRequest,
   type SignUpRequest,
 } from './schemas'
-export {
-  authenticateRequest,
-  type AuthenticationMethod,
-  type ApiVariables,
+export type {
+  AuthenticationMethod,
+  ApiVariables,
 } from './request-auth'
 export { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 export { isHttpUrl } from './http'
