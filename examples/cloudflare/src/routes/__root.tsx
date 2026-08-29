@@ -44,7 +44,6 @@ export const Route = createRootRoute({
     links: [
       { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
       { rel: 'apple-touch-icon', href: '/og-image-square.png' },
-      { rel: 'preconnect', href: 'https://api.fontshare.com' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       {
         rel: 'preconnect',
@@ -53,11 +52,7 @@ export const Route = createRootRoute({
       },
       {
         rel: 'stylesheet',
-        href: 'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap',
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap',
+        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;700&display=swap',
       },
       { rel: 'stylesheet', href: appCss },
     ],

@@ -30,7 +30,7 @@
 }
 
 @theme {
-  --font-sans: "Satoshi", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --color-paper: var(--paper);
   --color-ink: var(--ink);
