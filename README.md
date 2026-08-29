@@ -1,4 +1,4 @@
-# Hookfish
+# Smithery
 
 A fully local [TanStack Start](https://tanstack.com/start) app for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
 
@@ -38,7 +38,7 @@ changes.
 ## MCP inspector
 
 Pick an MCP server from the launcher or enter a Streamable HTTP endpoint and press `Enter`.
-Hookfish uses the official MCP TypeScript client with automatic protocol negotiation:
+Smithery uses the official MCP TypeScript client with automatic protocol negotiation:
 
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions
 - legacy Streamable HTTP `2025-03-26` through `2025-11-25`, including initialization,

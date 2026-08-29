@@ -50,7 +50,7 @@ async function startServer(options: { host: string; port: number }) {
 
 const program = new Command()
   .name('hookfish')
-  .description('Run the Hookfish OpenAPI client locally')
+  .description('Run the Smithery OpenAPI client locally')
   .version(version)
   .option('-p, --port <number>', 'port to listen on', parsePort, 3000)
   .option('--host <host>', 'host to listen on', '127.0.0.1')

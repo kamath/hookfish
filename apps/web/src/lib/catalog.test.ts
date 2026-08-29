@@ -6,7 +6,7 @@ assert.deepEqual(
   OPENAPI_CATALOG.map((entry) => [entry.hotkey, entry.id, entry.title]),
   [
     ['6', 'arcade-api', 'Arcade API'],
-    ['7', 'hookfish-api', 'Hookfish API'],
+    ['7', 'smithery-api', 'Smithery API'],
     ['8', 'petstore', 'Swagger Petstore'],
     ['9', 'openai', 'OpenAI'],
     ['0', 'anthropic', 'Anthropic'],
