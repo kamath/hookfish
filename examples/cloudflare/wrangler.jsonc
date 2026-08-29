@@ -1,20 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "smithery-example",
+  "name": "smithery",
   "compatibility_date": "2026-08-25",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  "workers_dev": true,
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
-  },
-  // Production only. `pnpm dev` runs Vite on Node with PGlite and does not
-  // load this binding. Do not add localConnectionString here — that would make
-  // local Vite use Postgres instead of PGlite.
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "00000000000000000000000000000000"
-    }
-  ]
+  }
 }
