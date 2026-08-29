@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
+import { configureApp } from '../config'
 import { API_BASE_URL } from './api'
-import { OPENAPI_CATALOG } from './catalog-data'
+import { getCarouselCatalog, OPENAPI_CATALOG } from './catalog-data'
 import { catalogSourceUrl } from './catalog'
 
 assert.deepEqual(
@@ -22,5 +23,11 @@ assert.equal(
   catalogSourceUrl(OPENAPI_CATALOG[1]!),
   'http://localhost/api/openapi.json',
 )
+
+configureApp({ apiBaseUrl: 'https://backend.test/v1/' })
+const configuredEntry = getCarouselCatalog()
+  .flatMap((row) => row.items)
+  .find((entry) => entry.id === 'smithery-api')
+assert.equal(configuredEntry?.url, 'https://backend.test/v1/openapi.json')
 
 console.log('openapi catalog order ok')

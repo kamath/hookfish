@@ -60,6 +60,7 @@ export type WorkbenchRouteProps = {
     operationId?: string
   }
   search: Search
+  onSearchChange: (search: Search) => void
 }
 
 type WorkbenchPane = Exclude<Pane, 'specs'>
@@ -142,7 +143,7 @@ function hasAuthFields(schema: JsonSchema | undefined) {
   return Object.keys(asRecord(schema?.properties)).length > 0
 }
 
-export function WorkbenchPage({ params, search }: WorkbenchRouteProps) {
+export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRouteProps) {
   const { apiId } = params
   const navigate = useNavigate()
   const apiQuery = useQuery(apiQueryOptions(apiId))
@@ -231,6 +232,7 @@ export function WorkbenchPage({ params, search }: WorkbenchRouteProps) {
       api={api}
       routeParams={params}
       routeSearch={search}
+      onSearchChange={onSearchChange}
       needsAuth={needsAuth}
       onClearAuth={
         canAuth && api.credentialsStored
@@ -252,6 +254,7 @@ function ApiWorkbench({
   api,
   routeParams,
   routeSearch,
+  onSearchChange,
   needsAuth,
   onClearAuth,
   onSaveAuth,
@@ -261,6 +264,7 @@ function ApiWorkbench({
   api: ExecutableSource
   routeParams: WorkbenchRouteProps['params']
   routeSearch: WorkbenchRouteProps['search']
+  onSearchChange: WorkbenchRouteProps['onSearchChange']
   needsAuth: boolean
   onClearAuth?: () => Promise<void>
   onSaveAuth: (value: Record<string, unknown>) => Promise<void>
@@ -313,17 +317,10 @@ function ApiWorkbench({
     }
     const timer = window.setTimeout(() => {
       committedFilterRef.current = filterValue
-      void navigate({
-        search: (previous) => ({
-          ...previous,
-          q: filterValue || undefined,
-        }),
-        replace: true,
-        resetScroll: false,
-      })
+      onSearchChange({ q: filterValue || undefined })
     }, 120)
     return () => window.clearTimeout(timer)
-  }, [filterValue, navigate, search.q])
+  }, [filterValue, onSearchChange, search.q])
 
   const ranked = useMemo(() => {
     const query = deferredFilterValue.trim()

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { configureApp } from '../config'
 import { API_BASE_URL, getApi, getApiBaseUrl, isOwnOpenApiUrl } from './api'
 
 Object.defineProperty(globalThis, 'window', {
@@ -24,5 +25,14 @@ assert.equal(
 assert.equal(isOwnOpenApiUrl('/api/openapi.json'), true)
 assert.equal(isOwnOpenApiUrl('https://hookfish.test/api/openapi.json'), true)
 assert.equal(isOwnOpenApiUrl('https://petstore3.swagger.io/api/v3/openapi.json'), false)
+
+configureApp({ apiBaseUrl: 'https://backend.test/v1/' })
+assert.equal(getApiBaseUrl(), 'https://backend.test/v1')
+assert.equal(
+  getApi()['openapi.json'].$url().toString(),
+  'https://backend.test/v1/openapi.json',
+)
+assert.equal(isOwnOpenApiUrl('https://backend.test/v1/openapi.json'), true)
+configureApp({})
 
 console.log('api client tests passed')

@@ -22,10 +22,7 @@ export function getApi(origin?: string) {
 export function isOwnOpenApiUrl(sourceUrl: string, origin?: string) {
   const resolved =
     origin ?? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
-  return isOwnApiOpenApiUrl(
-    sourceUrl,
-    new URL(`${configuredApiBaseUrl()}/spec`, resolved).toString(),
-  )
+  return isOwnApiOpenApiUrl(sourceUrl, `${getApiBaseUrl(resolved)}/spec`)
 }
 
 export async function apiJson<T>(response: Response): Promise<T> {
