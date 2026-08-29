@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { MCP_CATALOG, OPENAPI_CATALOG, type CatalogEntry } from './catalog'
+import { MCP_CATALOG, OPENAPI_CATALOG } from './catalog.server'
+import type { CatalogEntry } from './catalog'
 
 export type CatalogCarouselRow = {
   id: 'recent' | 'mcp' | 'openapi'

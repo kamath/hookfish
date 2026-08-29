@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { API_BASE_URL } from './api'
-import { OPENAPI_CATALOG, catalogSourceUrl } from './catalog'
+import { OPENAPI_CATALOG } from './catalog.server'
+import { catalogSourceUrl } from './catalog'
 
 assert.deepEqual(
   OPENAPI_CATALOG.map((entry) => [entry.hotkey, entry.id, entry.title]),
