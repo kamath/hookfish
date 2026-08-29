@@ -2,13 +2,13 @@ node_modules
 .DS_Store
 dist
 dist-ssr
-dist-node
 *.local
 .env
 .nitro
 .tanstack
 .wrangler
 .output
+.vercel
 .vinxi
 __unconfig*
 todos.json
