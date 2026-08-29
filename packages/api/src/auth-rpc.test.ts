@@ -106,6 +106,26 @@ const listedWithJwt = await api.request('/auth/api-keys', {
 assert.equal(listedWithJwt.status, 200)
 assert.deepEqual(await listedWithJwt.json(), listedBody)
 
+const createdThroughViewer = await api.request('/execute', {
+  method: 'POST',
+  headers: {
+    cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    transport: 'http',
+    method: 'post',
+    url: 'http://hookfish.test/auth/api-keys',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'OpenAPI viewer', expiration: '1 day' }),
+  }),
+})
+assert.equal(createdThroughViewer.status, 200)
+const viewerResult = await createdThroughViewer.json()
+assert.equal(viewerResult.status.code, 201)
+assert.equal(JSON.parse(viewerResult.body).apiKey.name, 'OpenAPI viewer')
+
 const invalidApiKey = await api.request('/auth/api-keys', {
   headers: { 'x-api-key': 'hf_invalid' },
 })
