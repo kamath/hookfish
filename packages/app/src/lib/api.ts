@@ -28,7 +28,17 @@ export function isOwnOpenApiUrl(sourceUrl: string, origin?: string) {
 }
 
 export async function apiJson<T>(response: Response): Promise<T> {
-  const body = await response.json()
+  let body: unknown
+  try {
+    body = await response.json()
+  } catch {
+    if (response.headers.get('cf-mitigated') === 'challenge') {
+      throw new Error('A security check blocked this request. Reload the page and try again.')
+    }
+    throw new Error(
+      response.ok ? 'The server returned an invalid response.' : `Request failed (${response.status})`,
+    )
+  }
   if (!response.ok) {
     const message =
       body &&
