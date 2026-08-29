@@ -7,9 +7,13 @@ import {
   readApiAuth,
   saveApiAuth,
 } from './auth'
-import { sourceAdapterFor } from './source-adapters'
+import { loadSource, sourceAdapterFor } from './source-adapters'
 import { closeMcpConnection } from './mcp/client'
-import { clearMcpOAuth, hasMcpOAuthTokens } from './mcp/oauth'
+import {
+  clearMcpOAuth,
+  hasMcpOAuthTokens,
+  pendingMcpAuthorization,
+} from './mcp/oauth'
 import { readApisJson, writeApisJson } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
@@ -84,37 +88,43 @@ export function listApis(): ApiSummary[] {
   return loadApis()
 }
 
+function rememberProvisional(id: string, url: string) {
+  const apis = loadApis()
+  if (apis.some((api) => api.id === id)) {
+    return
+  }
+  apis.unshift({
+    id,
+    kind: 'mcp',
+    title: new URL(url).hostname,
+    sourceUrl: url,
+    executableCount: 0,
+    createdAt: new Date().toISOString(),
+  })
+  saveApis(apis)
+}
+
 export async function addApi(
   url: string,
-  kind = 'openapi',
+  kind?: string,
   credentials: Record<string, string> = {},
 ): Promise<{ id: string }> {
   const id = crypto.randomUUID()
   saveApiAuth(id, credentials)
-  if (kind === 'mcp') {
-    const apis = loadApis()
-    apis.unshift({
-      id,
-      kind,
-      title: new URL(url).hostname,
-      sourceUrl: url,
-      executableCount: 0,
-      createdAt: new Date().toISOString(),
-    })
-    saveApis(apis)
-  }
   let client: ClientApi
   try {
-    client = await sourceAdapterFor(kind).load(url, id, credentials)
+    client = await loadSource(url, id, credentials, kind, () => rememberProvisional(id, url))
   } catch (error) {
-    if (kind === 'mcp' && UnauthorizedError.isInstance(error)) {
+    if (
+      UnauthorizedError.isInstance(error) &&
+      pendingMcpAuthorization()?.sourceId === id
+    ) {
       throw error
     }
-    if (kind === 'mcp') {
-      saveApis(loadApis().filter((api) => api.id !== id))
-      clearMcpOAuth(id)
-    }
+    saveApis(loadApis().filter((api) => api.id !== id))
+    clearMcpOAuth(id)
     clearApiAuth(id)
+    await closeMcpConnection(id)
     throw error
   }
   const apis = loadApis()

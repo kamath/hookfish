@@ -17,17 +17,10 @@ import {
 import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
-import {
-  sourceSubmitActionId,
-  usePaneActions,
-  usePaneFlags,
-  useShowKeybindings,
-  useStepKeys,
-} from '../lib/keys'
+import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
-import { sourceAdapterOptions } from '../lib/source-adapters'
-import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
+import { primaryButtonClass, softInputClass } from '../lib/ui'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -42,7 +35,7 @@ type PendingAuth = {
 
 type OpenSource = {
   url: string
-  kind: string
+  kind?: string
   entryId?: string
 }
 
@@ -86,7 +79,6 @@ function Home() {
       ? { href: pending.url, sourceId: pending.sourceId }
       : undefined
   })
-  const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
   const carouselRows: CarouselRow[] = (carouselQuery.data ?? [])
     .filter((row) => row.source !== 'recent' || apis.length > 0)
@@ -118,7 +110,9 @@ function Home() {
     mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
       const key = sourceUrlKey(sourceUrl)
       const existing = apis.find(
-        (api) => api.kind === kind && sourceUrlKey(api.sourceUrl) === key,
+        (api) =>
+          sourceUrlKey(api.sourceUrl) === key &&
+          (kind === undefined || api.kind === kind),
       )
       return existing ? { id: existing.id } : addApi(sourceUrl, kind)
     },
@@ -210,14 +204,14 @@ function Home() {
     }
   }
 
-  function submit(kind: string) {
+  function submit() {
     if (openSource.isPending || !formRef.current?.reportValidity()) {
       return
     }
     if (pendingAuth) {
       cancelAuthorization()
     }
-    openSource.mutate({ url: url.trim(), kind })
+    openSource.mutate({ url: url.trim() })
   }
 
   function launch(entry: CatalogEntry) {
@@ -293,12 +287,6 @@ function Home() {
       },
       enabled: !dialogOpen,
     },
-    ...Object.fromEntries(
-      sourceOptions.map((option) => [
-        sourceSubmitActionId(option.kind),
-        { callback: () => submit(option.kind), enabled: !dialogOpen, ignoreInputs: false },
-      ]),
-    ),
     command: () => {
       enterCommand()
       blurActive()
@@ -443,6 +431,7 @@ function Home() {
             data-oc-enter-submit="true"
             onSubmit={(event) => {
               event.preventDefault()
+              submit()
             }}
             onFocus={() => setUrlFocused(true)}
             onBlur={(event) => {
@@ -483,24 +472,15 @@ function Home() {
             ) : null}
           </div>
           {showSubmitButtons ? (
-            <div className="mt-2 flex gap-2">
-              {sourceOptions.map((option, index) => {
-                const pending =
-                  submittingUrl && openSource.variables?.kind === option.kind
-                return (
-                  <button
-                    key={option.kind}
-                    type="button"
-                    className={`${index === 0 ? primaryButtonClass : softButtonClass} min-w-0 flex-1 whitespace-nowrap`}
-                    disabled={openSource.isPending || dialogOpen}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => submit(option.kind)}
-                  >
-                    {pending ? 'Reading…' : option.label}
-                    {showKeybindings ? null : <Kbd hotkey={option.submitHotkey} persistent />}
-                  </button>
-                )
-              })}
+            <div className="mt-2">
+              <button
+                type="submit"
+                className={`${primaryButtonClass} w-full`}
+                disabled={openSource.isPending || dialogOpen}
+              >
+                {submittingUrl ? 'Opening…' : 'Open'}
+                {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
+              </button>
             </div>
           ) : null}
           {!showSubmitButtons && !url.trim() ? (

@@ -596,17 +596,21 @@ function operationIdFor(
   return id
 }
 
-export function specToClient(spec: unknown, specUrl: string, id: string): ClientApi {
-  if (!isObject(spec)) {
-    throw new Error('The document is not a valid OpenAPI object.')
+export function isOpenApiDocument(value: unknown): value is Json {
+  if (!isObject(value)) {
+    return false
   }
+  if (typeof value.openapi === 'string') {
+    return true
+  }
+  if (typeof value.swagger === 'string' && value.swagger.startsWith('2.')) {
+    return true
+  }
+  return isObject(value.info) && isObject(value.paths)
+}
 
-  const isOpenApi =
-    typeof spec.openapi === 'string' ||
-    spec.swagger === '2.0' ||
-    isObject(spec.paths)
-
-  if (!isOpenApi) {
+export function specToClient(spec: unknown, specUrl: string, id: string): ClientApi {
+  if (!isOpenApiDocument(spec)) {
     throw new Error('The URL did not return an OpenAPI or Swagger document.')
   }
 

@@ -1,18 +1,17 @@
 import { fetchUpstreamSpec } from '@hookfish/api'
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { apiJson, getApi, isOwnOpenApiUrl } from './api'
 import type { ExecutableSource } from './client-types'
 import { getCloudProxy } from './cloud'
+import { pendingMcpAuthorization } from './mcp/oauth'
 import { loadMcpSource } from './mcp/source'
-import { specToClient } from './openapi'
+import { isOpenApiDocument, specToClient } from './openapi'
+import { probeSource } from './source-kind'
 import { localUpstreamFetch } from './upstream'
-
-export type SourceSubmitHotkey = 'Enter' | 'Mod+Enter'
 
 export type SourceAdapter = {
   kind: string
   label: string
-  inputLabel: string
-  submitHotkey: SourceSubmitHotkey
   load: (
     sourceUrl: string,
     id: string,
@@ -34,38 +33,60 @@ export function sourceAdapterFor(kind: string) {
   return adapter
 }
 
-export function sourceAdapterOptions() {
-  return [...sourceAdapters.values()].map(({ kind, label, inputLabel, submitHotkey }) => ({
-    kind,
-    label,
-    inputLabel,
-    submitHotkey,
-  }))
-}
-
-export function sourceAdapterForSubmit(hotkey: SourceSubmitHotkey) {
-  return [...sourceAdapters.values()].find((adapter) => adapter.submitHotkey === hotkey)
+async function readOpenApiDocument(sourceUrl: string): Promise<unknown> {
+  return isOwnOpenApiUrl(sourceUrl)
+    ? apiJson(await getApi()['openapi.json'].$get())
+    : getCloudProxy()
+      ? apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
+      : fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
 }
 
 registerSourceAdapter({
   kind: 'mcp',
   label: 'MCP',
-  inputLabel: 'Streamable HTTP endpoint',
-  submitHotkey: 'Enter',
   load: loadMcpSource,
 })
 
 registerSourceAdapter({
   kind: 'openapi',
   label: 'OpenAPI',
-  inputLabel: 'OpenAPI document URL',
-  submitHotkey: 'Mod+Enter',
-  load: async (sourceUrl, id) => {
-    const document = isOwnOpenApiUrl(sourceUrl)
-      ? await apiJson(await getApi()['openapi.json'].$get())
-      : getCloudProxy()
-        ? await apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
-        : await fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
-    return specToClient(document, sourceUrl, id)
-  },
+  load: async (sourceUrl, id) => specToClient(await readOpenApiDocument(sourceUrl), sourceUrl, id),
 })
+
+export async function loadInferredSource(
+  sourceUrl: string,
+  id: string,
+  credentials: Record<string, string>,
+  beforeMcp?: () => void,
+): Promise<ExecutableSource> {
+  return probeSource({
+    readOpenApi: async () => {
+      const document = await readOpenApiDocument(sourceUrl)
+      return isOpenApiDocument(document) ? document : undefined
+    },
+    loadOpenApi: (document) => specToClient(document, sourceUrl, id),
+    loadMcp: async () => {
+      beforeMcp?.()
+      return loadMcpSource(sourceUrl, id, credentials)
+    },
+    isMcpAuthorization: (error) =>
+      UnauthorizedError.isInstance(error) &&
+      pendingMcpAuthorization()?.sourceId === id,
+  })
+}
+
+export async function loadSource(
+  sourceUrl: string,
+  id: string,
+  credentials: Record<string, string>,
+  kind?: string,
+  beforeMcp?: () => void,
+): Promise<ExecutableSource> {
+  if (!kind) {
+    return loadInferredSource(sourceUrl, id, credentials, beforeMcp)
+  }
+  if (kind === 'mcp') {
+    beforeMcp?.()
+  }
+  return sourceAdapterFor(kind).load(sourceUrl, id, credentials)
+}

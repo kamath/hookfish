@@ -50,10 +50,6 @@ export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
   return keys
 }
 
-export function sourceSubmitActionId(kind: string) {
-  return `submit-${kind}`
-}
-
 export type PaneAction = {
   callback: (event: KeyboardEvent) => void
   enabled?: boolean
@@ -77,8 +73,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'carouselPrevious', hotkey: 'H', label: 'previous list', flag: 'hasCarousel' },
       { id: 'carouselNext', hotkey: 'L', label: 'next list', flag: 'hasCarousel' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
-      { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
-      { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
       ...(['1', '2', '3', '4', '5'] as const).map((hotkey, index) => ({
         id: carouselActionId(index),
         hotkey,
