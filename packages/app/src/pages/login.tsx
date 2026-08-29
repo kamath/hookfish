@@ -12,7 +12,12 @@ import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate } from '../lib/mode'
 import { fetchSession, signIn, signUp } from '../lib/session'
 import { useSourceToolbar } from '../lib/toolbar'
-import { labelClass, primaryButtonClass, softInputClass } from '../lib/ui'
+import {
+  labelClass,
+  primaryButtonClass,
+  softButtonClass,
+  softInputClass,
+} from '../lib/ui'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -63,8 +68,6 @@ export function LoginPage() {
 
   usePaneFlags('login', {
     canEdit: !signedIn,
-    signIn: !signedIn && mode === 'sign-in',
-    signUp: !signedIn && mode === 'sign-up',
     signedIn,
   })
 
@@ -72,26 +75,14 @@ export function LoginPage() {
 
   usePaneActions('login', {
     parent: goBack,
-    send: {
+    submitNow: {
       callback: () => submitForm('login-form'),
       enabled: !signedIn && !submit.isPending,
       ignoreInputs: false,
     },
-    create: {
-      callback: () => submitForm('login-form'),
-      enabled: !signedIn && !submit.isPending,
-      ignoreInputs: false,
-    },
-    createAccount: {
+    switchAuthMode: {
       callback: () => {
-        setMode('sign-up')
-        setError(null)
-      },
-      enabled: !signedIn,
-    },
-    useAccount: {
-      callback: () => {
-        setMode('sign-in')
+        setMode((current) => (current === 'sign-in' ? 'sign-up' : 'sign-in'))
         setError(null)
       },
       enabled: !signedIn,
@@ -146,17 +137,13 @@ export function LoginPage() {
       <h1 className="text-3xl font-normal md:text-5xl">
         {mode === 'sign-in' ? 'Sign in' : 'Create an account'}
       </h1>
-      <p className="mt-4 text-sm text-mute">
-        {mode === 'sign-in' ? 'Enter email and password.' : 'Enter a name, email, and password.'}
-      </p>
       <form
         id="login-form"
-        className="mt-8 bg-ink/5 p-6 md:p-8"
         data-oc-enter-submit="true"
         onSubmit={onSubmit}
       >
         {mode === 'sign-up' ? (
-          <Field label="Name">
+          <Field label="Name" className="mt-6">
             <input
               className={`${softInputClass} mt-1`}
               autoComplete="name"
@@ -166,7 +153,7 @@ export function LoginPage() {
             />
           </Field>
         ) : null}
-        <Field label="Email" className={mode === 'sign-up' ? 'mt-4' : undefined}>
+        <Field label="Email" className={mode === 'sign-up' ? 'mt-4' : 'mt-6'}>
           <input
             className={`${softInputClass} mt-1`}
             type="email"
@@ -188,27 +175,37 @@ export function LoginPage() {
           />
         </Field>
         {error ? <p className="mt-4 text-sm text-warn">{error}</p> : null}
-        <button
-          className={`${primaryButtonClass} mt-6 w-full`}
-          disabled={submit.isPending}
-          type="submit"
-        >
-          {submit.isPending ? (
-            mode === 'sign-in' ? (
-              'Signing in…'
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            data-oc-nav="action"
+            className={`${softButtonClass} flex-1`}
+            onClick={goBack}
+          >
+            <Kbd hotkey="Escape" />
+            Cancel
+          </button>
+          <button
+            className={`${primaryButtonClass} flex-1`}
+            disabled={submit.isPending}
+            type="submit"
+          >
+            {submit.isPending ? (
+              mode === 'sign-in' ? (
+                'Signing in…'
+              ) : (
+                'Creating account…'
+              )
             ) : (
-              'Creating account…'
-            )
-          ) : (
-            <>
-              <KeyHints className="mr-2 inline-flex gap-1">
-                <Kbd hotkey="Mod" />
-                <Kbd hotkey="Enter" />
-              </KeyHints>
-              {mode === 'sign-in' ? 'Sign in' : 'Create account'}
-            </>
-          )}
-        </button>
+              <>
+                <KeyHints className="mr-2 inline-flex gap-1">
+                  <Kbd hotkey="Enter" />
+                </KeyHints>
+                {mode === 'sign-in' ? 'Sign in' : 'Create account'}
+              </>
+            )}
+          </button>
+        </div>
         <button
           type="button"
           data-oc-nav="action"
@@ -220,7 +217,7 @@ export function LoginPage() {
         >
           {mode === 'sign-in' ? 'Need an account? Create one' : 'Have an account? Sign in'}
           <KeyHints>
-            <Kbd hotkey={mode === 'sign-in' ? 'C' : 'S'} />
+            <Kbd hotkey="C" />
           </KeyHints>
         </button>
       </form>
@@ -238,7 +235,11 @@ function Field({
   children: ReactNode
 }) {
   return (
-    <label className={`block ${className ?? ''}`} data-oc-nav="field" data-oc-required="true">
+    <label
+      className={`block px-3 py-2.5 ${className ?? ''}`}
+      data-oc-nav="field"
+      data-oc-required="true"
+    >
       <span className={labelClass}>{label}</span>
       {children}
       <span data-oc-hint="insert" className="mt-1 items-center gap-1.5 text-xs text-faint">

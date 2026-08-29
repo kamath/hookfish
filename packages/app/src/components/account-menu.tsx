@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Kbd } from './hints'
 import { fetchSession, signOut } from '../lib/session'
 
 const sessionQueryKey = ['auth-session'] as const
@@ -26,9 +27,10 @@ export function AccountMenu() {
     return (
       <Link
         to="/login"
-        className="inline-flex h-8 items-center px-2 text-sm text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
+        className="inline-flex h-8 items-center gap-1.5 bg-ink/10 px-2 text-sm text-ink outline-none hover:bg-ink/15 focus-visible:bg-ink/15"
       >
         Sign in
+        <Kbd hotkey="S" />
       </Link>
     )
   }
