@@ -14,6 +14,7 @@ import {
   sourceUrlKey,
   type CatalogEntry,
 } from '../lib/catalog'
+import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import {
@@ -92,8 +93,8 @@ function Home() {
     id: row.id,
     title: row.title,
     items:
-      row.id === 'recent'
-        ? apis.slice(0, 5).map((api) => ({
+      row.source === 'recent'
+        ? visibleCarouselItems(apis).map((api) => ({
             type: 'recent' as const,
             id: api.id,
             title: api.title,
@@ -102,7 +103,7 @@ function Home() {
             }`,
             apiId: api.id,
           }))
-        : row.items.map((entry) => ({
+        : visibleCarouselItems(row.items).map((entry) => ({
             type: 'catalog' as const,
             id: entry.id,
             title: entry.title,
@@ -155,8 +156,7 @@ function Home() {
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
       : undefined
-  const canSelectNextList = activeRow < carouselRows.length - 1
-  const canSelectPreviousList = activeRow > 0
+  const canMoveLists = carouselRows.length > 1
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -175,8 +175,7 @@ function Home() {
 
   function moveList(delta: number) {
     setActiveRow((index) => {
-      const last = Math.max(carouselRows.length - 1, 0)
-      const nextIndex = Math.min(Math.max(index + delta, 0), last)
+      const nextIndex = wrappedCarouselIndex(index, delta, carouselRows.length)
       const nextRow = carouselRows[nextIndex]
       if (nextRow) {
         requestAnimationFrame(() => {
@@ -307,11 +306,11 @@ function Home() {
     },
     carouselPrevious: {
       callback: () => moveList(-1),
-      enabled: !dialogOpen && canSelectPreviousList,
+      enabled: !dialogOpen && canMoveLists,
     },
     carouselNext: {
       callback: () => moveList(1),
-      enabled: !dialogOpen && canSelectNextList,
+      enabled: !dialogOpen && canMoveLists,
     },
     confirmRemove,
     cancelRemove,
@@ -614,7 +613,7 @@ function Home() {
                     type="button"
                     className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal disabled:opacity-30"
                     aria-label="Previous list"
-                    disabled={!canSelectPreviousList}
+                    disabled={!canMoveLists}
                     onClick={() => moveList(-1)}
                   >
                     <span aria-hidden="true">‹</span>
@@ -623,7 +622,7 @@ function Home() {
                     type="button"
                     className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal disabled:opacity-30"
                     aria-label="Next list"
-                    disabled={!canSelectNextList}
+                    disabled={!canMoveLists}
                     onClick={() => moveList(1)}
                   >
                     <span aria-hidden="true">›</span>

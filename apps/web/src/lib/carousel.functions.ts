@@ -1,28 +1,25 @@
 import { createServerFn } from '@tanstack/react-start'
 import { MCP_CATALOG, OPENAPI_CATALOG } from './catalog.server'
-import type { CatalogEntry } from './catalog'
-
-export type CatalogCarouselRow = {
-  id: 'recent' | 'mcp' | 'openapi'
-  title: string
-  items: readonly CatalogEntry[]
-}
+import type { CarouselListContract } from './carousel'
 
 export const getCarouselCatalog = createServerFn({ method: 'GET' }).handler(
-  (): CatalogCarouselRow[] => [
+  (): CarouselListContract[] => [
     {
       id: 'recent',
       title: 'Recent',
+      source: 'recent',
       items: [],
     },
     {
       id: 'mcp',
       title: 'MCP servers',
+      source: 'catalog',
       items: MCP_CATALOG,
     },
     {
       id: 'openapi',
       title: 'OpenAPI specs',
+      source: 'catalog',
       items: OPENAPI_CATALOG,
     },
   ],
