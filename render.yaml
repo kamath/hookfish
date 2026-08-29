@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: 0.5c-512mb
     region: oregon
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm turbo run build --filter=@hookfish/example-node
+    buildCommand: npm install -g pnpm@10.33.3 && pnpm install --frozen-lockfile --prod=false && pnpm turbo run build --filter=@hookfish/example-node
     preDeployCommand: pnpm --filter @hookfish/api db:migrate:prod
     startCommand: pnpm --filter @hookfish/example-node start
     healthCheckPath: /
