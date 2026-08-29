@@ -189,9 +189,10 @@ function Home() {
       return
     }
     setActiveItems((current) => {
-      const nextIndex = Math.min(
-        Math.max((current[row.id] ?? 0) + delta, 0),
-        row.items.length - 1,
+      const nextIndex = wrappedCarouselIndex(
+        current[row.id] ?? 0,
+        delta,
+        row.items.length,
       )
       return { ...current, [row.id]: nextIndex }
     })
