@@ -40,7 +40,7 @@ export const Route = createRootRouteWithContext<{
       },
       { name: 'color-scheme', content: 'light dark' },
       { name: 'theme-color', content: THEME_COLORS.light },
-      { title: 'Hookfish' },
+      { title: 'Smithery' },
       {
         name: 'description',
         content: 'Browse, configure, and run executables from pluggable sources.',

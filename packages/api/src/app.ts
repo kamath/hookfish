@@ -171,7 +171,7 @@ export function createApi(options: CreateApiOptions = {}) {
   const openApiConfig = {
     openapi: '3.1.0' as const,
     info: {
-      title: options.openapi?.title ?? 'Hookfish API',
+      title: options.openapi?.title ?? 'Smithery API',
       version: options.openapi?.version ?? '1.0.0',
     },
     servers: options.openapi?.servers ?? [{ url: '/' }],

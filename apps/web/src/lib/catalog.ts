@@ -64,10 +64,10 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     url: 'https://api.arcade.dev/v1/swagger',
   },
   {
-    id: 'hookfish-api',
+    id: 'smithery-api',
     kind: 'openapi',
     hotkey: '7',
-    title: 'Hookfish API',
+    title: 'Smithery API',
     detail: `${API_BASE_URL}/openapi.json`,
     url: `${API_BASE_URL}/openapi.json`,
   },
