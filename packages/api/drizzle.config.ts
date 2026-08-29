@@ -2,7 +2,7 @@ import { config } from 'dotenv'
 import { defineConfig } from 'drizzle-kit'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveDatabaseTarget } from './src/db/url.ts'
+import { resolveDatabaseTarget } from './src/db/url'
 
 const root = dirname(fileURLToPath(import.meta.url))
 config({ path: resolve(root, '../../.env') })
