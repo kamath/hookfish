@@ -37,6 +37,7 @@ function filteredHeaders(source: Headers, blocked: Set<string>) {
 export async function proxyMcpRequest(
   request: Request,
   upstreamFetch: typeof fetch = fetch,
+  onFetched?: (url: string) => void | Promise<void>,
 ) {
   const target = new URL(request.url).searchParams.get('url') ?? ''
   if (!isHttpUrl(target)) {
@@ -56,6 +57,7 @@ export async function proxyMcpRequest(
     redirect: 'manual',
     signal: request.signal,
   } as RequestInit)
+  await onFetched?.(target)
   const responseHeaders = filteredHeaders(response.headers, RESPONSE_HEADER_BLOCKLIST)
   if (responseHeaders.get('content-type')?.includes('text/event-stream')) {
     responseHeaders.set('Cache-Control', 'no-cache, no-transform')

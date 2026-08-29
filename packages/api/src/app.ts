@@ -15,8 +15,10 @@ import {
 import { authBasePathForMount } from './auth-path'
 import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
+import { isHttpUrl } from './http'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
+import { cacheRegistryResult, getRegistryResult } from './registry'
 import {
   errorSchema,
   executeRequestSchema,
@@ -24,6 +26,8 @@ import {
   mcpOAuthClientQuerySchema,
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
+  registryQuerySchema,
+  registryResultSchema,
   specRequestSchema,
 } from './schemas'
 import {
@@ -109,6 +113,50 @@ const executeRoute = createRoute({
     },
     400: {
       description: 'The request could not be executed',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
+
+const registryRoute = createRoute({
+  method: 'get',
+  path: '/registry',
+  tags: ['Registry'],
+  summary: 'Read a cached OpenAPI document or MCP endpoint',
+  request: {
+    query: registryQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Cached registry result',
+      content: {
+        'application/json': {
+          schema: registryResultSchema,
+        },
+      },
+    },
+    400: {
+      description: 'The URL is invalid',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+    404: {
+      description: 'The URL is not cached',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+    503: {
+      description: 'The registry database is not configured',
       content: {
         'application/json': {
           schema: errorSchema,
@@ -213,6 +261,10 @@ export function createApi(options: CreateApiOptions = {}) {
         return app.fetch(withInternalFetchHeader(own))
       }
 
+  const cacheMcpUrl = options.database
+    ? (url: string) => cacheRegistryResult(options.database!, { url, kind: 'mcp' })
+    : undefined
+
   const routes = app
     .openapi(signUpRoute, async (c) => {
       const result = await handleSignUp(c, c.req.valid('json'), authOptions)
@@ -248,6 +300,13 @@ export function createApi(options: CreateApiOptions = {}) {
           return c.json(app.getOpenAPI31Document(openApiConfig), 200)
         }
         const document = await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
+        if (options.database) {
+          await cacheRegistryResult(options.database, {
+            url: specUrl,
+            kind: 'openapi',
+            document,
+          })
+        }
         return c.json(document, 200)
       } catch (error) {
         return c.json({ error: errorMessage(error, 'Could not fetch the spec.') }, 400)
@@ -269,6 +328,20 @@ export function createApi(options: CreateApiOptions = {}) {
         return c.json({ error: errorMessage(error, 'The request could not be executed.') }, 400)
       }
     })
+    .openapi(registryRoute, async (c) => {
+      const url = c.req.valid('query').url
+      if (!isHttpUrl(url)) {
+        return c.json({ error: 'Enter an http or https URL.' }, 400)
+      }
+      if (!options.database) {
+        return c.json({ error: 'The registry database is not configured.' }, 503)
+      }
+      const result = await getRegistryResult(options.database, url)
+      if (!result) {
+        return c.json({ error: 'No cached result exists for this URL.' }, 404)
+      }
+      return c.json(result, 200)
+    })
     .openapi(oauthRoute, (c) => {
       const url = new URL(c.req.url)
       const sourceId = c.req.valid('query').sourceId
@@ -283,12 +356,18 @@ export function createApi(options: CreateApiOptions = {}) {
         },
       )
     })
-    .openapi(mcpProxyRoute('get'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
-    .openapi(mcpProxyRoute('post'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
-    .openapi(mcpProxyRoute('delete'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
+    .openapi(mcpProxyRoute('get'), (c) =>
+      proxyMcpRequest(c.req.raw, upstreamFetch, cacheMcpUrl),
+    )
+    .openapi(mcpProxyRoute('post'), (c) =>
+      proxyMcpRequest(c.req.raw, upstreamFetch, cacheMcpUrl),
+    )
+    .openapi(mcpProxyRoute('delete'), (c) =>
+      proxyMcpRequest(c.req.raw, upstreamFetch, cacheMcpUrl),
+    )
 
   routes.on(['PUT', 'PATCH', 'OPTIONS', 'HEAD'], '/mcp-proxy', (c) =>
-    proxyMcpRequest(c.req.raw, upstreamFetch),
+    proxyMcpRequest(c.req.raw, upstreamFetch, cacheMcpUrl),
   )
 
   routes.on(['GET', 'POST'], '/auth/*', (c) => handleNativeAuth(c, authOptions))
