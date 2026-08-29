@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import type { CreateApiKeyRequest } from '@hookfish/api'
+import { Kbd } from './hints'
+import { copyText } from '../lib/clipboard'
+import { createApiKey, type CreatedApiKey } from '../lib/session'
+import { labelClass, primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 type ApiKeyExpiration = CreateApiKeyRequest['expiration']
 
@@ -11,14 +15,13 @@ const expirations: readonly ApiKeyExpiration[] = [
   '90 days',
   'never',
 ]
-import { copyText } from '../lib/clipboard'
-import { createApiKey, type CreatedApiKey } from '../lib/session'
-import { labelClass, primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 export function CreateApiKeyForm({
   id = 'create-api-key-form',
+  onCreatedChange,
 }: {
   id?: string
+  onCreatedChange?: (created: boolean) => void
 }) {
   const [name, setName] = useState('')
   const [expiration, setExpiration] = useState<ApiKeyExpiration>('30 days')
@@ -31,6 +34,7 @@ export function CreateApiKeyForm({
       setCreated(apiKey)
       setCopied(false)
       setName('')
+      onCreatedChange?.(true)
     },
   })
 
@@ -53,6 +57,7 @@ export function CreateApiKeyForm({
     setCreated(null)
     setCopied(false)
     create.reset()
+    onCreatedChange?.(false)
   }
 
   return (
@@ -110,11 +115,11 @@ export function CreateApiKeyView({
 }) {
   if (created) {
     return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-ink">Copy this key now. It will not be shown again.</p>
-        <p className="text-xs text-mute">{created.name}</p>
-        <p className="break-all bg-ink/10 px-3 py-2 font-mono text-xs text-ink">{created.key}</p>
-        <div className="flex gap-2">
+      <div className="mt-8 flex flex-col">
+        <p className="text-sm text-mute">Copy this key now. It will not be shown again.</p>
+        <p className="mt-4 text-sm text-ink">{created.name}</p>
+        <p className="mt-3 break-all bg-ink/5 px-3 py-2.5 font-mono text-sm text-ink">{created.key}</p>
+        <div className="mt-6 flex gap-2">
           <button type="button" className={primaryButtonClass} onClick={onCopy}>
             {copied ? 'Copied' : 'Copy key'}
           </button>
@@ -127,10 +132,8 @@ export function CreateApiKeyView({
   }
 
   return (
-    <form id={id} className="flex flex-col" onSubmit={onSubmit}>
-      <p className="text-sm text-ink">Create an API key</p>
-      <label className="mt-3 block">
-        <span className={labelClass}>Name</span>
+    <form id={id} className="mt-8" data-oc-enter-submit="true" onSubmit={onSubmit}>
+      <Field label="Name">
         <input
           className={`${softInputClass} mt-1`}
           autoComplete="off"
@@ -139,9 +142,8 @@ export function CreateApiKeyView({
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
         />
-      </label>
-      <label className="mt-3 block">
-        <span className={labelClass}>Expiration</span>
+      </Field>
+      <Field label="Expiration" className="mt-4">
         <select
           className={`${softInputClass} mt-1`}
           value={expiration}
@@ -153,11 +155,40 @@ export function CreateApiKeyView({
             </option>
           ))}
         </select>
-      </label>
-      {error ? <p className="mt-3 text-sm text-warn">{error}</p> : null}
-      <button className={`${primaryButtonClass} mt-4 w-fit`} disabled={pending} type="submit">
+      </Field>
+      {error ? <p className="mt-4 text-sm text-warn">{error}</p> : null}
+      <button className={`${primaryButtonClass} mt-6 w-fit`} disabled={pending} type="submit">
         {pending ? 'Creating…' : 'Create API key'}
       </button>
     </form>
+  )
+}
+
+function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <label
+      className={`block px-3 py-2.5 ${className ?? ''}`}
+      data-oc-nav="field"
+      data-oc-required="true"
+    >
+      <span className={labelClass}>{label}</span>
+      {children}
+      <span data-oc-hint="insert" className="mt-1 items-center gap-1.5 text-xs text-faint">
+        <Kbd hotkey="I" />
+        to focus input
+      </span>
+      <span data-oc-hint="escape" className="mt-1 items-center gap-1.5 text-xs text-faint">
+        <Kbd hotkey="Escape" />
+        to activate keybindings
+      </span>
+    </label>
   )
 }

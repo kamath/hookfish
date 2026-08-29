@@ -26,7 +26,6 @@ function render(created: boolean) {
 }
 
 const form = render(false)
-assert.match(form, /Create an API key/)
 assert.match(form, /Name/)
 assert.match(form, /Expiration/)
 assert.match(form, /value="1 day"/)
@@ -35,6 +34,7 @@ assert.match(form, /value="30 days"/)
 assert.match(form, /value="90 days"/)
 assert.match(form, /value="never"/)
 assert.match(form, /Create API key/)
+assert.match(form, /data-oc-enter-submit="true"/)
 assert.doesNotMatch(form, /hf_secret/)
 
 const revealed = render(true)
@@ -45,10 +45,17 @@ assert.match(revealed, /Create another/)
 assert.doesNotMatch(revealed, /Expiration/)
 
 const account = readFileSync(new URL('./account-menu.tsx', import.meta.url), 'utf8')
-assert.match(account, /CreateApiKeyForm/)
+assert.match(account, /to="\/api-keys"/)
 assert.match(account, /Create API key/)
+assert.doesNotMatch(account, /CreateApiKeyForm/)
+assert.doesNotMatch(account, /absolute right-0/)
 
 const login = readFileSync(new URL('../pages/login.tsx', import.meta.url), 'utf8')
-assert.match(login, /CreateApiKeyForm/)
+assert.doesNotMatch(login, /CreateApiKeyForm/)
+
+const page = readFileSync(new URL('../pages/create-api-key.tsx', import.meta.url), 'utf8')
+assert.match(page, /activate\('apiKeys'/)
+assert.match(page, /useFormPaneNavigation\('apiKeys', 'create-api-key-form'\)/)
+assert.match(page, /id="api-keys-pane"/)
 
 console.log('create api key ui ok')

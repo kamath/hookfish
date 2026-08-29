@@ -162,6 +162,9 @@ assert.equal(previousPaneTitle('input', labels), 'Endpoints')
 assert.equal(previousPaneTitle('response', labels), 'Input')
 assert.equal(previousPaneTitle('specs', labels), undefined)
 assert.equal(previousPaneTitle('login', labels), 'OpenAPI documents')
+assert.equal(previousPaneTitle('apiKeys', labels), 'OpenAPI documents')
+assert.equal(paneConfig.apiKeys.parent, 'specs')
+assert.equal(paneConfig.apiKeys.path, '/api-keys')
 assert.equal(
   paneConfig.specs.bindings.find((binding) => binding.id === 'signIn')?.hotkey,
   'S',

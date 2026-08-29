@@ -9,6 +9,7 @@ import {
 import { createRoot } from 'react-dom/client'
 import { useCallback } from 'react'
 import { App, AppErrorPage, AppNotFound } from './app'
+import { CreateApiKeyPage } from './pages/create-api-key'
 import { HomePage } from './pages/home'
 import { LoginPage } from './pages/login'
 import {
@@ -45,6 +46,12 @@ export function createAppRouter(options: AppRouterOptions = {}) {
     component: LoginPage,
   })
 
+  const apiKeysRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/api-keys',
+    component: CreateApiKeyPage,
+  })
+
   const workbenchRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/apis/$apiId/$pane/{-$operationId}',
@@ -79,7 +86,7 @@ export function createAppRouter(options: AppRouterOptions = {}) {
   })
 
   return createRouter({
-    routeTree: rootRoute.addChildren({ indexRoute, loginRoute, workbenchRoute }),
+    routeTree: rootRoute.addChildren({ indexRoute, loginRoute, apiKeysRoute, workbenchRoute }),
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',

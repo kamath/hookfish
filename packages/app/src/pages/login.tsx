@@ -10,7 +10,6 @@ import {
 import { submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate } from '../lib/mode'
-import { CreateApiKeyForm } from '../components/create-api-key'
 import { fetchSession, signIn, signUp } from '../lib/session'
 import { useSourceToolbar } from '../lib/toolbar'
 import {
@@ -118,9 +117,6 @@ export function LoginPage() {
       >
         <h1 className="text-3xl font-normal md:text-5xl">Signed in</h1>
         <p className="mt-4 text-sm text-mute">Using {user.email}.</p>
-        <div className="mt-8 bg-ink/5 p-4">
-          <CreateApiKeyForm id="signed-in-create-api-key" />
-        </div>
         <form id="login-form" className="mt-8" onSubmit={onSubmit}>
           <button className={`${primaryButtonClass} w-fit`} type="submit">
             Continue
