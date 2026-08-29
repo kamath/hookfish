@@ -29,7 +29,11 @@ export function findDrizzleMigrationsDir(moduleUrl = import.meta.url) {
   throw new Error('Could not find drizzle migrations (meta/_journal.json).')
 }
 
-export async function createPgliteDb(dataDir = resolvePgliteDataDir()) {
+export async function createPgliteDb(
+  dataDir = resolvePgliteDataDir({
+    PGLITE_DATA_DIR: process.env.PGLITE_DATA_DIR,
+  }),
+) {
   const client = new PGlite(dataDir)
   const db = drizzle({ client, schema })
   await migrate(db, { migrationsFolder: findDrizzleMigrationsDir() })

@@ -341,6 +341,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
       commander:
         specifier: ^15.0.0
         version: 15.0.0

@@ -1,7 +1,4 @@
-import { existsSync } from 'node:fs'
 import { cp, mkdir } from 'node:fs/promises'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
@@ -14,32 +11,18 @@ const cloudflareWorkersStub = fileURLToPath(
   new URL('../../packages/api/src/db/cloudflare-workers-stub.ts', import.meta.url),
 )
 
-function copyPgliteAssets(): Plugin {
+function copyDrizzleMigrations(): Plugin {
   return {
-    name: 'copy-pglite-assets',
+    name: 'copy-drizzle-migrations',
     apply: 'build',
     async closeBundle() {
-      const require = createRequire(
-        fileURLToPath(new URL('../../packages/api/package.json', import.meta.url)),
-      )
-      const pgliteDir = dirname(require.resolve('@electric-sql/pglite'))
       const assetsDir = fileURLToPath(new URL('./dist/server/assets/', import.meta.url))
       await mkdir(assetsDir, { recursive: true })
-
-      for (const name of ['pglite.data', 'pglite.wasm', 'initdb.wasm']) {
-        const from = join(pgliteDir, name)
-        if (existsSync(from)) {
-          await cp(from, join(assetsDir, name), { force: true })
-        }
-      }
-
-      const drizzleFrom = fileURLToPath(
-        new URL('../../packages/api/drizzle/', import.meta.url),
+      await cp(
+        fileURLToPath(new URL('../../packages/api/drizzle/', import.meta.url)),
+        fileURLToPath(new URL('./dist/server/assets/drizzle/', import.meta.url)),
+        { recursive: true, force: true },
       )
-      await cp(drizzleFrom, join(assetsDir, 'drizzle'), {
-        recursive: true,
-        force: true,
-      })
     },
   }
 }
@@ -57,12 +40,14 @@ const config = defineConfig(({ command }) => ({
     include: ['@tanstack/react-query'],
   },
   ssr: {
-    ...(command === 'build' ? { noExternal: true } : {}),
+    ...(command === 'build'
+      ? { noExternal: true, external: ['@electric-sql/pglite'] }
+      : {}),
     optimizeDeps: {
       include: ['@tanstack/react-query'],
     },
   },
-  plugins: [devtools(), copyPgliteAssets(), tanstackStart(), viteReact()],
+  plugins: [devtools(), copyDrizzleMigrations(), tanstackStart(), viteReact()],
 }))
 
 export default config
