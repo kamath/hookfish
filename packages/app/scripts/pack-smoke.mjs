@@ -38,6 +38,11 @@ try {
           react: '^19.2.0',
           'react-dom': '^19.2.0',
         },
+        pnpm: {
+          overrides: {
+            '@hookfish/api': `file:${join(packagesDirectory, apiTarball)}`,
+          },
+        },
       },
       null,
       2,
@@ -76,8 +81,8 @@ try {
   )
 
   run('pnpm', ['install', '--ignore-scripts'], consumerDirectory)
-  run(resolve(workspaceDirectory, 'node_modules/.bin/tsc'), ['-p', 'tsconfig.json'], consumerDirectory)
-  run(resolve(workspaceDirectory, 'node_modules/.bin/vite'), ['build'], consumerDirectory)
+  run(resolve(appDirectory, 'node_modules/.bin/tsc'), ['-p', 'tsconfig.json'], consumerDirectory)
+  run(resolve(appDirectory, 'node_modules/.bin/vite'), ['build'], consumerDirectory)
   run(
     process.execPath,
     [
