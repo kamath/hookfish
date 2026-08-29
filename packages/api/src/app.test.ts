@@ -98,6 +98,15 @@ assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
+assert.ok(document.paths['/auth/sign-up'])
+assert.ok(document.paths['/auth/sign-in'])
+assert.ok(document.paths['/auth/sign-out'])
+assert.ok(document.paths['/auth/session'])
+
+assert.equal(client.auth['sign-up'].$url().toString(), 'http://hookfish.test/auth/sign-up')
+assert.equal(client.auth['sign-in'].$url().toString(), 'http://hookfish.test/auth/sign-in')
+assert.equal(client.auth['sign-out'].$url().toString(), 'http://hookfish.test/auth/sign-out')
+assert.equal(client.auth.session.$url().toString(), 'http://hookfish.test/auth/session')
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
 const mountedSpec = await mounted.request('/api/spec', {

@@ -37,7 +37,7 @@ mountApp(document.getElementById('app')!, {
 Mount `@hookfish/api` at the matching path in the deployment platform's request handler:
 
 ```ts
-import { mountApi } from '@hookfish/api'
+import { mountApi } from '@hookfish/api/app'
 
 export default mountApi('/api')
 ```
@@ -83,6 +83,40 @@ connections, OAuth credentials, legacy session identifiers, and cached listings 
 the browser. The UI talks to the `App` component's `apiBaseUrl` through Hono RPC; the web
 shell mounts it at `/api`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
+
+## Database and account auth
+
+Email and password auth lives in `packages/api`. Public routes are documented in OpenAPI
+and called through the same Hono RPC client as the rest of the app (`getApi()` with
+`credentials: 'include'`):
+
+- `POST /api/auth/sign-up`
+- `POST /api/auth/sign-in`
+- `POST /api/auth/sign-out`
+- `GET /api/auth/session` (always `200`, `user` is `null` when signed out)
+
+Session cookies are set by those handlers. The login page at `/login` does not use a
+separate Better Auth client.
+
+Local development uses [PGlite](https://pglite.dev/) when `POSTGRES_URL` is unset. Data
+for `packages/api` scripts lives in `packages/api/.data`. The CLI stores its own database
+in `~/.hookfish/pglite` and applies migrations on first open, so a fresh `hookfish` install
+does not need `pnpm db:migrate`.
+
+```bash
+pnpm db:migrate
+pnpm db:studio
+```
+
+Production commands require a `postgres://` or `postgresql://` `POSTGRES_URL`:
+
+```bash
+pnpm db:migrate:prod
+pnpm db:studio:prod
+```
+
+On Cloudflare, bind Hyperdrive as `HYPERDRIVE` (it wins over `POSTGRES_URL`). Set
+`BETTER_AUTH_SECRET` in production. PGlite is not bundled into the Cloudflare worker.
 
 Build every workspace package:
 

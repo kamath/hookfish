@@ -161,6 +161,12 @@ assert.equal(previousPaneTitle('routes', labels), 'OpenAPI documents')
 assert.equal(previousPaneTitle('input', labels), 'Endpoints')
 assert.equal(previousPaneTitle('response', labels), 'Input')
 assert.equal(previousPaneTitle('specs', labels), undefined)
+assert.equal(previousPaneTitle('login', labels), 'OpenAPI documents')
+assert.equal(paneConfig.login.parent, 'specs')
+assert.equal(
+  paneConfig.login.bindings.find((binding) => binding.id === 'parent')?.hotkey,
+  'Escape',
+)
 console.log('keymap previous pane titles ok')
 
 assert.equal(

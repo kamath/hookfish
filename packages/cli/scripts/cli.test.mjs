@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -23,4 +24,16 @@ test('rejects invalid ports', () => {
 
   assert.equal(result.status, 1)
   assert.match(result.stderr, /integer between 1 and 65535/)
+})
+
+test('bundles pglite assets and drizzle migrations', () => {
+  const assets = fileURLToPath(new URL('../web/server/assets/', import.meta.url))
+  assert.equal(existsSync(new URL('../web/server/assets/pglite.data', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../web/server/assets/pglite.wasm', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../web/server/assets/initdb.wasm', import.meta.url)), true)
+  assert.equal(
+    existsSync(new URL('../web/server/assets/drizzle/meta/_journal.json', import.meta.url)),
+    true,
+    `missing drizzle journal under ${assets}`,
+  )
 })

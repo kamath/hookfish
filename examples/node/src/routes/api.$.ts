@@ -1,4 +1,4 @@
-import { mountApi } from '@hookfish/api'
+import { mountApi } from '@hookfish/api/app'
 import { createFileRoute } from '@tanstack/react-router'
 import type {} from '@tanstack/react-start'
 
