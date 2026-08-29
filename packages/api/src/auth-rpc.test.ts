@@ -77,7 +77,9 @@ const listedWithSession = await api.request('/auth/api-keys', {
   headers: { cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(listedWithSession.status, 200)
-const listedBody = await listedWithSession.json()
+const listedBody = (await listedWithSession.json()) as {
+  apiKeys: Array<{ name: string; expiresAt: string | null }>
+}
 assert.deepEqual(
   listedBody.apiKeys.map((key) => key.name),
   ['Permanent', 'Automation'],
