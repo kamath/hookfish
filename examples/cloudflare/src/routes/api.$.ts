@@ -5,7 +5,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import type {} from '@tanstack/react-start'
 
 function databaseConnection() {
-  const connection = env.HYPERDRIVE ?? env.POSTGRES_URL
+  const runtimeEnv = env as typeof env & {
+    HYPERDRIVE?: { connectionString: string }
+    POSTGRES_URL?: string
+  }
+  const connection = runtimeEnv.HYPERDRIVE ?? runtimeEnv.POSTGRES_URL
   if (!connection) {
     throw new Error('Cloudflare requires a Hyperdrive binding or POSTGRES_URL secret.')
   }
