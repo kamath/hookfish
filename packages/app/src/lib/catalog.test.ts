@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { API_BASE_URL } from './api'
-import { OPENAPI_CATALOG } from './catalog.server'
+import { OPENAPI_CATALOG } from './catalog-data'
 import { catalogSourceUrl } from './catalog'
 
 assert.deepEqual(

@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { Provider as JotaiProvider } from 'jotai'
-import { store } from './lib/chrome'
+import { AppProviders } from '@hookfish/app'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
@@ -20,9 +19,7 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     Wrap: ({ children }) => (
-      <JotaiProvider store={store}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </JotaiProvider>
+      <AppProviders queryClient={queryClient}>{children}</AppProviders>
     ),
   })
 

@@ -17,27 +17,12 @@ importers:
       '@hookfish/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@modelcontextprotocol/client':
-        specifier: ^2.0.0
-        version: 2.0.0
-      '@rjsf/core':
-        specifier: ^6.8.0
-        version: 6.8.0(@rjsf/utils@6.8.0(react@19.2.8))(react@19.2.8)(solid-js@1.9.15)
-      '@rjsf/utils':
-        specifier: ^6.8.0
-        version: 6.8.0(react@19.2.8)
-      '@rjsf/validator-ajv8':
-        specifier: ^6.8.0
-        version: 6.8.0(@rjsf/utils@6.8.0(react@19.2.8))
-      '@tailwindcss/vite':
-        specifier: ^4.1.18
-        version: 4.3.3(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+      '@hookfish/app':
+        specifier: workspace:*
+        version: link:../../packages/app
       '@tanstack/react-devtools':
         specifier: latest
         version: 0.10.12(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(csstype@3.2.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.15)
-      '@tanstack/react-hotkeys':
-        specifier: ^0.10.0
-        version: 0.10.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-query':
         specifier: ^5.102.4
         version: 5.102.4(react@19.2.8)
@@ -50,34 +35,19 @@ importers:
       '@tanstack/react-start':
         specifier: latest
         version: 1.168.49(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.5)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      ajv:
-        specifier: ^8.20.0
-        version: 8.20.0
-      hono:
-        specifier: ^4.11.4
-        version: 4.13.5
-      jotai:
-        specifier: ^2.20.3
-        version: 2.20.3(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
-      json-schema-to-zod:
-        specifier: ^2.8.1
-        version: 2.8.1
       react:
         specifier: ^19.2.0
         version: 19.2.8
       react-dom:
         specifier: ^19.2.0
         version: 19.2.8(react@19.2.8)
-      tailwindcss:
-        specifier: ^4.1.18
-        version: 4.3.3
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.54.0
         version: 1.54.0(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(wrangler@4.126.0)
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.3.3(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
       '@tanstack/devtools-vite':
         specifier: latest
         version: 0.8.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -96,9 +66,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.1.0(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.3.3
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
@@ -133,6 +103,73 @@ importers:
       typescript:
         specifier: ^6.0.2
         version: 6.0.3
+
+  packages/app:
+    dependencies:
+      '@hookfish/api':
+        specifier: workspace:*
+        version: link:../api
+      '@modelcontextprotocol/client':
+        specifier: ^2.0.0
+        version: 2.0.0
+      '@rjsf/core':
+        specifier: ^6.8.0
+        version: 6.8.0(@rjsf/utils@6.8.0(react@19.2.8))(react@19.2.8)(solid-js@1.9.15)
+      '@rjsf/utils':
+        specifier: ^6.8.0
+        version: 6.8.0(react@19.2.8)
+      '@rjsf/validator-ajv8':
+        specifier: ^6.8.0
+        version: 6.8.0(@rjsf/utils@6.8.0(react@19.2.8))
+      '@tanstack/react-hotkeys':
+        specifier: ^0.10.0
+        version: 0.10.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tanstack/react-query':
+        specifier: ^5.102.4
+        version: 5.102.4(react@19.2.8)
+      '@tanstack/react-router':
+        specifier: latest
+        version: 1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      hono:
+        specifier: ^4.11.4
+        version: 4.13.5
+      jotai:
+        specifier: ^2.20.3
+        version: 2.20.3(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
+      json-schema-to-zod:
+        specifier: ^2.8.1
+        version: 2.8.1
+      react:
+        specifier: ^19.2.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.5(@types/react@19.2.18)
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.0
+        version: 8.2.2(@types/node@22.20.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
 
   packages/cli:
     dependencies:

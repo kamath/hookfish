@@ -1,0 +1,944 @@
+import { UnauthorizedError } from '@modelcontextprotocol/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, isNotFound, notFound, useNavigate } from '@tanstack/react-router'
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
+import { AuthCallback, AuthRedirect } from '../components/auth-status'
+import { Kbd } from '../components/hints'
+import { PaneBackButton } from '../components/pane-back-button'
+import { McpServerPanel } from '../components/mcp-server-panel'
+import { ExecutableClient } from '../components/operation-client'
+import { ProtocolTrace } from '../components/protocol-trace'
+import { QueryStatus, StatusPane } from '../components/query-status'
+import { clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
+import { listApis } from '../lib/apis'
+import type {
+  Executable,
+  ExecutableGroup,
+  ExecutableSource,
+  JsonSchema,
+} from '../lib/client-types'
+import { apiQueryOptions } from '../lib/queries'
+import { blurActive, isEditing } from '../lib/focus'
+import { useFormPaneNavigation } from '../lib/form-nav'
+import { fuzzyScore } from '../lib/fuzzy'
+import {
+  consumePointerIntent,
+  previousPaneTitle,
+  useKeybindingsEnabled,
+  usePaneActions,
+  usePaneFlags,
+  useStepKeys,
+} from '../lib/keys'
+import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '../lib/mode'
+import { useSourceToolbar } from '../lib/toolbar'
+import { asRecord } from '../lib/build-request'
+import { inputClass } from '../lib/ui'
+import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
+import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+
+type Search = {
+  q?: string
+}
+
+export function validateWorkbenchSearch(search: Record<string, unknown>): Search {
+  return {
+    q: typeof search.q === 'string' ? search.q : undefined,
+  }
+}
+
+export type WorkbenchRouteProps = {
+  params: {
+    apiId: string
+    pane: string
+    operationId?: string
+  }
+  search: Search
+}
+
+type WorkbenchPane = Exclude<Pane, 'specs'>
+
+function readPane(value: string, operationId?: string): WorkbenchPane {
+  if (value === 'trace') {
+    return value
+  }
+  if (value === 'routes' && !operationId) {
+    return value
+  }
+  if ((value === 'input' || value === 'response') && operationId) {
+    return value
+  }
+  throw notFound()
+}
+
+function operationQueryText(operation: Executable) {
+  return [
+    operation.badge,
+    operation.name,
+    operation.id,
+    ...operation.groups,
+    operation.summary ?? '',
+    operation.description ?? '',
+  ].join(' ')
+}
+
+function oneLine(value?: string) {
+  const text = value?.replace(/\s+/g, ' ').trim()
+  return text || undefined
+}
+
+function groupOperations(operations: Executable[], tagGroups: ExecutableGroup[]) {
+  const buckets = new Map<string, Executable[]>()
+  const untagged: Executable[] = []
+
+  for (const operation of operations) {
+    const name = operation.groups[0]
+    if (!name) {
+      untagged.push(operation)
+      continue
+    }
+    const bucket = buckets.get(name) ?? []
+    bucket.push(operation)
+    buckets.set(name, bucket)
+  }
+
+  const groups: Array<{
+    name?: string
+    description?: string
+    operations: Executable[]
+  }> = []
+
+  for (const tag of tagGroups) {
+    const items = buckets.get(tag.name)
+    if (!items || items.length === 0) {
+      continue
+    }
+    groups.push({
+      name: tag.name,
+      description: tag.description,
+      operations: items,
+    })
+    buckets.delete(tag.name)
+  }
+
+  for (const [name, items] of buckets) {
+    groups.push({ name, operations: items })
+  }
+
+  if (untagged.length > 0) {
+    groups.push({ operations: untagged })
+  }
+
+  return groups
+}
+
+function hasAuthFields(schema: JsonSchema | undefined) {
+  return Object.keys(asRecord(schema?.properties)).length > 0
+}
+
+export function WorkbenchPage({ params, search }: WorkbenchRouteProps) {
+  const { apiId } = params
+  const navigate = useNavigate()
+  const apiQuery = useQuery(apiQueryOptions(apiId))
+  const queryClient = useQueryClient()
+  const goHome = () => {
+    void navigate({ to: '/' })
+  }
+
+  const saveAuth = useMutation({
+    mutationFn: async (value: Record<string, unknown>) => {
+      saveApiAuth(apiId, fieldsFromForm(value))
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(apiId).queryKey,
+      })
+    },
+  })
+
+  const clearAuth = useMutation({
+    mutationFn: async () => {
+      clearApiAuth(apiId)
+      clearMcpOAuth(apiId)
+      await closeMcpConnection(apiId)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(apiId).queryKey,
+      })
+    },
+  })
+  const [authDismissed, setAuthDismissed] = useState(false)
+
+  if (apiQuery.isPending) {
+    return isMcpOAuthCallback() ? (
+      <AuthCallback />
+    ) : (
+      <QueryStatus label="Reading the source…" onBack={goHome} />
+    )
+  }
+
+  if (apiQuery.isError) {
+    if (isNotFound(apiQuery.error)) {
+      throw notFound()
+    }
+    const authorizationUrl = pendingMcpAuthorizationUrl()
+    if (
+      !authDismissed &&
+      UnauthorizedError.isInstance(apiQuery.error) &&
+      authorizationUrl
+    ) {
+      return (
+        <StatusPane>
+          <AuthRedirect
+            href={authorizationUrl}
+            name={listApis().find((api) => api.id === apiId)?.title}
+            onCancel={() => {
+              clearPendingMcpAuthorization()
+              setAuthDismissed(true)
+            }}
+          />
+        </StatusPane>
+      )
+    }
+    return (
+      <QueryStatus
+        error={apiQuery.error}
+        onRetry={() => {
+          setAuthDismissed(false)
+          void apiQuery.refetch()
+        }}
+        onBack={goHome}
+      />
+    )
+  }
+
+  const api = apiQuery.data
+  const canAuth =
+    hasAuthFields(api.credentialSchema) || (api.kind === 'mcp' && Boolean(api.credentialsStored))
+  const needsAuth = Boolean(
+    canAuth && api.credentialsRequired !== false && !api.credentialsStored,
+  )
+
+  return (
+    <ApiWorkbench
+      api={api}
+      routeParams={params}
+      routeSearch={search}
+      needsAuth={needsAuth}
+      onClearAuth={
+        canAuth && api.credentialsStored
+          ? async () => {
+              await clearAuth.mutateAsync()
+            }
+          : undefined
+      }
+      onSaveAuth={async (value) => {
+        await saveAuth.mutateAsync(value)
+      }}
+      authPending={saveAuth.isPending || clearAuth.isPending}
+      authError={saveAuth.error ?? clearAuth.error}
+    />
+  )
+}
+
+function ApiWorkbench({
+  api,
+  routeParams,
+  routeSearch,
+  needsAuth,
+  onClearAuth,
+  onSaveAuth,
+  authPending,
+  authError,
+}: {
+  api: ExecutableSource
+  routeParams: WorkbenchRouteProps['params']
+  routeSearch: WorkbenchRouteProps['search']
+  needsAuth: boolean
+  onClearAuth?: () => Promise<void>
+  onSaveAuth: (value: Record<string, unknown>) => Promise<void>
+  authPending: boolean
+  authError: unknown
+}) {
+  const { operationId, pane: paneParam } = routeParams
+  const routePane = readPane(paneParam, operationId)
+  const search = routeSearch
+  const navigate = useNavigate()
+  const home = useNavigate()
+  const queryClient = useQueryClient()
+  const activePane = usePane()
+  const keybindings = useKeybindingsEnabled()
+  const [serverUrl, setServerUrl] = useState(api.targets[0] ?? '')
+  const [filterValue, setFilterValue] = useState(search.q ?? '')
+  const deferredFilterValue = useDeferredValue(filterValue)
+  const committedFilterRef = useRef(search.q ?? '')
+  const [heldOp, setHeldOp] = useState(operationId)
+  const heldOpRef = useRef(operationId)
+  const localOpRef = useRef(false)
+  useEffect(() => {
+    activate(routePane, 'command')
+  }, [api.id, routePane])
+
+  useEffect(() => {
+    if (api.kind !== 'mcp') {
+      return
+    }
+    return subscribeMcpChanges(api.id, () => {
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryOptions(api.id).queryKey,
+      })
+    })
+  }, [api.id, api.kind, queryClient])
+
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (routeFilter !== committedFilterRef.current) {
+      committedFilterRef.current = routeFilter
+      setFilterValue(routeFilter)
+    }
+  }, [search.q])
+
+  useEffect(() => {
+    const routeFilter = search.q ?? ''
+    if (filterValue === routeFilter) {
+      committedFilterRef.current = routeFilter
+      return
+    }
+    const timer = window.setTimeout(() => {
+      committedFilterRef.current = filterValue
+      void navigate({
+        search: (previous) => ({
+          ...previous,
+          q: filterValue || undefined,
+        }),
+        replace: true,
+        resetScroll: false,
+      })
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [filterValue, navigate, search.q])
+
+  const ranked = useMemo(() => {
+    const query = deferredFilterValue.trim()
+    if (!query) {
+      return undefined
+    }
+    return api.executables
+      .map((operation) => ({
+        operation,
+        score: fuzzyScore(operationQueryText(operation), query),
+      }))
+      .filter((item) => item.score != null)
+      .sort((left, right) => (right.score ?? 0) - (left.score ?? 0))
+      .map((item) => item.operation)
+  }, [api.executables, deferredFilterValue])
+  const groups = useMemo(
+    () => (ranked ? [] : groupOperations(api.executables, api.groups ?? [])),
+    [api.executables, api.groups, ranked],
+  )
+  const orderedOperations = useMemo(
+    () => ranked ?? groups.flatMap((group) => group.operations),
+    [groups, ranked],
+  )
+  const operationIndexById = useMemo(
+    () => new Map(orderedOperations.map((operation, index) => [operation.id, index])),
+    [orderedOperations],
+  )
+  const requestedIndex = operationIndexById.get(heldOp ?? operationId ?? '')
+  const selectedIndex = requestedIndex ?? (orderedOperations.length > 0 ? 0 : -1)
+  const selected = orderedOperations[selectedIndex]
+  const canPreviousOperation = selectedIndex > 0
+  const canNextOperation =
+    selectedIndex >= 0 && selectedIndex < orderedOperations.length - 1
+  const manyServers = api.targets.length > 1
+
+  useEffect(() => {
+    if (!operationId) {
+      localOpRef.current = false
+      return
+    }
+    if (localOpRef.current) {
+      if (operationId === heldOpRef.current) {
+        localOpRef.current = false
+      }
+      return
+    }
+    heldOpRef.current = operationId
+    setHeldOp(operationId)
+  }, [operationId])
+
+  function holdOp(id: string, fromKeys = false) {
+    localOpRef.current = fromKeys
+    heldOpRef.current = id
+    setHeldOp(id)
+  }
+
+  function revealOperation(id: string) {
+    const row = document.getElementById(`op-${id}`)
+    const list = row?.closest<HTMLElement>('[data-operation-list]')
+    if (!row || !list) {
+      return
+    }
+
+    const rowRect = row.getBoundingClientRect()
+    const listRect = list.getBoundingClientRect()
+    if (rowRect.top < listRect.top) {
+      const group = row.closest<HTMLElement>('[data-operation-group]')
+      const firstInGroup = group?.querySelector('[id^="op-"]') === row
+      const top = firstInGroup ? group.getBoundingClientRect().top : rowRect.top
+      list.scrollTop -= listRect.top - top
+    } else if (rowRect.bottom > listRect.bottom) {
+      list.scrollTop += rowRect.bottom - listRect.bottom
+    }
+  }
+
+  function move(delta: number) {
+    if (orderedOperations.length === 0) {
+      return
+    }
+    if (isInsertMode() && isEditing()) {
+      return
+    }
+    blurActive()
+    activate('routes', 'command')
+    const currentId = heldOpRef.current ?? selected?.id
+    const current = currentId ? (operationIndexById.get(currentId) ?? -1) : -1
+    const start = current === -1 ? 0 : current
+    const next =
+      orderedOperations[Math.min(Math.max(start + delta, 0), orderedOperations.length - 1)]
+    if (!next) {
+      return
+    }
+    holdOp(next.id, true)
+    revealOperation(next.id)
+  }
+
+  useEffect(() => {
+    const first = ranked?.[0]
+    if (!first) {
+      return
+    }
+    holdOp(first.id, true)
+    revealOperation(first.id)
+  }, [deferredFilterValue])
+
+  function focusFilter() {
+    activate('routes', 'edit')
+    document.getElementById('operation-filter')?.focus()
+  }
+
+  function openSelected() {
+    if (!selected) {
+      return
+    }
+    holdOp(selected.id)
+    activate('input', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'input', operationId: selected.id },
+      resetScroll: false,
+    })
+  }
+
+  function navigateOperation(delta: number) {
+    const next = orderedOperations[selectedIndex + delta]
+    if (!next) {
+      return
+    }
+    holdOp(next.id)
+    activate('input', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: api.id, pane: 'input', operationId: next.id },
+      replace: true,
+      resetScroll: false,
+    })
+    revealOperation(next.id)
+  }
+
+  function stepBack() {
+    if (getPane() === 'trace') {
+      const parentOperationId = operationId ?? heldOpRef.current
+      if (operationId) {
+        activate('input', 'command')
+        void navigate({
+          to: '/apis/$apiId/$pane/{-$operationId}',
+          params: {
+            apiId: api.id,
+            pane: 'input',
+            operationId,
+          },
+          replace: true,
+          resetScroll: false,
+        })
+        return
+      }
+      activate('routes', 'command')
+      blurActive()
+      void navigate({
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: { apiId: api.id, pane: 'routes', operationId: undefined },
+        replace: true,
+        resetScroll: false,
+      })
+      if (parentOperationId) {
+        window.setTimeout(() => {
+          document.getElementById(`op-${parentOperationId}`)?.focus()
+        }, 0)
+      }
+      return
+    }
+    if (getPane() === 'response') {
+      const parentOperationId = heldOpRef.current ?? operationId
+      if (!parentOperationId) {
+        return
+      }
+      activate('input', 'command')
+      void navigate({
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: {
+          apiId: api.id,
+          pane: 'input',
+          operationId: parentOperationId,
+        },
+        replace: true,
+        resetScroll: false,
+      })
+      return
+    }
+    if (getPane() === 'input') {
+      const parentOperationId = heldOpRef.current ?? operationId
+      activate('routes', 'command')
+      blurActive()
+      void navigate({
+        to: '/apis/$apiId/$pane/{-$operationId}',
+        params: { apiId: api.id, pane: 'routes', operationId: undefined },
+        replace: true,
+        resetScroll: false,
+      })
+      if (parentOperationId) {
+        window.setTimeout(() => {
+          document.getElementById(`op-${parentOperationId}`)?.focus()
+        }, 0)
+      }
+      return
+    }
+    void home({ to: '/' })
+  }
+
+  function openTrace() {
+    if (routePane === 'trace') {
+      stepBack()
+      return
+    }
+    const fromList = routePane === 'routes'
+    activate('trace', 'command')
+    void navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: {
+        apiId: api.id,
+        pane: 'trace',
+        operationId: fromList ? undefined : (heldOpRef.current ?? operationId),
+      },
+      resetScroll: false,
+    })
+  }
+
+  function cycleServer(delta: number) {
+    if (!manyServers) {
+      return
+    }
+    const current = api.targets.indexOf(serverUrl)
+    const index = current === -1 ? 0 : current
+    const next = api.targets[(index + delta + api.targets.length) % api.targets.length]
+    if (next) {
+      setServerUrl(next)
+    }
+  }
+
+  const canClear = Boolean(onClearAuth)
+  const hasTrace = api.kind === 'mcp'
+  usePaneFlags('routes', {
+    canClear,
+    manyServers,
+    hasTrace,
+  })
+  usePaneFlags('input', {
+    canClear,
+    canNextRoute: canNextOperation,
+    canPreviousRoute: canPreviousOperation,
+    manyServers,
+    hasTrace,
+  })
+  usePaneFlags('response', {
+    hasTrace,
+  })
+  usePaneFlags('trace', {
+    canClear,
+  })
+  useStepKeys('routes', move)
+  useFormPaneNavigation('input', 'call-form')
+
+  usePaneActions('routes', {
+    filter: () => {
+      focusFilter()
+    },
+    input: () => {
+      openSelected()
+    },
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
+        }
+      },
+      ignoreInputs: false,
+    },
+    parent: () => {
+      stepBack()
+    },
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+    command: (event) => {
+      event.preventDefault()
+      blurActive()
+      activate('routes', 'command')
+    },
+    trace: () => {
+      openTrace()
+    },
+  })
+
+  usePaneActions('input', {
+    previousRoute: () => navigateOperation(-1),
+    nextRoute: () => navigateOperation(1),
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
+        }
+      },
+      ignoreInputs: false,
+    },
+    parent: () => {
+      stepBack()
+    },
+    prevServer: () => cycleServer(-1),
+    nextServer: () => cycleServer(1),
+    trace: () => {
+      openTrace()
+    },
+  })
+
+  usePaneActions('response', {
+    trace: () => {
+      openTrace()
+    },
+  })
+
+  usePaneActions('trace', {
+    clearAuth: {
+      callback: () => {
+        if (!authPending) {
+          void onClearAuth?.()
+        }
+      },
+      ignoreInputs: false,
+    },
+    parent: () => {
+      stepBack()
+    },
+    trace: () => {
+      stepBack()
+    },
+  })
+
+  function renderOperation(operation: Executable) {
+    const active = operation.id === selected?.id
+    const index = operationIndexById.get(operation.id) ?? -1
+    const navigationHint =
+      activePane !== 'routes'
+        ? undefined
+        : active
+          ? 'Enter'
+          : index === selectedIndex - 1
+            ? 'K'
+            : index === selectedIndex + 1
+              ? 'J'
+              : undefined
+    const description = oneLine(operation.summary ?? operation.description)
+    return (
+      <li key={operation.id}>
+        <Link
+          id={`op-${operation.id}`}
+          to="/apis/$apiId/$pane/{-$operationId}"
+          params={{ apiId: api.id, pane: 'input', operationId: operation.id }}
+          resetScroll={false}
+          onClick={() => {
+            holdOp(operation.id)
+            activate('input', 'command')
+          }}
+          onFocus={() => {
+            if (heldOpRef.current !== operation.id) {
+              holdOp(operation.id)
+            }
+          }}
+          onPointerEnter={() => {
+            if (!consumePointerIntent()) {
+              return
+            }
+            if (activePane !== 'routes') {
+              blurActive()
+              activate('routes', 'command')
+            }
+            if (heldOpRef.current !== operation.id) {
+              holdOp(operation.id)
+            }
+          }}
+          data-oc-executable
+          data-oc-active={active || undefined}
+          className="relative flex min-h-10 min-w-0 items-baseline gap-3 px-3 py-2 text-mute outline-none"
+          style={{ '--exec-color': operation.accent } as CSSProperties}
+        >
+          {navigationHint ? (
+            <span className="absolute right-3 top-1/2 inline-flex -translate-y-1/2">
+              <Kbd hotkey={navigationHint} />
+            </span>
+          ) : null}
+          <span data-oc-executable-badge className="w-12 shrink-0 font-mono text-xs tabular-nums">
+            {operation.badge}
+          </span>
+          <span className="min-w-0 truncate font-mono text-xs">{operation.name}</span>
+          {description ? (
+            <span className="min-w-0 flex-1 truncate text-xs text-faint">{description}</span>
+          ) : null}
+        </Link>
+      </li>
+    )
+  }
+
+  const parentTitle = previousPaneTitle(activePane, api.labels)
+  const backLabel = routePane === 'trace' ? 'Close traces' : parentTitle
+
+  useSourceToolbar({
+    title: api.title,
+    onClearAuth,
+    authPending,
+    backLabel,
+    onBack: stepBack,
+  })
+
+  return (
+    <main id="main" className="flex h-full min-h-0 flex-col overflow-hidden bg-paper">
+      {manyServers ? (
+        <div className="oc-bar flex flex-wrap items-center gap-3 px-3 py-2 md:px-4">
+          <div className="flex min-w-0 max-w-xl flex-1 items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+              aria-label={`Previous ${api.labels.target}`}
+              onClick={() => cycleServer(-1)}
+            >
+              <Kbd hotkey="[" fallback="‹" />
+            </button>
+            <label htmlFor="server-url" className="sr-only">
+              {api.labels.target}
+            </label>
+            <input
+              id="server-url"
+              name="server-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              className={`${inputClass} min-w-0 flex-1`}
+              value={serverUrl}
+              onFocus={() => {
+                enterEdit()
+              }}
+              onChange={(event) => setServerUrl(event.target.value)}
+            />
+            <button
+              type="button"
+              className="inline-flex min-h-9 w-9 shrink-0 items-center justify-center bg-ink/10 hover:bg-ink/15"
+              aria-label={`Next ${api.labels.target}`}
+              onClick={() => cycleServer(1)}
+            >
+              <Kbd hotkey="]" fallback="›" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <McpServerPanel
+        source={api}
+        traceOpen={routePane === 'trace' || activePane === 'trace'}
+        onToggleTrace={openTrace}
+      />
+
+      {routePane === 'trace' || activePane === 'trace' ? (
+        <ProtocolTrace sourceId={api.id} onClose={stepBack} />
+      ) : (
+        <div
+          className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${
+            selected && (activePane === 'input' || activePane === 'response')
+              ? 'lg:grid-cols-[17rem_minmax(0,1fr)]'
+              : ''
+          }`}
+        >
+        <aside
+          className={`flex min-h-0 flex-col overflow-hidden bg-ink/5 ${
+            activePane === 'input' || activePane === 'response'
+              ? 'hidden lg:flex'
+              : 'flex'
+          }`}
+        >
+          <div className="oc-bar shrink-0 overflow-hidden px-3 py-2">
+            {activePane === 'input' ? (
+              <div className="flex w-full gap-2">
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!canPreviousOperation}
+                  onClick={() => navigateOperation(-1)}
+                >
+                  Previous
+                  {canPreviousOperation ? <Kbd hotkey="H" /> : null}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 bg-ink/10 px-2 py-1 text-xs text-mute hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!canNextOperation}
+                  onClick={() => navigateOperation(1)}
+                >
+                  Next
+                  {canNextOperation ? <Kbd hotkey="L" /> : null}
+                </button>
+              </div>
+            ) : (
+              <div className="flex h-9 w-full items-stretch gap-2">
+                {activePane === 'routes' ? (
+                  <PaneBackButton
+                    label={previousPaneTitle('routes', api.labels) ?? api.labels.sourcePlural}
+                    onClick={stepBack}
+                  />
+                ) : null}
+                <div className="relative h-9 min-w-0 w-full max-w-[26rem] flex-1">
+                  <label htmlFor="operation-filter" className="sr-only">
+                    Filter {api.labels.executablePlural}
+                  </label>
+                  <input
+                    id="operation-filter"
+                    name="operation-filter"
+                    type="search"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className={`h-9 w-full appearance-none bg-ink/10 px-2.5 text-sm leading-4 text-ink outline-none placeholder:text-mute ${
+                      filterValue ? (keybindings ? 'pr-16' : 'pr-9') : keybindings ? 'pr-9' : ''
+                    }`}
+                    value={filterValue}
+                    onFocus={() => {
+                      activate('routes', 'edit')
+                    }}
+                    onChange={(event) => setFilterValue(event.target.value)}
+                    placeholder={`Filter ${api.labels.executablePlural}`}
+                  />
+                  {filterValue ? (
+                    <button
+                      type="button"
+                      aria-label={`Clear ${api.labels.executable} filter`}
+                      className={`absolute inset-y-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink ${
+                        keybindings ? 'right-8' : 'right-0'
+                      }`}
+                      onClick={() => {
+                        setFilterValue('')
+                        document.getElementById('operation-filter')?.focus()
+                      }}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 16 16"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path d="M3 3l10 10M13 3L3 13" />
+                      </svg>
+                    </button>
+                  ) : null}
+                  {keybindings ? (
+                    <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                      <Kbd hotkey="/" />
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+          <nav
+            aria-label={api.labels.executablePlural}
+            data-operation-list
+            className="min-h-0 flex-1 overscroll-contain overflow-y-auto"
+          >
+            {orderedOperations.length === 0 ? (
+              <p className="px-3 py-3 text-sm text-mute">No matches.</p>
+            ) : ranked ? (
+              <ol>{orderedOperations.map((operation) => renderOperation(operation))}</ol>
+            ) : (
+              groups.map((group) => {
+                const title = oneLine(group.name)
+                const groupDescription = oneLine(group.description)
+                return (
+                  <section
+                    key={group.name ?? 'untagged'}
+                    data-operation-group
+                    className="pb-2"
+                  >
+                    {title ? (
+                      <header className="px-3 pb-1 pt-3">
+                        <p className="truncate text-[11px] leading-4 text-mute">{title}</p>
+                        {groupDescription ? (
+                          <p className="truncate text-[11px] leading-4 text-faint">{groupDescription}</p>
+                        ) : null}
+                      </header>
+                    ) : null}
+                    <ol>{group.operations.map((operation) => renderOperation(operation))}</ol>
+                  </section>
+                )
+              })
+            )}
+          </nav>
+        </aside>
+
+        {selected && (activePane === 'input' || activePane === 'response') ? (
+          <ExecutableClient
+            key={JSON.stringify([api.id, selected.id])}
+            api={api}
+            operation={selected}
+            target={serverUrl}
+            needsAuth={needsAuth}
+            authSchema={api.credentialSchema}
+            authUiSchema={api.credentialUiSchema}
+            authPending={authPending}
+            authError={authError}
+            onSaveAuth={onSaveAuth}
+            canPrevious={canPreviousOperation}
+            canNext={canNextOperation}
+            onPrevious={() => navigateOperation(-1)}
+            onNext={() => navigateOperation(1)}
+            onBack={stepBack}
+            backLabel={previousPaneTitle('input', api.labels) ?? api.labels.executablePlural}
+          />
+        ) : null}
+        </div>
+      )}
+    </main>
+  )
+}

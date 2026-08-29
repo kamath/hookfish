@@ -1,5 +1,7 @@
 import { API_BASE_URL } from './api'
+import { configuredApiUrl } from '../config'
 import type { CatalogEntry } from './catalog'
+import type { CarouselListContract } from './carousel'
 
 export const MCP_CATALOG: readonly CatalogEntry[] = [
   {
@@ -86,3 +88,37 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     url: 'https://raw.githubusercontent.com/api-evangelist/anthropic/refs/heads/main/openapi/anthropic-messages-api-openapi.yml',
   },
 ]
+
+export function getCarouselCatalog(): CarouselListContract[] {
+  const ownOpenApiUrl = configuredApiUrl('/openapi.json')
+  const openApiCatalog = OPENAPI_CATALOG.map((entry) =>
+    entry.id === 'smithery-api'
+      ? {
+          ...entry,
+          detail: ownOpenApiUrl,
+          url: ownOpenApiUrl,
+        }
+      : entry,
+  )
+
+  return [
+    {
+      id: 'recent',
+      title: 'Recent',
+      source: 'recent',
+      items: [],
+    },
+    {
+      id: 'mcp',
+      title: 'MCP servers',
+      source: 'catalog',
+      items: MCP_CATALOG,
+    },
+    {
+      id: 'openapi',
+      title: 'OpenAPI specs',
+      source: 'catalog',
+      items: openApiCatalog,
+    },
+  ]
+}
