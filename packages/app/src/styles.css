@@ -84,15 +84,6 @@ body {
   touch-action: manipulation;
 }
 
-/* Keep the wordmark in IBM Plex Mono without turning ⚡ into a monochrome text glyph. */
-.brand-emoji {
-  color: revert;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-  font-style: normal;
-  font-weight: 400;
-  font-variant-emoji: emoji;
-}
-
 #operation-filter::-webkit-search-cancel-button {
   appearance: none;
 }

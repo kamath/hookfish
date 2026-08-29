@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 
 export const BRAND_NAME = 'Smithery'
-export const BRAND_ICON = '\u26A1\uFE0F'
+export const BRAND_ICON = '⚒️'
 
 export function Brand({
   compact = false,
@@ -22,7 +22,7 @@ export function Brand({
     >
       <span
         aria-hidden="true"
-        className="brand-emoji inline-flex size-[1em] items-center justify-center text-[1em] leading-none"
+        className="inline-flex size-[1em] items-center justify-center text-[1em] leading-none"
       >
         {BRAND_ICON}
       </span>
