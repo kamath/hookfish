@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 
-export const BRAND_NAME = 'Hookfish'
-export const BRAND_ICON = '🐟'
+export const BRAND_NAME = 'Smithery'
+export const BRAND_ICON = '⚒️'
 
 export function Brand({
   compact = false,

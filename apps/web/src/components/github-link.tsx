@@ -6,7 +6,7 @@ export function GitHubLink() {
       href={GITHUB_REPO_URL}
       target="_blank"
       rel="noreferrer"
-      aria-label="Hookfish on GitHub"
+      aria-label="Smithery on GitHub"
       title="GitHub"
       className="inline-flex size-8 items-center justify-center text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
     >

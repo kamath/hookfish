@@ -11,7 +11,7 @@ import { localUpstreamFetch } from '../upstream'
 import { BrowserMcpOAuthProvider } from './oauth'
 
 const CLIENT_INFO = {
-  name: 'hookfish-inspector',
+  name: 'smithery-inspector',
   version: '1.0.0',
 }
 
