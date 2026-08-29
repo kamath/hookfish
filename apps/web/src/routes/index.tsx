@@ -86,7 +86,6 @@ function Home() {
       ? { href: pending.url, sourceId: pending.sourceId }
       : undefined
   })
-  const [pendingRemove, setPendingRemove] = useState<{ id: string; title: string }>()
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
   const carouselRows: CarouselRow[] = (carouselQuery.data ?? [])
@@ -160,17 +159,6 @@ function Home() {
       : undefined
   const canMoveLists = carouselRows.length > 1
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      removeApi(id)
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apisQueryOptions.queryKey,
-      })
-    },
-  })
-
   useEffect(() => {
     activate('specs', 'command')
   }, [])
@@ -223,7 +211,7 @@ function Home() {
   }
 
   function submit(kind: string) {
-    if (openSource.isPending || pendingRemove || !formRef.current?.reportValidity()) {
+    if (openSource.isPending || !formRef.current?.reportValidity()) {
       return
     }
     if (pendingAuth) {
@@ -233,7 +221,7 @@ function Home() {
   }
 
   function launch(entry: CatalogEntry) {
-    if (openSource.isPending || pendingRemove) {
+    if (openSource.isPending) {
       return
     }
     if (pendingAuth) {
@@ -253,32 +241,11 @@ function Home() {
     })
   }
 
-  function askRemove(id: string, title: string) {
-    if (pendingAuth || remove.isPending) {
-      return
-    }
-    setPendingRemove({ id, title })
-  }
-
-  function confirmRemove() {
-    if (!pendingRemove) {
-      return
-    }
-    const { id } = pendingRemove
-    setPendingRemove(undefined)
-    remove.mutate(id)
-  }
-
-  function cancelRemove() {
-    setPendingRemove(undefined)
-  }
-
-  const dialogOpen = Boolean(pendingAuth || pendingRemove)
+  const dialogOpen = Boolean(pendingAuth)
 
   usePaneFlags('specs', {
     hasCarousel: carouselRows.length > 0,
     hasAuthRedirect: Boolean(pendingAuth),
-    hasRemoveConfirm: Boolean(pendingRemove),
   })
   useStepKeys('specs', moveItem, carouselRows.length > 0 && !dialogOpen)
   usePaneActions('specs', {
@@ -317,8 +284,6 @@ function Home() {
       callback: () => moveList(1),
       enabled: !dialogOpen && canMoveLists,
     },
-    confirmRemove,
-    cancelRemove,
     continueAuth: finishPendingAuthRedirect,
     cancelAuth: cancelAuthorization,
     insert: {
@@ -397,9 +362,9 @@ function Home() {
             return (
                 <li
                   key={item.id}
-                  className={`relative ${
+                  className={
                     itemActive ? 'bg-signal/20' : added ? 'bg-ink/10' : 'bg-paper/70'
-                  }`}
+                  }
                 >
                 <button
                   type="button"
@@ -412,7 +377,7 @@ function Home() {
                     }}
                 >
                   <span className="min-w-0 flex-1">
-                      <span className="block truncate pr-7 text-sm text-ink">
+                      <span className="block truncate text-sm text-ink">
                         {item.title}
                       </span>
                     <span className="mt-0.5 block truncate font-mono text-xs text-faint">
@@ -436,17 +401,6 @@ function Home() {
                       </span>
                     ) : null}
                 </button>
-                  {item.type === 'recent' ? (
-                    <button
-                      type="button"
-                      className="absolute right-1 top-1 inline-flex size-8 items-center justify-center text-mute outline-none hover:text-signal focus-visible:text-signal disabled:opacity-40"
-                      aria-label={`Remove ${item.title}`}
-                      onClick={() => askRemove(item.apiId, item.title)}
-                      disabled={remove.isPending || dialogOpen}
-                    >
-                      <TrashIcon />
-                    </button>
-                  ) : null}
               </li>
             )
           })}
@@ -472,18 +426,6 @@ function Home() {
             apis.find((api) => api.id === pendingAuth.sourceId)?.title
           }
           onCancel={cancelAuthorization}
-        />
-      </StatusPane>
-    )
-  }
-
-  if (pendingRemove) {
-    return (
-      <StatusPane>
-        <RemoveConfirm
-          title={pendingRemove.title}
-          onConfirm={confirmRemove}
-          onCancel={cancelRemove}
         />
       </StatusPane>
     )
@@ -650,59 +592,8 @@ function Home() {
               }}
             />
           ) : null}
-          {remove.isError ? (
-            <p className="text-sm text-error" role="alert">
-              {queryErrorMessage(remove.error, 'Could not remove that source.')}
-            </p>
-          ) : null}
         </div>
       </div>
     </main>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 7h16" />
-      <path d="M9 7V5h6v2" />
-      <path d="M6 7l1 14h10l1-14" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  )
-}
-
-function RemoveConfirm({
-  title,
-  onConfirm,
-  onCancel,
-}: {
-  title: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="flex w-full flex-col items-center px-4 text-center">
-      <p className="max-w-xl text-sm text-ink">Remove {title}?</p>
-      <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <button type="button" className={primaryButtonClass} onClick={onConfirm}>
-          Remove
-          <Kbd hotkey="Enter" persistent />
-        </button>
-        <button type="button" className={softButtonClass} onClick={onCancel}>
-          Cancel
-          <Kbd hotkey="Escape" persistent />
-        </button>
-      </div>
-    </div>
   )
 }

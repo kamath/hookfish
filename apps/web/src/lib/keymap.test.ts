@@ -93,23 +93,6 @@ assert.equal(
   'L',
   'carousel scrolls right with L',
 )
-const confirmRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'confirmRemove')
-const cancelRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'cancelRemove')
-assert.equal(confirmRemove?.hotkey, 'Enter', 'confirm remove is Enter')
-assert.equal(cancelRemove?.hotkey, 'Escape', 'cancel remove is Escape')
-assert.ok(
-  dialogAllowsBinding({ id: 'confirmRemove', hotkey: 'Enter', label: 'remove' }, { hasRemoveConfirm: true }),
-  'remove confirm allows Enter',
-)
-assert.ok(
-  dialogAllowsBinding({ id: 'cancelRemove', hotkey: 'Escape', label: 'cancel' }, { hasRemoveConfirm: true }),
-  'remove confirm allows Escape',
-)
-assert.equal(
-  dialogAllowsBinding({ id: 'open', hotkey: 'Enter', label: 'open' }, { hasRemoveConfirm: true }),
-  false,
-  'remove confirm blocks open',
-)
 assert.ok(
   dialogAllowsBinding({ id: 'open', hotkey: 'Enter', label: 'open' }, {}),
   'open is allowed without a dialog',

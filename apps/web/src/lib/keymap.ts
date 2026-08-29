@@ -99,20 +99,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'hasAuthRedirect',
         modes: ['command', 'edit'],
       },
-      {
-        id: 'confirmRemove',
-        hotkey: 'Enter',
-        label: 'remove',
-        flag: 'hasRemoveConfirm',
-        modes: ['command', 'edit'],
-      },
-      {
-        id: 'cancelRemove',
-        hotkey: 'Escape',
-        label: 'cancel',
-        flag: 'hasRemoveConfirm',
-        modes: ['command', 'edit'],
-      },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },
@@ -281,7 +267,6 @@ export function previousPaneTitle(
 
 const dialogBindings: Record<string, ReadonlySet<string>> = {
   hasAuthRedirect: new Set(['continueAuth', 'cancelAuth']),
-  hasRemoveConfirm: new Set(['confirmRemove', 'cancelRemove']),
 }
 
 export function dialogAllowsBinding(binding: PaneBinding, flags: Record<string, boolean>) {
