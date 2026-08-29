@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
 import { GITHUB_REPO_URL } from '../components/github-link'
@@ -9,16 +9,13 @@ import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import {
-  CATALOG,
-  MCP_CATALOG,
-  OPENAPI_CATALOG,
-  catalogActionId,
+  carouselActionId,
   catalogSourceUrl,
   sourceUrlKey,
   type CatalogEntry,
 } from '../lib/catalog'
 import { blurActive } from '../lib/focus'
-import { apisQueryOptions, queryErrorMessage } from '../lib/queries'
+import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import {
   sourceSubmitActionId,
   usePaneActions,
@@ -48,15 +45,39 @@ type OpenSource = {
   entryId?: string
 }
 
+type CarouselItem =
+  | {
+      type: 'recent'
+      id: string
+      title: string
+      detail: string
+      apiId: string
+    }
+  | {
+      type: 'catalog'
+      id: string
+      title: string
+      detail: string
+      entry: CatalogEntry
+    }
+
+type CarouselRow = {
+  id: string
+  title: string
+  items: CarouselItem[]
+}
+
 function Home() {
   const apisQuery = useQuery(apisQueryOptions)
+  const carouselQuery = useQuery(carouselQueryOptions)
   const queryClient = useQueryClient()
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
+  const carouselRefs = useRef<Record<string, HTMLUListElement | null>>({})
   const [url, setUrl] = useState('')
   const [urlFocused, setUrlFocused] = useState(false)
-  const [selected, setSelected] = useState(0)
+  const [activeRow, setActiveRow] = useState(0)
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
     return pending
@@ -66,6 +87,28 @@ function Home() {
   const [pendingRemove, setPendingRemove] = useState<{ id: string; title: string }>()
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
+  const carouselRows: CarouselRow[] = (carouselQuery.data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    items:
+      row.id === 'recent'
+        ? apis.slice(0, 5).map((api) => ({
+            type: 'recent' as const,
+            id: api.id,
+            title: api.title,
+            detail: `${api.kind} · ${api.executableCount} executables${
+              api.version ? ` · ${api.version}` : ''
+            }`,
+            apiId: api.id,
+          }))
+        : row.items.map((entry) => ({
+            type: 'catalog' as const,
+            id: entry.id,
+            title: entry.title,
+            detail: entry.detail,
+            entry,
+          })),
+  }))
   const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
@@ -111,22 +154,14 @@ function Home() {
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
       : undefined
-  const canStepDown = selected < apis.length - 1
-  const canStepUp = selected > 0
+  const canStepDown = activeRow < carouselRows.length - 1
+  const canStepUp = activeRow > 0
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
       removeApi(id)
     },
     onSuccess: async (_, id) => {
-      setSelected((index) => {
-        const removedIndex = apis.findIndex((api) => api.id === id)
-        const last = Math.max(apis.length - 2, 0)
-        if (removedIndex >= 0 && removedIndex < index) {
-          return Math.min(index - 1, last)
-        }
-        return Math.min(index, last)
-      })
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
@@ -138,10 +173,28 @@ function Home() {
   }, [])
 
   function move(delta: number) {
-    setSelected((index) => {
-      const last = Math.max(apis.length - 1, 0)
+    setActiveRow((index) => {
+      const last = Math.max(carouselRows.length - 1, 0)
       return Math.min(Math.max(index + delta, 0), last)
     })
+  }
+
+  function scrollCarousel(rowId: string, delta: number) {
+    const carousel = carouselRefs.current[rowId]
+    if (!carousel) {
+      return
+    }
+    carousel.scrollBy({
+      left: delta * (carousel.clientWidth / 2),
+      behavior: 'smooth',
+    })
+  }
+
+  function scrollActiveCarousel(delta: number) {
+    const row = carouselRows[activeRow]
+    if (row) {
+      scrollCarousel(row.id, delta)
+    }
   }
 
   function cancelAuthorization() {
@@ -177,6 +230,17 @@ function Home() {
     openSource.mutate({ url: catalogSourceUrl(entry), kind: entry.kind, entryId: entry.id })
   }
 
+  function openCarouselItem(item: CarouselItem) {
+    if (item.type === 'catalog') {
+      launch(item.entry)
+      return
+    }
+    void router.navigate({
+      to: '/apis/$apiId/$pane/{-$operationId}',
+      params: { apiId: item.apiId, pane: 'routes', operationId: undefined },
+    })
+  }
+
   function askRemove(id: string, title: string) {
     if (pendingAuth || remove.isPending) {
       return
@@ -200,38 +264,33 @@ function Home() {
   const dialogOpen = Boolean(pendingAuth || pendingRemove)
 
   usePaneFlags('specs', {
-    hasSpecs: apis.length > 0,
+    hasCarousel: carouselRows.length > 0,
     hasAuthRedirect: Boolean(pendingAuth),
     hasRemoveConfirm: Boolean(pendingRemove),
   })
-  useStepKeys('specs', move, apis.length > 0 && !dialogOpen)
+  useStepKeys('specs', move, carouselRows.length > 0 && !dialogOpen)
   usePaneActions('specs', {
     ...Object.fromEntries(
-      CATALOG.map((entry) => [
-        catalogActionId(entry),
-        { callback: () => launch(entry), enabled: !dialogOpen },
+      [0, 1, 2, 3, 4].map((index) => [
+        carouselActionId(index),
+        {
+          callback: () => {
+            const item = carouselRows[activeRow]?.items[index]
+            if (item) {
+              openCarouselItem(item)
+            }
+          },
+          enabled: !dialogOpen && Boolean(carouselRows[activeRow]?.items[index]),
+        },
       ]),
     ),
-    open: {
-      callback: () => {
-        const api = apis[selected]
-        if (api) {
-          void router.navigate({
-            to: '/apis/$apiId/$pane/{-$operationId}',
-            params: { apiId: api.id, pane: 'routes', operationId: undefined },
-          })
-        }
-      },
-      enabled: !dialogOpen && apis.length > 0,
+    carouselPrevious: {
+      callback: () => scrollActiveCarousel(-1),
+      enabled: !dialogOpen,
     },
-    remove: {
-      callback: () => {
-        const api = apis[selected]
-        if (api) {
-          askRemove(api.id, api.title)
-        }
-      },
-      enabled: !dialogOpen && apis.length > 0,
+    carouselNext: {
+      callback: () => scrollActiveCarousel(1),
+      enabled: !dialogOpen,
     },
     confirmRemove,
     cancelRemove,
@@ -271,41 +330,93 @@ function Home() {
     return { message: undefined, failed: false }
   }
 
-  function renderCatalog(title: string, entries: readonly CatalogEntry[]) {
+  function renderCarouselRow(row: CarouselRow, rowIndex: number) {
+    const active = rowIndex === activeRow
     return (
-      <section className="bg-ink/5 pb-2">
-        <h2 className="px-3 pb-1 pt-3 font-mono text-[11px] text-mute">{title}</h2>
-        <ul>
-          {entries.map((entry) => {
-            const status = entryStatus(entry)
-            const added = apis.some(
-              (api) =>
-                api.kind === entry.kind &&
-                sourceUrlKey(api.sourceUrl) === sourceUrlKey(catalogSourceUrl(entry)),
-            )
-            const hotkey = showKeybindings ? (
-              <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
-                <Kbd hotkey={entry.hotkey} />
-              </span>
-            ) : null
+      <section
+        key={row.id}
+        className={`px-3 py-3 transition-colors ${
+          active ? 'bg-signal/10' : 'bg-ink/5'
+        }`}
+        aria-label={`${row.title} carousel`}
+        onMouseDown={() => setActiveRow(rowIndex)}
+        onFocus={() => setActiveRow(rowIndex)}
+      >
+        <div className="mb-2 flex min-h-7 items-center gap-2">
+          <h2 className="font-mono text-[11px] text-mute">{row.title}</h2>
+          {active && showKeybindings ? (
+            <KeyHints className="flex items-center gap-2 text-faint">
+              {canStepUp ? (
+                <span className="inline-flex items-center gap-1">
+                  <Kbd hotkey="K" /> up
+                </span>
+              ) : null}
+              {canStepDown ? (
+                <span className="inline-flex items-center gap-1">
+                  <Kbd hotkey="J" /> down
+                </span>
+              ) : null}
+            </KeyHints>
+          ) : null}
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal"
+              aria-label={`Scroll ${row.title} left`}
+              onClick={() => scrollCarousel(row.id, -1)}
+            >
+              <span aria-hidden="true">‹</span>
+              {active ? <Kbd hotkey="H" /> : null}
+            </button>
+            <button
+              type="button"
+              className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal"
+              aria-label={`Scroll ${row.title} right`}
+              onClick={() => scrollCarousel(row.id, 1)}
+            >
+              {active ? <Kbd hotkey="L" /> : null}
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </div>
+        {row.items.length > 0 ? (
+          <ul
+            ref={(node) => {
+              carouselRefs.current[row.id] = node
+            }}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {row.items.map((item, index) => {
+              const status = item.type === 'catalog' ? entryStatus(item.entry) : undefined
+              const added =
+                item.type === 'catalog' &&
+                apis.some(
+                  (api) =>
+                    api.kind === item.entry.kind &&
+                    sourceUrlKey(api.sourceUrl) ===
+                      sourceUrlKey(catalogSourceUrl(item.entry)),
+                )
             return (
-              <li key={entry.id}>
+                <li
+                  key={item.id}
+                  className={`relative w-[calc((100%-0.75rem)/2)] shrink-0 snap-start ${
+                    added ? 'bg-ink/10' : 'bg-paper/70'
+                  }`}
+                >
                 <button
                   type="button"
-                  className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none disabled:opacity-50 ${
-                    added
-                      ? 'bg-[color-mix(in_srgb,var(--ink)_10%,var(--paper))] hover:bg-ink/10 focus-visible:bg-ink/10'
-                      : 'hover:bg-ink/10 focus-visible:bg-ink/10'
-                  }`}
+                    className="flex min-h-24 w-full items-start gap-3 px-3 py-3 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
                   disabled={openSource.isPending || dialogOpen}
-                  onClick={() => launch(entry)}
+                    onClick={() => openCarouselItem(item)}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink">{entry.title}</span>
+                      <span className="block truncate pr-7 text-sm text-ink">
+                        {item.title}
+                      </span>
                     <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                      {entry.detail}
+                        {item.detail}
                     </span>
-                    {status.message ? (
+                      {status?.message ? (
                       <span
                         role={status.failed ? 'alert' : undefined}
                         className={`mt-1 block truncate font-mono text-xs ${
@@ -317,12 +428,32 @@ function Home() {
                     ) : null}
                   </span>
                   {added ? <span className="sr-only">added</span> : null}
-                  {hotkey}
+                    {active && showKeybindings ? (
+                      <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
+                        <Kbd hotkey={String(index + 1)} />
+                      </span>
+                    ) : null}
                 </button>
+                  {item.type === 'recent' ? (
+                    <button
+                      type="button"
+                      className="absolute right-1 top-1 inline-flex size-8 items-center justify-center text-mute outline-none hover:text-signal focus-visible:text-signal disabled:opacity-40"
+                      aria-label={`Remove ${item.title}`}
+                      onClick={() => askRemove(item.apiId, item.title)}
+                      disabled={remove.isPending || dialogOpen}
+                    >
+                      <TrashIcon />
+                    </button>
+                  ) : null}
               </li>
             )
           })}
         </ul>
+        ) : (
+          <p className="flex min-h-24 items-center justify-center bg-paper/70 px-3 text-center text-sm text-mute">
+            Open a source and it will appear here.
+          </p>
+        )}
       </section>
     )
   }
@@ -333,7 +464,9 @@ function Home() {
         <AuthRedirect
           href={pendingAuth.href}
           name={
-            CATALOG.find((entry) => entry.id === pendingAuth.entryId)?.title ??
+            carouselQuery.data
+              ?.flatMap((row) => row.items)
+              .find((entry) => entry.id === pendingAuth.entryId)?.title ??
             apis.find((api) => api.id === pendingAuth.sourceId)?.title
           }
           onCancel={cancelAuthorization}
@@ -448,100 +581,32 @@ function Home() {
         </form>
         </div>
 
-        <div className="space-y-6">
-          {apisQuery.isPending ? (
-            <QueryMessage label="Loading sources…" />
-          ) : apisQuery.isError ? (
+        <div className="space-y-3">
+          {carouselQuery.isPending ? (
+            <QueryMessage label="Loading carousel…" />
+          ) : carouselQuery.isError ? (
+            <QueryMessage
+              error={carouselQuery.error}
+              onRetry={() => {
+                void carouselQuery.refetch()
+              }}
+            />
+          ) : (
+            carouselRows.map(renderCarouselRow)
+          )}
+          {apisQuery.isError ? (
             <QueryMessage
               error={apisQuery.error}
               onRetry={() => {
                 void apisQuery.refetch()
               }}
             />
-          ) : apis.length > 0 ? (
-            <section>
-              <div className="flex items-center gap-2 px-3 pb-1 font-mono text-[11px] text-mute">
-                <h2>Recent</h2>
-                {dialogOpen || !showKeybindings ? null : (
-                  <KeyHints className="flex items-center gap-2 text-faint">
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="Enter" /> open
-                    </span>
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Kbd hotkey="D" /> remove
-                    </span>
-                    {canStepDown ? (
-                      <>
-                        <span>·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Kbd hotkey="J" /> down
-                        </span>
-                      </>
-                    ) : null}
-                    {canStepUp ? (
-                      <>
-                        <span>·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Kbd hotkey="K" /> up
-                        </span>
-                      </>
-                    ) : null}
-                  </KeyHints>
-                )}
-              </div>
-              <ul>
-                {apis.map((api, index) => {
-                  const active = index === selected
-                  return (
-                    <li
-                      key={api.id}
-                      className={`flex items-center gap-3 px-3 ${active ? 'bg-signal/10' : ''}`}
-                    >
-                      <Link
-                        to="/apis/$apiId/$pane/{-$operationId}"
-                        params={{
-                          apiId: api.id,
-                          pane: 'routes',
-                          operationId: undefined,
-                        }}
-                        className="flex min-w-0 flex-1 items-center gap-3 py-2 outline-none focus-visible:text-signal"
-                        onFocus={() => setSelected(index)}
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-ink">{api.title}</span>
-                          <span className="mt-0.5 block truncate font-mono text-xs text-faint">
-                            {api.kind} · {api.executableCount} executables
-                            {api.version ? ` · ${api.version}` : ''}
-                          </span>
-                        </span>
-                      </Link>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-mute outline-none hover:text-signal focus-visible:text-signal disabled:opacity-40"
-                        aria-label={`Remove ${api.title}`}
-                        onClick={() => askRemove(api.id, api.title)}
-                        disabled={remove.isPending || dialogOpen}
-                      >
-                        <TrashIcon />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
           ) : null}
           {remove.isError ? (
             <p className="text-sm text-error" role="alert">
               {queryErrorMessage(remove.error, 'Could not remove that source.')}
             </p>
           ) : null}
-
-          <div className="grid gap-3 md:grid-cols-2">
-            {renderCatalog('MCP servers', MCP_CATALOG)}
-            {renderCatalog('OpenAPI specs', OPENAPI_CATALOG)}
-          </div>
         </div>
       </div>
     </main>

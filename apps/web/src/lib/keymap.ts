@@ -10,7 +10,7 @@ import {
   type Mode,
   type Pane,
 } from './chrome'
-import { CATALOG, catalogActionId } from './catalog'
+import { carouselActionId } from './catalog'
 import { blurActive, isEditing } from './focus'
 
 export type PaneBinding = {
@@ -71,17 +71,18 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   specs: {
     path: '/',
     bindings: [
-      { id: 'open', hotkey: 'Enter', label: 'open' },
-      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
-      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
-      { id: 'remove', hotkey: 'D', label: 'remove', flag: 'hasSpecs' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next row', flag: 'hasCarousel' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous row', flag: 'hasCarousel' },
+      { id: 'carouselPrevious', hotkey: 'H', label: 'scroll left', flag: 'hasCarousel' },
+      { id: 'carouselNext', hotkey: 'L', label: 'scroll right', flag: 'hasCarousel' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
       { id: sourceSubmitActionId('mcp'), hotkey: 'Enter', label: 'MCP', modes: ['edit'] },
       { id: sourceSubmitActionId('openapi'), hotkey: 'Mod+Enter', label: 'OpenAPI', modes: ['edit'] },
-      ...CATALOG.map((entry) => ({
-        id: catalogActionId(entry),
-        hotkey: entry.hotkey,
-        label: entry.title,
+      ...(['1', '2', '3', '4', '5'] as const).map((hotkey, index) => ({
+        id: carouselActionId(index),
+        hotkey,
+        label: `open item ${hotkey}`,
+        flag: 'hasCarousel',
       })),
       {
         id: 'continueAuth',

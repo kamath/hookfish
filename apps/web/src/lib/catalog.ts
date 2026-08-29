@@ -1,6 +1,6 @@
 import { API_BASE_URL } from './api'
 
-export type CatalogHotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0'
+export type CatalogHotkey = '1' | '2' | '3' | '4' | '5'
 
 export type CatalogEntry = {
   id: string
@@ -58,7 +58,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'arcade-api',
     kind: 'openapi',
-    hotkey: '6',
+    hotkey: '1',
     title: 'Arcade API',
     detail: 'api.arcade.dev',
     url: 'https://api.arcade.dev/v1/swagger',
@@ -66,7 +66,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'smithery-api',
     kind: 'openapi',
-    hotkey: '7',
+    hotkey: '2',
     title: 'Smithery API',
     detail: `${API_BASE_URL}/openapi.json`,
     url: `${API_BASE_URL}/openapi.json`,
@@ -74,7 +74,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'petstore',
     kind: 'openapi',
-    hotkey: '8',
+    hotkey: '3',
     title: 'Swagger Petstore',
     detail: 'petstore3.swagger.io',
     url: 'https://petstore3.swagger.io/api/v3/openapi.json',
@@ -82,7 +82,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'openai',
     kind: 'openapi',
-    hotkey: '9',
+    hotkey: '4',
     title: 'OpenAI',
     detail: 'openai/openai-openapi',
     url: 'https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/main/openapi.json',
@@ -90,7 +90,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
   {
     id: 'anthropic',
     kind: 'openapi',
-    hotkey: '0',
+    hotkey: '5',
     title: 'Anthropic',
     detail: 'api-evangelist/anthropic',
     url: 'https://raw.githubusercontent.com/api-evangelist/anthropic/refs/heads/main/openapi/anthropic-messages-api-openapi.yml',
@@ -99,8 +99,8 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
 
 export const CATALOG: readonly CatalogEntry[] = [...MCP_CATALOG, ...OPENAPI_CATALOG]
 
-export function catalogActionId(entry: CatalogEntry) {
-  return `launch-${entry.id}`
+export function carouselActionId(index: number) {
+  return `carousel-${index + 1}`
 }
 
 export function catalogSourceUrl(entry: CatalogEntry) {

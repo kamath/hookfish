@@ -2,6 +2,13 @@ import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
 import { queryOptions } from '@tanstack/react-query'
 import { isNotFound } from '@tanstack/react-router'
 import { getApi, listApis } from './apis'
+import { getCarouselCatalog } from './carousel.functions'
+
+export const carouselQueryOptions = queryOptions({
+  queryKey: ['carousel-catalog'],
+  queryFn: () => getCarouselCatalog(),
+  staleTime: Infinity,
+})
 
 export const apisQueryOptions = queryOptions({
   queryKey: ['apis'],
