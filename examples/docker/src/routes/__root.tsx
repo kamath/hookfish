@@ -23,9 +23,28 @@ export const Route = createRootRoute({
         name: 'description',
         content: 'Browse, configure, and run executables from pluggable sources.',
       },
+      { property: 'og:title', content: 'Smithery' },
+      {
+        property: 'og:description',
+        content: 'Browse, configure, and run executables from pluggable sources.',
+      },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:image', content: '/og-image.jpg' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      { property: 'og:image:alt', content: 'Smithery' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'Smithery' },
+      {
+        name: 'twitter:description',
+        content: 'Browse, configure, and run executables from pluggable sources.',
+      },
+      { name: 'twitter:image', content: '/og-image.jpg' },
     ],
     links: [
       { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/og-image-square.jpg' },
+      { rel: 'preconnect', href: 'https://api.fontshare.com' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       {
         rel: 'preconnect',
@@ -34,7 +53,11 @@ export const Route = createRootRoute({
       },
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap',
+        href: 'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap',
+      },
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap',
       },
       { rel: 'stylesheet', href: appCss },
     ],
