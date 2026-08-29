@@ -74,7 +74,7 @@ function Home() {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
-  const carouselRefs = useRef<Record<string, HTMLUListElement | null>>({})
+  const panelRefs = useRef<Record<string, HTMLElement | null>>({})
   const [url, setUrl] = useState('')
   const [urlFocused, setUrlFocused] = useState(false)
   const [activeRow, setActiveRow] = useState(0)
@@ -180,9 +180,10 @@ function Home() {
       const nextRow = carouselRows[nextIndex]
       if (nextRow) {
         requestAnimationFrame(() => {
-          carouselRefs.current[nextRow.id]?.scrollIntoView({
+          panelRefs.current[nextRow.id]?.scrollIntoView({
             behavior: 'smooth',
             block: 'nearest',
+            inline: 'nearest',
           })
         })
       }
@@ -200,25 +201,7 @@ function Home() {
         Math.max((current[row.id] ?? 0) + delta, 0),
         row.items.length - 1,
       )
-      requestAnimationFrame(() => {
-        carouselRefs.current[row.id]?.children[nextIndex]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'nearest',
-        })
-      })
       return { ...current, [row.id]: nextIndex }
-    })
-  }
-
-  function scrollCarousel(rowId: string, delta: number) {
-    const carousel = carouselRefs.current[rowId]
-    if (!carousel) {
-      return
-    }
-    carousel.scrollBy({
-      left: delta * (carousel.clientWidth / 2),
-      behavior: 'smooth',
     })
   }
 
@@ -373,59 +356,29 @@ function Home() {
     return (
       <section
         key={row.id}
-        className={`px-3 py-3 transition-colors ${
+        ref={(node) => {
+          panelRefs.current[row.id] = node
+        }}
+        className={`w-[calc((100%-0.75rem)/2)] shrink-0 snap-start px-3 py-3 transition-colors ${
           active ? 'bg-signal/10' : 'bg-ink/5'
         }`}
-        aria-label={`${row.title} carousel`}
+        aria-label={`${row.title} list`}
         onMouseDown={() => setActiveRow(rowIndex)}
         onFocus={() => setActiveRow(rowIndex)}
       >
         <div className="mb-2 flex min-h-7 items-center gap-2">
           <h2 className="font-mono text-[11px] text-mute">{row.title}</h2>
           {active && showKeybindings ? (
-            <KeyHints className="flex items-center gap-2 text-faint">
-              {canSelectPreviousList ? (
-                <span className="inline-flex items-center gap-1">
-                  <Kbd hotkey="H" /> previous list
-                </span>
-              ) : null}
-              {canSelectNextList ? (
-                <span className="inline-flex items-center gap-1">
-                  <Kbd hotkey="L" /> next list
-                </span>
-              ) : null}
+            <KeyHints className="ml-auto flex items-center gap-1 text-faint">
               <span className="inline-flex items-center gap-1">
                 <Kbd hotkey="J" />
-                <Kbd hotkey="K" /> items
+                <Kbd hotkey="K" />
               </span>
             </KeyHints>
           ) : null}
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              type="button"
-              className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal"
-              aria-label={`Scroll ${row.title} left`}
-              onClick={() => scrollCarousel(row.id, -1)}
-            >
-              <span aria-hidden="true">‹</span>
-            </button>
-            <button
-              type="button"
-              className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal"
-              aria-label={`Scroll ${row.title} right`}
-              onClick={() => scrollCarousel(row.id, 1)}
-            >
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
         </div>
         {row.items.length > 0 ? (
-          <ul
-            ref={(node) => {
-              carouselRefs.current[row.id] = node
-            }}
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
+          <ul>
             {row.items.map((item, index) => {
               const itemActive = active && (activeItems[row.id] ?? 0) === index
               const status = item.type === 'catalog' ? entryStatus(item.entry) : undefined
@@ -440,13 +393,13 @@ function Home() {
             return (
                 <li
                   key={item.id}
-                  className={`relative w-[calc((100%-0.75rem)/2)] shrink-0 snap-start ${
+                  className={`relative ${
                     itemActive ? 'bg-signal/20' : added ? 'bg-ink/10' : 'bg-paper/70'
                   }`}
                 >
                 <button
                   type="button"
-                    className="flex min-h-24 w-full items-start gap-3 px-3 py-3 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
+                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
                   disabled={openSource.isPending || dialogOpen}
                     onClick={() => openCarouselItem(item)}
                     onFocus={() => {
@@ -495,7 +448,7 @@ function Home() {
           })}
         </ul>
         ) : (
-          <p className="flex min-h-24 items-center justify-center bg-paper/70 px-3 text-center text-sm text-mute">
+          <p className="flex min-h-55 items-center justify-center bg-paper/70 px-3 text-center text-sm text-mute">
             Open a source and it will appear here.
           </p>
         )}
@@ -637,7 +590,53 @@ function Home() {
               }}
             />
           ) : (
-            carouselRows.map(renderCarouselRow)
+            <div>
+              <div className="mb-2 flex min-h-7 items-center gap-2 px-1">
+                {showKeybindings ? (
+                  <KeyHints className="flex items-center gap-2 text-faint">
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="H" />
+                      <Kbd hotkey="L" /> lists
+                    </span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="J" />
+                      <Kbd hotkey="K" /> items
+                    </span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Kbd hotkey="1" />–<Kbd hotkey="5" /> open
+                    </span>
+                  </KeyHints>
+                ) : null}
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal disabled:opacity-30"
+                    aria-label="Previous list"
+                    disabled={!canSelectPreviousList}
+                    onClick={() => moveList(-1)}
+                  >
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex size-7 items-center justify-center bg-ink/5 text-mute outline-none hover:bg-ink/10 hover:text-signal focus-visible:bg-ink/10 focus-visible:text-signal disabled:opacity-30"
+                    aria-label="Next list"
+                    disabled={!canSelectNextList}
+                    onClick={() => moveList(1)}
+                  >
+                    <span aria-hidden="true">›</span>
+                  </button>
+                </div>
+              </div>
+              <div
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Source lists"
+              >
+                {carouselRows.map(renderCarouselRow)}
+              </div>
+            </div>
           )}
           {apisQuery.isError ? (
             <QueryMessage
