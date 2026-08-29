@@ -37,10 +37,13 @@ jobs:
 
       - name: Resolve primary Neon connection
         run: |
-          PROJECT=$(curl --fail-with-body --silent --show-error \
-            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID" \
+          BRANCHES=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
             --header "Authorization: Bearer $NEON_API_KEY")
-          BRANCH_ID=$(jq -er '.project.default_branch_id' <<< "$PROJECT")
+          BRANCH_ID=$(jq -er \
+            '[.branches[] | select(.default == true)][0].id //
+             [.branches[] | select(.primary == true)][0].id' \
+            <<< "$BRANCHES")
 
           DATABASES=$(curl --fail-with-body --silent --show-error \
             "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID/databases" \
