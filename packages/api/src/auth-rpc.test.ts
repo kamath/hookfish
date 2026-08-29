@@ -4,12 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { hc } from 'hono/client'
 import { createApi, type AppType } from './app'
+import { createPgliteDb } from './db/pglite'
 
 const dataDir = mkdtempSync(join(tmpdir(), 'hookfish-auth-'))
-process.env.PGLITE_DATA_DIR = dataDir
-delete process.env.POSTGRES_URL
 
-const api = createApi()
+const api = createApi({ database: createPgliteDb(dataDir) })
 const client = hc<AppType>('http://hookfish.test', {
   fetch: ((input, init) => {
     const headers = new Headers(init?.headers)

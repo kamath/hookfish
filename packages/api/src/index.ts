@@ -1,4 +1,6 @@
 export type { AppType, CreateApiOptions } from './app'
+export type { AppDatabase, DatabaseInput } from './db/types'
+export type { PostgresConnection } from './db/postgres'
 export { mcpOAuthClientMetadata } from './oauth'
 export {
   authSessionSchema,

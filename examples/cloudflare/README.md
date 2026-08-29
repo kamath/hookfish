@@ -18,5 +18,11 @@ for local development.
 `wrangler.jsonc` sets `nodejs_compat`, which the SSR bundle needs for `node:async_hooks` and
 `node:crypto`. Rename `smithery-example` before deploying to your own account.
 
+Create a Hyperdrive configuration for your Postgres database and replace the
+placeholder `id` in `wrangler.jsonc`. The API route imports
+`env.HYPERDRIVE` from `cloudflare:workers` and passes `mountApi` a factory that
+creates a Postgres database in each request context. This example has no
+PGlite fallback.
+
 `pnpm --filter @hookfish/example-cloudflare check` runs `wrangler deploy --dry-run`, which
 validates the bundle without credentials. That is what CI runs.

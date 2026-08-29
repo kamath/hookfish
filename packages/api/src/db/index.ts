@@ -1,15 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
 import { resolveRuntimeEnv } from './env'
 import { createPgliteDb } from './pglite'
+import { createPostgresDb } from './postgres'
 import { schema } from './schema'
+import type { AppDatabase } from './types'
 import {
   resolveDatabaseTarget,
   type DatabaseTarget,
   type RuntimeEnv,
 } from './url'
 
-export type AppDb = Awaited<ReturnType<typeof createDbFromTarget>>
+export type AppDb = AppDatabase
 
 const dbCache = new Map<string, Promise<AppDb>>()
 
@@ -19,12 +19,7 @@ function cacheKey(target: DatabaseTarget) {
 
 async function createDbFromTarget(target: DatabaseTarget) {
   if (target.kind === 'postgres') {
-    const client = postgres(target.url, {
-      max: 5,
-      fetch_types: false,
-      prepare: true,
-    })
-    return drizzle({ client, schema })
+    return createPostgresDb(target.url)
   }
 
   return createPgliteDb(target.dataDir)
@@ -49,4 +44,8 @@ export async function getDb(env?: RuntimeEnv) {
 }
 
 export { schema } from './schema'
-export { resolveDatabaseTarget, resolvePgliteDataDir, type RuntimeEnv } from './url'
+export {
+  resolveDatabaseTarget,
+  resolvePgliteDataDir,
+  type RuntimeEnv,
+} from './url'

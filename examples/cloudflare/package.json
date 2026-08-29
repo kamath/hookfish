@@ -13,7 +13,7 @@
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "wrangler types && tsc --noEmit"
   },
   "dependencies": {
     "@hookfish/api": "workspace:*",

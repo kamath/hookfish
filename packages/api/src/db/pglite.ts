@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 import { schema } from './schema'
+import { resolvePgliteDataDir } from './url'
 
 export function findDrizzleMigrationsDir(moduleUrl = import.meta.url) {
   if (process.env.DRIZZLE_MIGRATIONS_DIR) {
@@ -28,7 +29,7 @@ export function findDrizzleMigrationsDir(moduleUrl = import.meta.url) {
   throw new Error('Could not find drizzle migrations (meta/_journal.json).')
 }
 
-export async function createPgliteDb(dataDir: string) {
+export async function createPgliteDb(dataDir = resolvePgliteDataDir()) {
   const client = new PGlite(dataDir)
   const db = drizzle({ client, schema })
   await migrate(db, { migrationsFolder: findDrizzleMigrationsDir() })

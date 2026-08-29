@@ -1,6 +1,10 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth } from 'better-auth'
-import { getDb } from './db'
+import {
+  resolveDatabase,
+  type AppDatabase,
+  type DatabaseInput,
+} from './db/types'
 import { isCloudflareProduction, type RuntimeEnv } from './db/url'
 import { schema } from './db/schema'
 
@@ -14,8 +18,12 @@ function authSecret(env: RuntimeEnv) {
   return 'hookfish-dev-secret-change-me'
 }
 
-async function createAuth(env: RuntimeEnv, baseURL: string, basePath: string) {
-  const db = await getDb(env)
+async function createAuth(
+  db: AppDatabase,
+  env: RuntimeEnv,
+  baseURL: string,
+  basePath: string,
+) {
   return betterAuth({
     baseURL,
     basePath,
@@ -31,27 +39,42 @@ async function createAuth(env: RuntimeEnv, baseURL: string, basePath: string) {
   })
 }
 
-const authCache = new Map<string, ReturnType<typeof createAuth>>()
+const authCache = new WeakMap<
+  AppDatabase,
+  Map<string, ReturnType<typeof createAuth>>
+>()
 
-export async function getAuth(env: RuntimeEnv, baseURL: string, basePath: string) {
-  const key = `${baseURL}|${basePath}|${env.POSTGRES_URL ?? ''}|${env.PGLITE_DATA_DIR ?? ''}|${env.HYPERDRIVE?.connectionString ?? ''}`
-  const cached = authCache.get(key)
+export async function getAuth(
+  database: DatabaseInput,
+  env: RuntimeEnv,
+  baseURL: string,
+  basePath: string,
+) {
+  const db = await resolveDatabase(database)
+  const key = `${baseURL}|${basePath}`
+  let databaseCache = authCache.get(db)
+  if (!databaseCache) {
+    databaseCache = new Map()
+    authCache.set(db, databaseCache)
+  }
+  const cached = databaseCache.get(key)
   if (cached) {
     return cached
   }
 
-  const created = createAuth(env, baseURL, basePath)
-  authCache.set(key, created)
+  const created = createAuth(db, env, baseURL, basePath)
+  databaseCache.set(key, created)
   return created
 }
 
 export async function handleAuthRequest(
   request: Request,
+  database: DatabaseInput,
   env: RuntimeEnv,
   authBasePath: string,
 ) {
   const baseURL = env.BETTER_AUTH_URL ?? new URL(request.url).origin
-  const auth = await getAuth(env, baseURL, authBasePath)
+  const auth = await getAuth(database, env, baseURL, authBasePath)
   return auth.handler(request)
 }
 

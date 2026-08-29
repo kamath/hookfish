@@ -13,6 +13,7 @@ import {
   signUpRoute,
 } from './auth-openapi'
 import { authBasePathForMount } from './auth-path'
+import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
@@ -36,6 +37,7 @@ import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 export type CreateApiOptions = {
   fetch?: typeof fetch
   env?: RuntimeEnv
+  database?: DatabaseInput
   authBasePath?: string
   openapi?: {
     title?: string
@@ -177,6 +179,7 @@ export function createApi(options: CreateApiOptions = {}) {
   const upstreamFetch = options.fetch ?? fetch
   const authOptions = {
     env: options.env,
+    database: options.database,
     authBasePath: options.authBasePath ?? '/auth',
   }
   const app = new OpenAPIHono({

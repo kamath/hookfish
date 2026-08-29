@@ -2,6 +2,7 @@ import type { Context } from 'hono'
 import { createRoute } from '@hono/zod-openapi'
 import { getAuth } from './auth'
 import { resolveRuntimeEnv } from './db/env'
+import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
 import {
   authSessionSchema,
@@ -13,6 +14,7 @@ import {
 
 export type AuthRouteOptions = {
   env?: RuntimeEnv
+  database?: DatabaseInput
   authBasePath?: string
 }
 
@@ -162,9 +164,19 @@ function asUser(value: unknown) {
 }
 
 async function authForRequest(c: Context, options: AuthRouteOptions) {
+  if (!options.database) {
+    throw new Error(
+      'A configured database is required for authentication. Pass database to createApi or mountApi.',
+    )
+  }
   const env = await resolveRuntimeEnv(options.env)
   const baseURL = env.BETTER_AUTH_URL ?? new URL(c.req.url).origin
-  return getAuth(env, baseURL, options.authBasePath ?? '/auth')
+  return getAuth(
+    options.database,
+    env,
+    baseURL,
+    options.authBasePath ?? '/auth',
+  )
 }
 
 function userFromPayload(payload: unknown) {
