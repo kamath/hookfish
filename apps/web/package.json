@@ -7,7 +7,10 @@
     "#/*": "./src/*"
   },
   "scripts": {
+    "build:dependencies": "pnpm --filter @hookfish/api build && pnpm --filter @hookfish/app build",
+    "prebuild": "pnpm run build:dependencies",
     "build": "vite build --mode cloudflare",
+    "prebuild:node": "pnpm run build:dependencies",
     "build:node": "vite build --mode node",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
