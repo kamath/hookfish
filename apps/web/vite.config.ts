@@ -4,31 +4,23 @@ import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 import viteReact from '@vitejs/plugin-react'
-import { cloudflare } from '@cloudflare/vite-plugin'
 
-const config = defineConfig(({ command, mode }) => {
-  const isNodeBuild = command === 'build' && mode === 'node'
-
+// This shell targets Node only. Platform adapters (Cloudflare, Vercel) belong to the
+// deployment repository that mounts @hookfish/app and @hookfish/api.
+const config = defineConfig(({ command }) => {
   return {
-    build: isNodeBuild ? { outDir: 'dist-node' } : undefined,
     resolve: { tsconfigPaths: true },
     optimizeDeps: {
       include: ['@tanstack/react-query'],
     },
     ssr: {
-      ...(isNodeBuild ? { noExternal: true } : {}),
+      // The CLI ships this build on its own, so the server bundle carries its dependencies.
+      ...(command === 'build' ? { noExternal: true } : {}),
       optimizeDeps: {
         include: ['@tanstack/react-query'],
       },
     },
-    plugins: [
-      devtools(),
-      ...(isNodeBuild
-        ? []
-        : [cloudflare({ viteEnvironment: { name: 'ssr' } })]),
-      tanstackStart(),
-      viteReact(),
-    ],
+    plugins: [devtools(), tanstackStart(), viteReact()],
   }
 })
 

@@ -9,9 +9,7 @@
   "scripts": {
     "build:dependencies": "pnpm --filter @hookfish/api build && pnpm --filter @hookfish/app build",
     "prebuild": "pnpm run build:dependencies",
-    "build": "vite build --mode cloudflare",
-    "prebuild:node": "pnpm run build:dependencies",
-    "build:node": "vite build --mode node",
+    "build": "vite build",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "typecheck": "tsc --noEmit"
@@ -25,7 +23,6 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.54.0",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/router-cli": "^1.132.0",
     "@types/node": "^22.10.2",
@@ -33,7 +30,6 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "wrangler": "^4.126.0"
+    "vite": "^8.0.0"
   }
 }

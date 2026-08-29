@@ -5,7 +5,8 @@ A fully local client for browsing, configuring, and running executables from plu
 This repository is a pnpm/Turborepo workspace:
 
 - `packages/app` contains the reusable Vite client application and TanStack Router. Its `mountApp` export accepts an API base URL.
-- `apps/web` is the TanStack Start deployment shell that mounts the client application.
+- `apps/web` is the TanStack Start shell that mounts the client application. It targets Node
+  only—no platform adapter, no Wrangler—and is what `packages/cli` bundles.
 - `packages/api` is a mountable Hono API with OpenAPI docs and Hono RPC. TanStack Start forwards `/api/*` into it.
 - `packages/cli` builds the `hookfish` npm package and bundles the production web app.
 
@@ -42,7 +43,9 @@ export default mountApi('/api')
 ```
 
 The deployment repository owns only its HTML/document shell, static asset delivery, and
-Vercel or Cloudflare adapter.
+Vercel or Cloudflare adapter. Nothing in this workspace depends on a platform runtime:
+`pnpm dev` and `pnpm build` run on Node, and platform-specific configuration belongs to the
+deployment repository that consumes `@hookfish/app` and `@hookfish/api`.
 
 ## Adding a source type
 

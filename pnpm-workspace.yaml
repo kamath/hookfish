@@ -4,7 +4,6 @@ packages:
 
 allowBuilds:
   esbuild: true
-  workerd: true
 minimumReleaseAgeExclude:
   - '@tanstack/query-core@5.102.4'
   - '@tanstack/query-devtools@5.102.4'
