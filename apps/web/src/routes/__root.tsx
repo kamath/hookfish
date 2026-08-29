@@ -1,25 +1,14 @@
-import { type QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
   Outlet,
   Scripts,
-  createRootRouteWithContext,
+  createRootRoute,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { type ReactNode } from 'react'
-import {
-  App,
-  AppErrorPage,
-  AppNotFound,
-  THEME_COLORS,
-  THEME_INIT_SCRIPT,
-} from '@hookfish/app'
+import { mountApp, THEME_COLORS, THEME_INIT_SCRIPT } from '@hookfish/app'
 import appCss from '@hookfish/app/styles.css?url'
+import { type ReactNode, useEffect, useRef } from 'react'
 
-export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient
-}>()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -51,14 +40,28 @@ export const Route = createRootRouteWithContext<{
     ],
   }),
   shellComponent: RootDocument,
-  component: () => (
-    <App apiBaseUrl="/api">
-      <Outlet />
-    </App>
-  ),
-  notFoundComponent: AppNotFound,
-  errorComponent: AppErrorPage,
+  component: ClientAppHost,
+  notFoundComponent: () => null,
 })
+
+function ClientAppHost() {
+  const elementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = elementRef.current
+    if (!element) {
+      return
+    }
+    return mountApp(element, { apiBaseUrl: '/api' })
+  }, [])
+
+  return (
+    <>
+      <div ref={elementRef} className="h-dvh" />
+      <Outlet />
+    </>
+  )
+}
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
@@ -69,18 +72,6 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-            triggerMode: 'fixed',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
         <Scripts />
       </body>
     </html>

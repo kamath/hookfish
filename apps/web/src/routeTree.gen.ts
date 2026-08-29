@@ -10,12 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as ApiSplatRouteImport } from './routes/api.$'
-import { Route as ApisApiIdPaneChar123OperationIdChar125RouteImport } from './routes/apis.$apiId.$pane.{-$operationId}'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
@@ -23,41 +28,35 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApisApiIdPaneChar123OperationIdChar125Route =
-  ApisApiIdPaneChar123OperationIdChar125RouteImport.update({
-    id: '/apis/$apiId/$pane/{-$operationId}',
-    path: '/apis/$apiId/$pane/{-$operationId}',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/api/$': typeof ApiSplatRoute
-  '/apis/$apiId/$pane/{-$operationId}': typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
+  fullPaths: '/' | '/$' | '/api/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
-  id: '__root__' | '/' | '/api/$' | '/apis/$apiId/$pane/{-$operationId}'
+  to: '/' | '/$' | '/api/$'
+  id: '__root__' | '/' | '/$' | '/api/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   ApiSplatRoute: typeof ApiSplatRoute
-  ApisApiIdPaneChar123OperationIdChar125Route: typeof ApisApiIdPaneChar123OperationIdChar125Route
 }
 
 declare module '@tanstack/react-router' {
@@ -69,6 +68,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/$': {
       id: '/api/$'
       path: '/api/$'
@@ -76,31 +82,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apis/$apiId/$pane/{-$operationId}': {
-      id: '/apis/$apiId/$pane/{-$operationId}'
-      path: '/apis/$apiId/$pane/{-$operationId}'
-      fullPath: '/apis/$apiId/$pane/{-$operationId}'
-      preLoaderRoute: typeof ApisApiIdPaneChar123OperationIdChar125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   ApiSplatRoute: ApiSplatRoute,
-  ApisApiIdPaneChar123OperationIdChar125Route:
-    ApisApiIdPaneChar123OperationIdChar125Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

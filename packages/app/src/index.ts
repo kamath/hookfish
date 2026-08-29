@@ -1,5 +1,13 @@
+import './styles.css'
+
 export { App, AppErrorPage, AppNotFound, type AppProps } from './app'
 export { AppProviders } from './providers'
+export {
+  createAppRouter,
+  mountApp,
+  type AppRouter,
+  type AppRouterOptions,
+} from './router'
 export { HomePage } from './pages/home'
 export {
   WorkbenchPage,

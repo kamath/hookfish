@@ -1,10 +1,10 @@
 # Smithery
 
-A fully local [TanStack Start](https://tanstack.com/start) app for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
+A fully local client for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
 
 This repository is a pnpm/Turborepo workspace:
 
-- `packages/app` contains the reusable client application. Its `App` export accepts an API base URL.
+- `packages/app` contains the reusable Vite client application and TanStack Router. Its `mountApp` export accepts an API base URL.
 - `apps/web` is the TanStack Start deployment shell that mounts the client application.
 - `packages/api` is a mountable Hono API with OpenAPI docs and Hono RPC. TanStack Start forwards `/api/*` into it.
 - `packages/cli` builds the `hookfish` npm package and bundles the production web app.
@@ -18,6 +18,31 @@ Open `http://localhost:3000`. The launcher opens ten curated sources from comman
 `1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
 bar and press `Enter`. Smithery probes the URL to decide whether it is an MCP server or an
 OpenAPI document.
+
+## Embedding the client
+
+`@hookfish/app` and `@hookfish/api` build as independently consumable packages. A deployment
+repository can mount the client without importing this workspace's source:
+
+```ts
+import { mountApp } from '@hookfish/app'
+import '@hookfish/app/styles.css'
+
+mountApp(document.getElementById('app')!, {
+  apiBaseUrl: '/api',
+})
+```
+
+Mount `@hookfish/api` at the matching path in the deployment platform's request handler:
+
+```ts
+import { mountApi } from '@hookfish/api'
+
+export default mountApi('/api')
+```
+
+The deployment repository owns only its HTML/document shell, static asset delivery, and
+Vercel or Cloudflare adapter.
 
 ## Adding a source type
 

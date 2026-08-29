@@ -16,10 +16,7 @@
   "dependencies": {
     "@hookfish/app": "workspace:*",
     "@hookfish/api": "workspace:*",
-    "@tanstack/react-devtools": "latest",
-    "@tanstack/react-query": "^5.102.4",
     "@tanstack/react-router": "latest",
-    "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-start": "latest",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -34,8 +31,6 @@
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "wrangler": "^4.126.0",
-    "@tailwindcss/vite": "^4.1.18",
-    "tailwindcss": "^4.1.18"
+    "wrangler": "^4.126.0"
   }
 }
