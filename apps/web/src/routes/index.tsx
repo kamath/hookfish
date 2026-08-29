@@ -183,9 +183,10 @@ function Home() {
       return
     }
     setActiveItems((current) => {
-      const nextIndex = Math.min(
-        Math.max((current[row.id] ?? 0) + delta, 0),
-        row.items.length - 1,
+      const nextIndex = wrappedCarouselIndex(
+        current[row.id] ?? 0,
+        delta,
+        row.items.length,
       )
       return { ...current, [row.id]: nextIndex }
     })
@@ -316,9 +317,7 @@ function Home() {
         ref={(node) => {
           panelRefs.current[row.id] = node
         }}
-        className={`w-[calc((100%-0.75rem)/2)] shrink-0 snap-start px-3 py-3 ${
-          active ? 'bg-signal/10' : 'bg-ink/5'
-        }`}
+        className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start bg-ink/5 px-3 py-3"
         aria-label={`${row.title} list`}
         onMouseDown={() => setActiveRow(rowIndex)}
         onFocus={() => setActiveRow(rowIndex)}
