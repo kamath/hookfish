@@ -89,28 +89,30 @@ function Home() {
   const [pendingRemove, setPendingRemove] = useState<{ id: string; title: string }>()
   const sourceOptions = sourceAdapterOptions()
   const apis = apisQuery.data ?? []
-  const carouselRows: CarouselRow[] = (carouselQuery.data ?? []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    items:
-      row.source === 'recent'
-        ? visibleCarouselItems(apis).map((api) => ({
-            type: 'recent' as const,
-            id: api.id,
-            title: api.title,
-            detail: `${api.kind} · ${api.executableCount} executables${
-              api.version ? ` · ${api.version}` : ''
-            }`,
-            apiId: api.id,
-          }))
-        : visibleCarouselItems(row.items).map((entry) => ({
-            type: 'catalog' as const,
-            id: entry.id,
-            title: entry.title,
-            detail: entry.detail,
-            entry,
-          })),
-  }))
+  const carouselRows: CarouselRow[] = (carouselQuery.data ?? [])
+    .filter((row) => row.source !== 'recent' || apis.length > 0)
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      items:
+        row.source === 'recent'
+          ? visibleCarouselItems(apis).map((api) => ({
+              type: 'recent' as const,
+              id: api.id,
+              title: api.title,
+              detail: `${api.kind} · ${api.executableCount} executables${
+                api.version ? ` · ${api.version}` : ''
+              }`,
+              apiId: api.id,
+            }))
+          : visibleCarouselItems(row.items).map((entry) => ({
+              type: 'catalog' as const,
+              id: entry.id,
+              title: entry.title,
+              detail: entry.detail,
+              entry,
+            })),
+    }))
   const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
@@ -173,6 +175,10 @@ function Home() {
     activate('specs', 'command')
   }, [])
 
+  useEffect(() => {
+    setActiveRow((index) => Math.min(index, Math.max(carouselRows.length - 1, 0)))
+  }, [carouselRows.length])
+
   function moveList(delta: number) {
     setActiveRow((index) => {
       const nextIndex = wrappedCarouselIndex(index, delta, carouselRows.length)
@@ -180,7 +186,6 @@ function Home() {
       if (nextRow) {
         requestAnimationFrame(() => {
           panelRefs.current[nextRow.id]?.scrollIntoView({
-            behavior: 'smooth',
             block: 'nearest',
             inline: 'nearest',
           })
@@ -358,7 +363,7 @@ function Home() {
         ref={(node) => {
           panelRefs.current[row.id] = node
         }}
-        className={`w-[calc((100%-0.75rem)/2)] shrink-0 snap-start px-3 py-3 transition-colors ${
+        className={`w-[calc((100%-0.75rem)/2)] shrink-0 snap-start px-3 py-3 ${
           active ? 'bg-signal/10' : 'bg-ink/5'
         }`}
         aria-label={`${row.title} list`}
@@ -630,7 +635,7 @@ function Home() {
                 </div>
               </div>
               <div
-                className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 aria-label="Source lists"
               >
                 {carouselRows.map(renderCarouselRow)}
