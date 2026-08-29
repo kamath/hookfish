@@ -125,6 +125,8 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
           PREVIOUS_EXISTS: ${{ steps.preview.outputs.previous_exists }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEON_BRANCH_ID: ${{ steps.neon.outputs.branch_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         with:
@@ -135,6 +137,10 @@ jobs:
             const previewUrl = process.env.PREVIEW_URL
             const runUrl = process.env.RUN_URL
             const shortSha = process.env.COMMIT_SHA.slice(0, 7)
+            const neonBranchId = process.env.NEON_BRANCH_ID
+            const neonBranchUrl = neonBranchId
+              ? `https://console.neon.tech/app/projects/${process.env.NEON_PROJECT_ID}/branches/${neonBranchId}`
+              : null
 
             const lines = [
               marker,
@@ -150,6 +156,9 @@ jobs:
               lines.push('The build failed and no previous deployment is available.')
             }
 
+            if (neonBranchUrl) {
+              lines.push('', `[Open the Neon branch](${neonBranchUrl})`)
+            }
             lines.push('', `Commit: \`${shortSha}\``, `[View build logs](${runUrl})`)
             const body = lines.join('\n')
 
