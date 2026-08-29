@@ -197,9 +197,18 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
       throw new Error('The MCP OAuth response could not be verified. Start authorization again.')
     }
     if (parameters.has('error')) {
+      // Keep what the authorization server said. Without it every failure reads the same, and
+      // the parameters are gone as soon as cleanCallbackUrl() runs.
+      const code = parameters.get('error')?.trim()
+      const description = parameters.get('error_description')?.trim()
       this.finishCallback()
       this.cleanCallbackUrl()
-      throw new Error('MCP OAuth authorization was not completed.')
+      const detail = [description, code && `(${code})`].filter(Boolean).join(' ')
+      throw new Error(
+        detail
+          ? `MCP OAuth authorization was not completed: ${detail}`
+          : 'MCP OAuth authorization was not completed.',
+      )
     }
     return parameters
   }
