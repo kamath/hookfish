@@ -1,0 +1,78 @@
+name: Clean up preview
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete Neon branch and Cloudflare Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WORKER_NAME: smithery-pr-${{ github.event.pull_request.number }}
+      NEON_BRANCH: preview/pr-${{ github.event.pull_request.number }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      # This trusted workflow intentionally never checks out or executes pull request code.
+      - name: Delete Neon branch
+        run: |
+          RESPONSE=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            --header "Authorization: Bearer $NEON_API_KEY")
+          BRANCH_ID=$(jq -r --arg name "$NEON_BRANCH" \
+            '[.branches[] | select(.name == $name) | .id][0] // empty' <<< "$RESPONSE")
+
+          if [[ -z "$BRANCH_ID" ]]; then
+            echo "Neon branch $NEON_BRANCH is already absent."
+            exit 0
+          fi
+
+          curl --fail-with-body --silent --show-error --request DELETE \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID" \
+            --header "Authorization: Bearer $NEON_API_KEY" > /dev/null
+
+          REMAINING=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            --header "Authorization: Bearer $NEON_API_KEY")
+          test "$(jq -r --arg name "$NEON_BRANCH" \
+            '[.branches[] | select(.name == $name)] | length' <<< "$REMAINING")" = "0"
+
+      - name: Delete Cloudflare Worker
+        run: |
+          BODY="$RUNNER_TEMP/cloudflare-delete.json"
+          STATUS=$(curl --silent --show-error --output "$BODY" --write-out '%{http_code}' \
+            --request DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+
+          if [[ "$STATUS" != "200" && "$STATUS" != "404" ]]; then
+            jq '{success, errors}' "$BODY"
+            exit 1
+          fi
+
+          VERIFY_STATUS=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          test "$VERIFY_STATUS" = "404"
+
+      - name: Publish cleanup summary
+        run: |
+          {
+            echo "### Preview removed"
+            echo
+            echo "- Cloudflare Worker: \`$WORKER_NAME\`"
+            echo "- Neon branch: \`$NEON_BRANCH\`"
+          } >> "$GITHUB_STEP_SUMMARY"

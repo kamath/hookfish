@@ -4,8 +4,20 @@ import { env } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
 import type {} from '@tanstack/react-start'
 
+function databaseConnection() {
+  const runtimeEnv = env as typeof env & {
+    HYPERDRIVE?: { connectionString: string }
+    POSTGRES_URL?: string
+  }
+  const connection = runtimeEnv.HYPERDRIVE ?? runtimeEnv.POSTGRES_URL
+  if (!connection) {
+    throw new Error('Cloudflare requires a Hyperdrive binding or POSTGRES_URL secret.')
+  }
+  return connection
+}
+
 const api = mountApi('/api', {
-  database: () => createPostgresDb(env.HYPERDRIVE),
+  database: () => createPostgresDb(databaseConnection()),
 })
 
 const handle = ({ request }: { request: Request }) => api.fetch(request)
