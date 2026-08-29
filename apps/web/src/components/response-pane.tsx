@@ -531,7 +531,7 @@ export function ResponsePane({
             <label className="mt-3 block">
               <span className="text-xs text-mute">Input responses (JSON)</span>
               <textarea
-                className="mt-1 min-h-32 w-full resize-y bg-paper px-2 py-2 font-mono text-xs text-ink outline-none focus:bg-ink/5"
+                className="mt-1 min-h-32 w-full resize-y bg-paper px-2 py-2 font-mono text-base text-ink outline-none focus:bg-ink/5 md:text-xs"
                 value={inputResponses}
                 onChange={(event) => setInputResponses(event.target.value)}
               />
