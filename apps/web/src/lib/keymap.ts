@@ -10,7 +10,7 @@ import {
   type Mode,
   type Pane,
 } from './chrome'
-import { CATALOG, catalogActionId } from './catalog'
+import { carouselActionId } from './catalog'
 import { blurActive, isEditing } from './focus'
 
 export type PaneBinding = {
@@ -67,15 +67,17 @@ export const paneConfig: Record<Pane, PaneConfig> = {
   specs: {
     path: '/',
     bindings: [
-      { id: 'open', hotkey: 'Enter', label: 'open' },
-      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next source', flag: 'hasSpecs' },
-      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous source', flag: 'hasSpecs' },
-      { id: 'remove', hotkey: 'D', label: 'remove', flag: 'hasSpecs' },
+      { id: 'open', hotkey: 'Enter', label: 'open item', flag: 'hasCarousel' },
+      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next item', flag: 'hasCarousel' },
+      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous item', flag: 'hasCarousel' },
+      { id: 'carouselPrevious', hotkey: 'H', label: 'previous list', flag: 'hasCarousel' },
+      { id: 'carouselNext', hotkey: 'L', label: 'next list', flag: 'hasCarousel' },
       { id: 'insert', hotkey: 'I', label: 'insert' },
-      ...CATALOG.map((entry) => ({
-        id: catalogActionId(entry),
-        hotkey: entry.hotkey,
-        label: entry.title,
+      ...(['1', '2', '3', '4', '5'] as const).map((hotkey, index) => ({
+        id: carouselActionId(index),
+        hotkey,
+        label: `open item ${hotkey}`,
+        flag: 'hasCarousel',
       })),
       {
         id: 'continueAuth',
@@ -89,20 +91,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         hotkey: 'Escape',
         label: 'cancel',
         flag: 'hasAuthRedirect',
-        modes: ['command', 'edit'],
-      },
-      {
-        id: 'confirmRemove',
-        hotkey: 'Enter',
-        label: 'remove',
-        flag: 'hasRemoveConfirm',
-        modes: ['command', 'edit'],
-      },
-      {
-        id: 'cancelRemove',
-        hotkey: 'Escape',
-        label: 'cancel',
-        flag: 'hasRemoveConfirm',
         modes: ['command', 'edit'],
       },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
@@ -273,7 +261,6 @@ export function previousPaneTitle(
 
 const dialogBindings: Record<string, ReadonlySet<string>> = {
   hasAuthRedirect: new Set(['continueAuth', 'cancelAuth']),
-  hasRemoveConfirm: new Set(['confirmRemove', 'cancelRemove']),
 }
 
 export function dialogAllowsBinding(binding: PaneBinding, flags: Record<string, boolean>) {
