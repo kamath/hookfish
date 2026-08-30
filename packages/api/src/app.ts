@@ -50,6 +50,22 @@ export type CreateApiOptions = {
   }
 }
 
+const EXPOSED_CREDENTIAL_CHECK_HEADER = 'Exposed-Credential-Check'
+
+function exposedCredentialCheck(c: { req: { header(name: string): string | undefined } }) {
+  return c.req.header(EXPOSED_CREDENTIAL_CHECK_HEADER)
+}
+
+function hasLeakedPassword(c: { req: { header(name: string): string | undefined } }) {
+  return ['1', '3', '4'].includes(exposedCredentialCheck(c) ?? '')
+}
+
+function hasLeakedCredentialPair(c: {
+  req: { header(name: string): string | undefined }
+}) {
+  return ['1', '3'].includes(exposedCredentialCheck(c) ?? '')
+}
+
 const specDocumentSchema = z.any().openapi('SpecDocument')
 
 const specRoute = createRoute({
@@ -230,6 +246,12 @@ export function createApi(options: CreateApiOptions = {}) {
 
   const routes = app
     .openapi(signUpRoute, async (c) => {
+      if (hasLeakedPassword(c)) {
+        return c.json(
+          { error: 'This password has appeared in a data breach. Choose a different password.' },
+          400,
+        )
+      }
       const result = await handleSignUp(c, c.req.valid('json'), authOptions)
       applySetCookies(c, result.cookies)
       if (!result.ok || !result.user) {
@@ -238,6 +260,15 @@ export function createApi(options: CreateApiOptions = {}) {
       return c.json({ user: result.user }, 200)
     })
     .openapi(signInRoute, async (c) => {
+      if (hasLeakedCredentialPair(c)) {
+        return c.json(
+          {
+            error:
+              'These credentials have appeared in a data breach. Reset your password before signing in.',
+          },
+          400,
+        )
+      }
       const result = await handleSignIn(c, c.req.valid('json'), authOptions)
       applySetCookies(c, result.cookies)
       if (!result.ok || !result.user) {
