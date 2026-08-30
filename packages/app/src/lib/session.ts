@@ -17,7 +17,7 @@ export async function fetchSession() {
 }
 
 export async function signIn(body: SignInRequest) {
-  return apiJson<AuthSession>(await getApi().auth['sign-in'].$post({ json: body }))
+  return apiJson<AuthSession>(await getApi().auth.login.$post({ json: body }))
 }
 
 export async function signUp(body: SignUpRequest) {

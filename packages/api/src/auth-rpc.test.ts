@@ -131,13 +131,13 @@ const invalidApiKey = await api.request('/auth/api-keys', {
 })
 assert.equal(invalidApiKey.status, 401)
 
-const signedIn = await client.auth['sign-in'].$post({
+const signedIn = await client.auth.login.$post({
   json: { email, password: 'password1' },
 })
 assert.equal(signedIn.status, 200)
 assert.equal((await signedIn.json()).user?.email, email)
 
-const rejected = await client.auth['sign-in'].$post({
+const rejected = await client.auth.login.$post({
   json: { email, password: 'wrong-password' },
 })
 assert.equal(rejected.status, 400)

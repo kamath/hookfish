@@ -94,7 +94,7 @@ and called through the same Hono RPC client as the rest of the app (`getApi()` w
 `credentials: 'include'`):
 
 - `POST /api/auth/sign-up`
-- `POST /api/auth/sign-in`
+- `POST /api/auth/login`
 - `POST /api/auth/sign-out`
 - `GET /api/auth/session` (always `200`, `user` is `null` when signed out)
 

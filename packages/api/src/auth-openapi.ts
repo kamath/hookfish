@@ -51,7 +51,7 @@ export const signUpRoute = createRoute({
 
 export const signInRoute = createRoute({
   method: 'post',
-  path: '/auth/sign-in',
+  path: '/auth/login',
   tags: ['Auth'],
   summary: 'Sign in with email and password',
   request: {
