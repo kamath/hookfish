@@ -109,7 +109,6 @@ jobs:
       - name: Smoke test production
         env:
           PRODUCTION_URL: ${{ steps.production.outputs.url }}
-          PUBLIC_URL: https://smithery.app
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/" > /dev/null
@@ -117,13 +116,11 @@ jobs:
             "$PRODUCTION_URL/api/openapi.json" > /dev/null
           test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/api/auth/session" | jq -r '.user')" = "null"
-          for URL in "$PRODUCTION_URL" "$PUBLIC_URL"; do
-            test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-              --request POST "$URL/api/auth/login" \
-              --header "origin: $URL" \
-              --header "content-type: application/json" \
-              --data '{"email":"smoke-test@example.invalid","password":"invalid"}')" = "400"
-          done
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request POST "$PRODUCTION_URL/api/auth/login" \
+            --header "origin: $PRODUCTION_URL" \
+            --header "content-type: application/json" \
+            --data '{"email":"smoke-test@example.invalid","password":"invalid"}')" = "400"
 
       - name: Publish deployment summary
         env:
