@@ -50,6 +50,17 @@ export function hotkeysFor(binding: PaneBinding): RegisterableHotkey[] {
   return keys
 }
 
+export function modesForHotkey(
+  binding: PaneBinding,
+  hotkey: RegisterableHotkey = binding.hotkey,
+): readonly Mode[] {
+  const usesMod =
+    typeof hotkey === 'string' ? hotkey.split('+').includes('Mod') : hotkey.mod === true
+  return usesMod
+    ? ['command', 'edit']
+    : (binding.modes ?? ['command'])
+}
+
 export type PaneAction = {
   callback: (event: KeyboardEvent) => void
   enabled?: boolean
@@ -155,7 +166,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         hotkey: 'Mod+Backspace',
         label: 'clear auth',
         flag: 'canClear',
-        modes: ['command', 'edit'],
       },
       { id: 'parent', hotkey: 'Escape', label: 'sources' },
       {
@@ -205,14 +215,12 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         id: 'send',
         hotkey: 'Mod+Enter',
         label: 'send',
-        modes: ['command', 'edit'],
       },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',
         label: 'clear auth',
         flag: 'canClear',
-        modes: ['command', 'edit'],
       },
       { id: 'parent', hotkey: 'Escape', label: 'executables' },
       {
@@ -241,10 +249,15 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
       { id: 'copy', hotkey: 'Y', label: 'copy JSON', flag: 'hasJson' },
       {
+        id: 'clearAuth',
+        hotkey: 'Mod+Backspace',
+        label: 'clear auth',
+        flag: 'canClear',
+      },
+      {
         id: 'resend',
         hotkey: 'Mod+Enter',
         label: 'resend',
-        modes: ['command', 'edit'],
       },
       { id: 'details', hotkey: 'H', label: 'details', flag: 'hasDetails' },
       {
@@ -270,7 +283,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         hotkey: 'Mod+Backspace',
         label: 'clear auth',
         flag: 'canClear',
-        modes: ['command', 'edit'],
       },
       { id: 'parent', hotkey: 'Escape', label: 'close' },
     ],
@@ -364,7 +376,7 @@ export const activeKeybindingsAtom = atom((get) => {
     }
   }
   return paneConfig[chrome.pane].bindings.filter((binding) => {
-    const modes = binding.modes ?? ['command']
+    const modes = modesForHotkey(binding)
     return (
       modes.includes(chrome.mode) &&
       (!binding.flag || Boolean(flags[binding.flag])) &&
@@ -459,7 +471,7 @@ export function useGlobalKeybindings() {
   useHotkeys(
     registeredPaneBindings.map(({ pane, binding, hotkey }) => {
       const action = actions[binding.id]
-      const modes = binding.modes ?? ['command']
+      const modes = modesForHotkey(binding, hotkey)
       const flagOn = !binding.flag || Boolean(flags[binding.flag])
       return {
         hotkey,

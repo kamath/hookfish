@@ -5,6 +5,7 @@ import {
   hotkeysFor,
   isEscapeLike,
   keybindingsEnabled,
+  modesForHotkey,
   paneConfig,
   previousPaneTitle,
 } from './keymap.ts'
@@ -23,6 +24,29 @@ assert.deepEqual(
   hotkeysFor({ id: 'edit', hotkey: 'H', label: 'edit', modes: ['edit'] }),
   ['H'],
   'arrow aliases only apply in command mode',
+)
+assert.deepEqual(
+  modesForHotkey({ id: 'send', hotkey: 'Mod+Enter', label: 'send', modes: ['command'] }),
+  ['command', 'edit'],
+  'Mod bindings work regardless of the configured mode',
+)
+assert.deepEqual(
+  modesForHotkey({ id: 'next', hotkey: 'J', label: 'next' }),
+  ['command'],
+  'unmodified bindings default to command mode',
+)
+assert.deepEqual(
+  modesForHotkey(
+    { id: 'action', hotkey: 'A', aliases: ['Mod+A'], label: 'action' },
+    'Mod+A',
+  ),
+  ['command', 'edit'],
+  'Mod aliases work outside command mode',
+)
+assert.deepEqual(
+  modesForHotkey({ id: 'save', hotkey: { key: 'S', mod: true }, label: 'save' }),
+  ['command', 'edit'],
+  'raw Mod bindings work outside command mode',
 )
 
 for (const [pane, config] of Object.entries(paneConfig)) {
@@ -146,12 +170,16 @@ assert.equal(
 )
 assert.equal(isEscapeLike(keyEvent('Enter')), false, 'Enter is not escape-like')
 
-for (const pane of ['routes', 'input', 'trace'] as const) {
+for (const pane of ['routes', 'input', 'response', 'trace'] as const) {
   const clearAuth = paneConfig[pane].bindings.find((binding) => binding.id === 'clearAuth')
   assert.ok(clearAuth, `${pane} has clearAuth`)
   assert.equal(clearAuth.hotkey, 'Mod+Backspace', `${pane} clearAuth is Mod+Backspace`)
   assert.equal(clearAuth.flag, 'canClear', `${pane} clearAuth requires stored auth`)
-  assert.deepEqual(clearAuth.modes, ['command', 'edit'], `${pane} clearAuth works in both modes`)
+  assert.deepEqual(
+    modesForHotkey(clearAuth),
+    ['command', 'edit'],
+    `${pane} clearAuth works in both modes`,
+  )
 }
 
 console.log('keymap step and tab bindings ok')
