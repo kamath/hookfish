@@ -26,8 +26,8 @@ assert.equal(
   'https://hookfish.test/api/auth/session',
 )
 assert.equal(
-  getApi().auth['sign-in'].$url().toString(),
-  'https://hookfish.test/api/auth/sign-in',
+  getApi().auth.login.$url().toString(),
+  'https://hookfish.test/api/auth/login',
 )
 assert.equal(
   getApi().auth['api-keys'].$url().toString(),

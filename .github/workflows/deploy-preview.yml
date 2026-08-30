@@ -179,6 +179,11 @@ jobs:
             "$PREVIEW_URL/api/openapi.json" > /dev/null
           test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PREVIEW_URL/api/auth/session" | jq -r '.user')" = "null"
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request POST "$PREVIEW_URL/api/auth/login" \
+            --header "origin: $PREVIEW_URL" \
+            --header "content-type: application/json" \
+            --data '{"email":"smoke-test@example.invalid","password":"invalid"}')" = "400"
 
       - name: Publish deployment summary
         env:
