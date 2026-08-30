@@ -18,7 +18,7 @@ import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
 import { blurActive } from '../lib/focus'
 import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
-import { activate, enterCommand } from '../lib/mode'
+import { activate, enterCommand, useChrome } from '../lib/mode'
 import { fetchSession } from '../lib/session'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
 import { primaryButtonClass, softInputClass } from '../lib/ui'
@@ -79,6 +79,7 @@ export function HomePage() {
       ? { href: pending.url, sourceId: pending.sourceId }
       : undefined
   })
+  const chrome = useChrome()
   const apis = apisQuery.data ?? []
   const carouselRows: CarouselRow[] = (carouselQuery.data ?? [])
     .filter((row) => row.source !== 'recent' || apis.length > 0)
@@ -152,6 +153,7 @@ export function HomePage() {
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
       : undefined
   const canMoveLists = carouselRows.length > 1
+  const carouselActive = chrome.pane === 'specs' && chrome.mode === 'command'
 
   useEffect(() => {
     activate('specs', 'command')
@@ -317,7 +319,7 @@ export function HomePage() {
   }
 
   function renderCarouselRow(row: CarouselRow, rowIndex: number) {
-    const active = rowIndex === activeRow
+    const active = carouselActive && rowIndex === activeRow
     return (
       <section
         key={row.id}
