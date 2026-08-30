@@ -24,6 +24,24 @@ assert.equal(loggedOut.status, 200)
 assert.deepEqual(await loggedOut.json(), { user: null })
 
 const email = `ada-${Date.now()}@hookfish.test`
+const leakedSignUp = await api.request('/auth/sign-up', {
+  method: 'POST',
+  headers: {
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+    'exposed-credential-check': '4',
+  },
+  body: JSON.stringify({
+    name: 'Grace Hopper',
+    email: `grace-${Date.now()}@hookfish.test`,
+    password: 'leaked-password',
+  }),
+})
+assert.equal(leakedSignUp.status, 400)
+assert.deepEqual(await leakedSignUp.json(), {
+  error: 'This password has appeared in a data breach. Choose a different password.',
+})
+
 const signedUp = await client.auth['sign-up'].$post({
   json: { name: 'Ada Lovelace', email, password: 'password1' },
 })
@@ -136,6 +154,32 @@ const signedIn = await client.auth.login.$post({
 })
 assert.equal(signedIn.status, 200)
 assert.equal((await signedIn.json()).user?.email, email)
+
+const passwordOnlyLeak = await api.request('/auth/login', {
+  method: 'POST',
+  headers: {
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+    'exposed-credential-check': '4',
+  },
+  body: JSON.stringify({ email, password: 'password1' }),
+})
+assert.equal(passwordOnlyLeak.status, 200)
+
+const leakedPair = await api.request('/auth/login', {
+  method: 'POST',
+  headers: {
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+    'exposed-credential-check': '1',
+  },
+  body: JSON.stringify({ email, password: 'password1' }),
+})
+assert.equal(leakedPair.status, 400)
+assert.deepEqual(await leakedPair.json(), {
+  error:
+    'These credentials have appeared in a data breach. Reset your password before signing in.',
+})
 
 const rejected = await client.auth.login.$post({
   json: { email, password: 'wrong-password' },
