@@ -93,8 +93,10 @@ export const cachedSourceQuerySchema = z.object({
 export const cachedSourceSchema = z
   .object({
     sourceId: z.string(),
+    userId: z.string(),
     metadata: cachedSourceMetadataSchema,
-    cachedAt: z.iso.datetime(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
   })
   .openapi('CachedSource')
 

@@ -5,14 +5,26 @@ import type { CachedSourceMetadata } from './schemas'
 
 function serializeCachedSource(record: {
   sourceId: string
+  userId: string
   metadata: unknown
+  createdAt: Date
   updatedAt: Date
 }) {
   return {
     sourceId: record.sourceId,
+    userId: record.userId,
     metadata: record.metadata as CachedSourceMetadata,
-    cachedAt: record.updatedAt.toISOString(),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
   }
+}
+
+const cachedSourceSelection = {
+  sourceId: cachedSource.sourceId,
+  userId: cachedSource.userId,
+  metadata: cachedSource.metadata,
+  createdAt: cachedSource.createdAt,
+  updatedAt: cachedSource.updatedAt,
 }
 
 export async function putCachedSource(
@@ -42,11 +54,7 @@ export async function putCachedSource(
         updatedAt: now,
       },
     })
-    .returning({
-      sourceId: cachedSource.sourceId,
-      metadata: cachedSource.metadata,
-      updatedAt: cachedSource.updatedAt,
-    })
+    .returning(cachedSourceSelection)
 
   if (!record) {
     throw new Error('Could not cache the source metadata.')
@@ -61,11 +69,7 @@ export async function getCachedSource(
 ) {
   const db = await resolveDatabase(database)
   const [record] = await db
-    .select({
-      sourceId: cachedSource.sourceId,
-      metadata: cachedSource.metadata,
-      updatedAt: cachedSource.updatedAt,
-    })
+    .select(cachedSourceSelection)
     .from(cachedSource)
     .where(and(eq(cachedSource.userId, userId), eq(cachedSource.sourceId, sourceId)))
     .limit(1)
@@ -80,11 +84,7 @@ export async function listCachedSources(
 ) {
   const db = await resolveDatabase(database)
   const records = await db
-    .select({
-      sourceId: cachedSource.sourceId,
-      metadata: cachedSource.metadata,
-      updatedAt: cachedSource.updatedAt,
-    })
+    .select(cachedSourceSelection)
     .from(cachedSource)
     .where(
       kind

@@ -22,10 +22,12 @@ async function signUp(email: string) {
     }),
   })
   assert.equal(response.status, 200, await response.clone().text())
-  return response.headers
+  const body = (await response.json()) as { user: { id: string } }
+  const cookie = response.headers
     .getSetCookie()
     .map((value) => value.split(';')[0])
     .join('; ')
+  return { cookie, userId: body.user.id }
 }
 
 const metadata = {
@@ -54,26 +56,40 @@ const anonymousPut = await api.request('/cached-sources/source-1', {
 })
 assert.equal(anonymousPut.status, 401)
 
-const firstCookie = await signUp(`first-${Date.now()}@hookfish.test`)
+const firstUser = await signUp(`first-${Date.now()}@hookfish.test`)
 const put = await api.request('/cached-sources/source-1', {
   method: 'PUT',
   headers: {
-    cookie: firstCookie,
+    cookie: firstUser.cookie,
     origin: 'http://hookfish.test',
     'content-type': 'application/json',
   },
-  body: JSON.stringify(metadata),
+  body: JSON.stringify({
+    ...metadata,
+    credentials: { bearer: 'must-not-be-cached' },
+    credentialsStored: true,
+    sourceUrl: 'https://example.test?token=must-not-be-cached',
+  }),
 })
 assert.equal(put.status, 200, await put.clone().text())
 const putBody = (await put.json()) as {
-  cachedSource: { sourceId: string; metadata: typeof metadata; cachedAt: string }
+  cachedSource: {
+    sourceId: string
+    userId: string
+    metadata: typeof metadata
+    createdAt: string
+    updatedAt: string
+  }
 }
 assert.equal(putBody.cachedSource.sourceId, 'source-1')
+assert.equal(putBody.cachedSource.userId, firstUser.userId)
 assert.deepEqual(putBody.cachedSource.metadata, metadata)
-assert.ok(Date.parse(putBody.cachedSource.cachedAt))
+assert.ok(Date.parse(putBody.cachedSource.createdAt))
+assert.ok(Date.parse(putBody.cachedSource.updatedAt))
+assert.equal(JSON.stringify(putBody).includes('must-not-be-cached'), false)
 
 const get = await api.request('/cached-sources/source-1', {
-  headers: { cookie: firstCookie, origin: 'http://hookfish.test' },
+  headers: { cookie: firstUser.cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(get.status, 200)
 assert.deepEqual(await get.json(), putBody)
@@ -81,18 +97,21 @@ assert.deepEqual(await get.json(), putBody)
 const updated = await api.request('/cached-sources/source-1', {
   method: 'PUT',
   headers: {
-    cookie: firstCookie,
+    cookie: firstUser.cookie,
     origin: 'http://hookfish.test',
     'content-type': 'application/json',
   },
   body: JSON.stringify({ ...metadata, title: 'Updated Widget API' }),
 })
 assert.equal(updated.status, 200)
+const updatedBody = (await updated.json()) as typeof putBody
+assert.equal(updatedBody.cachedSource.createdAt, putBody.cachedSource.createdAt)
+assert.ok(updatedBody.cachedSource.updatedAt >= putBody.cachedSource.updatedAt)
 
 const mcpPut = await api.request('/cached-sources/source-2', {
   method: 'PUT',
   headers: {
-    cookie: firstCookie,
+    cookie: firstUser.cookie,
     origin: 'http://hookfish.test',
     'content-type': 'application/json',
   },
@@ -105,7 +124,7 @@ const mcpPut = await api.request('/cached-sources/source-2', {
 assert.equal(mcpPut.status, 200)
 
 const openApiList = await api.request('/cached-sources?kind=openapi', {
-  headers: { cookie: firstCookie, origin: 'http://hookfish.test' },
+  headers: { cookie: firstUser.cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(openApiList.status, 200)
 const openApiListBody = (await openApiList.json()) as {
@@ -117,9 +136,9 @@ assert.deepEqual(
 )
 assert.equal(openApiListBody.cachedSources[0]?.metadata.title, 'Updated Widget API')
 
-const secondCookie = await signUp(`second-${Date.now()}@hookfish.test`)
+const secondUser = await signUp(`second-${Date.now()}@hookfish.test`)
 const isolatedGet = await api.request('/cached-sources/source-1', {
-  headers: { cookie: secondCookie, origin: 'http://hookfish.test' },
+  headers: { cookie: secondUser.cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(isolatedGet.status, 404)
 
