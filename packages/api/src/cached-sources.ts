@@ -107,5 +107,7 @@ export async function listCachedSources(
     .where(kind ? eq(cachedSource.kind, kind) : undefined)
     .orderBy(desc(cachedSource.updatedAt))
 
-  return records.map((record) => summarizeCachedSource(serializeCachedSource(record)))
+  return records.map((record: CachedSourceRecord) =>
+    summarizeCachedSource(serializeCachedSource(record)),
+  )
 }
