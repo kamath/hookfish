@@ -21,6 +21,7 @@ function render(created: boolean) {
       onSubmit() {},
       onCopy() {},
       onReset() {},
+      onCancel() {},
     }),
   )
 }
@@ -34,6 +35,8 @@ assert.match(form, /value="30 days"/)
 assert.match(form, /value="90 days"/)
 assert.match(form, /value="never"/)
 assert.match(form, /Create API key/)
+assert.match(form, /Cancel/)
+assert.match(form, /flex-1/)
 assert.match(form, /data-oc-enter-submit="true"/)
 assert.doesNotMatch(form, /hf_secret/)
 

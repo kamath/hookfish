@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import type { CreateApiKeyRequest } from '@hookfish/api'
-import { Kbd } from './hints'
+import { Kbd, KeyHints } from './hints'
 import { copyText } from '../lib/clipboard'
 import { createApiKey, type CreatedApiKey } from '../lib/session'
 import { labelClass, primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
@@ -19,9 +19,11 @@ const expirations: readonly ApiKeyExpiration[] = [
 export function CreateApiKeyForm({
   id = 'create-api-key-form',
   onCreatedChange,
+  onCancel,
 }: {
   id?: string
   onCreatedChange?: (created: boolean) => void
+  onCancel: () => void
 }) {
   const [name, setName] = useState('')
   const [expiration, setExpiration] = useState<ApiKeyExpiration>('30 days')
@@ -82,6 +84,7 @@ export function CreateApiKeyForm({
         void onCopy()
       }}
       onReset={onReset}
+      onCancel={onCancel}
     />
   )
 }
@@ -99,6 +102,7 @@ export function CreateApiKeyView({
   onSubmit,
   onCopy,
   onReset,
+  onCancel,
 }: {
   id: string
   name: string
@@ -112,6 +116,7 @@ export function CreateApiKeyView({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onCopy: () => void
   onReset: () => void
+  onCancel: () => void
 }) {
   if (created) {
     return (
@@ -157,9 +162,29 @@ export function CreateApiKeyView({
         </select>
       </Field>
       {error ? <p className="mt-4 text-sm text-warn">{error}</p> : null}
-      <button className={`${primaryButtonClass} mt-6 w-fit`} disabled={pending} type="submit">
-        {pending ? 'Creating…' : 'Create API key'}
-      </button>
+      <div className="mt-6 flex gap-2">
+        <button
+          type="button"
+          data-oc-nav="action"
+          className={`${softButtonClass} flex-1`}
+          onClick={onCancel}
+        >
+          <Kbd hotkey="Escape" />
+          Cancel
+        </button>
+        <button className={`${primaryButtonClass} flex-1`} disabled={pending} type="submit">
+          {pending ? (
+            'Creating…'
+          ) : (
+            <>
+              <KeyHints className="mr-2 inline-flex gap-1">
+                <Kbd hotkey="Enter" />
+              </KeyHints>
+              Create API key
+            </>
+          )}
+        </button>
+      </div>
     </form>
   )
 }

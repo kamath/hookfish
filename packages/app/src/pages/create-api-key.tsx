@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { CreateApiKeyForm } from '../components/create-api-key'
-import { Kbd } from '../components/hints'
 import {
   bindFormTabSync,
   selectDefaultFormItem,
@@ -13,7 +12,6 @@ import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate } from '../lib/mode'
 import { fetchSession } from '../lib/session'
 import { useSourceToolbar } from '../lib/toolbar'
-import { softButtonClass } from '../lib/ui'
 
 export function CreateApiKeyPage() {
   const navigate = useNavigate()
@@ -88,18 +86,7 @@ export function CreateApiKeyPage() {
       <h1 className="text-3xl font-normal md:text-5xl">
         {created ? 'API key created' : 'Create an API key'}
       </h1>
-      <CreateApiKeyForm onCreatedChange={setCreated} />
-      {created ? null : (
-        <button
-          type="button"
-          data-oc-nav="action"
-          className={`${softButtonClass} mt-6 w-fit`}
-          onClick={goBack}
-        >
-          <Kbd hotkey="Escape" />
-          Cancel
-        </button>
-      )}
+      <CreateApiKeyForm onCreatedChange={setCreated} onCancel={goBack} />
     </main>
   )
 }
