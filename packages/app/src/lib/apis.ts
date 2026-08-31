@@ -1,6 +1,7 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import type { ApiSummary, ClientApi } from './client-types'
+import { getApi as getApiClient } from './api'
 import {
   apiAuthStored,
   clearApiAuth,
@@ -63,6 +64,45 @@ function loadApis(): ApiSummary[] {
 
 function saveApis(apis: ApiSummary[]) {
   writeApisJson(apis)
+}
+
+function cacheableAdapterData(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value
+  }
+  const {
+    sessionId: _sessionId,
+    oauthAuthorized: _oauthAuthorized,
+    ...cacheable
+  } = value as Record<string, unknown>
+  return cacheable
+}
+
+export function cachedSourceMetadata(client: ClientApi) {
+  if (client.kind !== 'openapi' && client.kind !== 'mcp') {
+    return undefined
+  }
+  return {
+    kind: client.kind,
+    title: client.title,
+    version: client.version,
+    description: client.description,
+    executables: client.executables,
+    groups: client.groups,
+    labels: client.labels,
+    adapterData: cacheableAdapterData(client.adapterData),
+  }
+}
+
+async function cacheSource(client: ClientApi) {
+  const metadata = cachedSourceMetadata(client)
+  if (!metadata) {
+    return
+  }
+  await getApiClient()['cached-sources'][':sourceId'].$put({
+    param: { sourceId: client.id },
+    json: metadata,
+  })
 }
 
 function rememberSpecMeta(id: string, client: ClientApi) {
@@ -144,6 +184,7 @@ export async function addApi(
     apis[provisionalIndex] = summary
   }
   saveApis(apis)
+  void cacheSource(client).catch(() => {})
   return { id }
 }
 
@@ -159,6 +200,7 @@ export async function getApi(id: string): Promise<ClientApi> {
     readApiAuth(row.id),
   )
   rememberSpecMeta(row.id, client)
+  void cacheSource(client).catch(() => {})
 
   return {
     ...client,

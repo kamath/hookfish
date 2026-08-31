@@ -16,11 +16,21 @@ import {
 } from './auth-openapi'
 import { createApiKey, listApiKeys } from './api-keys'
 import { authBasePathForMount } from './auth-path'
+import {
+  getCachedSource,
+  listCachedSources,
+  putCachedSource,
+} from './cached-sources'
 import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
 import {
+  cachedSourceListSchema,
+  cachedSourceMetadataSchema,
+  cachedSourceParamsSchema,
+  cachedSourceQuerySchema,
+  cachedSourceResponseSchema,
   errorSchema,
   executeRequestSchema,
   executeResultSchema,
@@ -134,6 +144,93 @@ const executeRoute = createRoute({
           schema: errorSchema,
         },
       },
+    },
+  },
+})
+
+const putCachedSourceRoute = createRoute({
+  method: 'put',
+  path: '/cached-sources/{sourceId}',
+  tags: ['Sources'],
+  summary: 'Cache the normalized routes or RPCs displayed for a source',
+  security: [{ Bearer: [] }],
+  request: {
+    params: cachedSourceParamsSchema,
+    body: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: cachedSourceMetadataSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Cached source metadata',
+      content: { 'application/json': { schema: cachedSourceResponseSchema } },
+    },
+    401: {
+      description: 'Authentication is required',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+    503: {
+      description: 'Source caching is not configured',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+  },
+})
+
+const getCachedSourceRoute = createRoute({
+  method: 'get',
+  path: '/cached-sources/{sourceId}',
+  tags: ['Sources'],
+  summary: 'Get cached routes or RPCs for a source',
+  security: [{ Bearer: [] }],
+  request: {
+    params: cachedSourceParamsSchema,
+  },
+  responses: {
+    200: {
+      description: 'Cached source metadata',
+      content: { 'application/json': { schema: cachedSourceResponseSchema } },
+    },
+    404: {
+      description: 'No cached metadata exists for this source',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+    401: {
+      description: 'Authentication is required',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+    503: {
+      description: 'Source caching is not configured',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+  },
+})
+
+const listCachedSourcesRoute = createRoute({
+  method: 'get',
+  path: '/cached-sources',
+  tags: ['Sources'],
+  summary: 'List cached OpenAPI and MCP source metadata',
+  security: [{ Bearer: [] }],
+  request: {
+    query: cachedSourceQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Cached source metadata',
+      content: { 'application/json': { schema: cachedSourceListSchema } },
+    },
+    401: {
+      description: 'Authentication is required',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+    503: {
+      description: 'Source caching is not configured',
+      content: { 'application/json': { schema: errorSchema } },
     },
   },
 })
@@ -305,6 +402,58 @@ export function createApi(options: CreateApiOptions = {}) {
       }
       return c.json(
         { apiKeys: await listApiKeys(authOptions.database, authenticatedUser.id) },
+        200,
+      )
+    })
+    .openapi(putCachedSourceRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      if (!authOptions.database) {
+        return c.json({ error: 'Source caching is not configured.' }, 503)
+      }
+      const cached = await putCachedSource(authOptions.database, {
+        userId: authenticatedUser.id,
+        sourceId: c.req.valid('param').sourceId,
+        metadata: c.req.valid('json'),
+      })
+      return c.json({ cachedSource: cached }, 200)
+    })
+    .openapi(getCachedSourceRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      if (!authOptions.database) {
+        return c.json({ error: 'Source caching is not configured.' }, 503)
+      }
+      const cached = await getCachedSource(
+        authOptions.database,
+        authenticatedUser.id,
+        c.req.valid('param').sourceId,
+      )
+      if (!cached) {
+        return c.json({ error: 'Cached source not found.' }, 404)
+      }
+      return c.json({ cachedSource: cached }, 200)
+    })
+    .openapi(listCachedSourcesRoute, async (c) => {
+      const authenticatedUser = c.get('authUser')
+      if (!authenticatedUser) {
+        return c.json({ error: 'Authentication is required.' }, 401)
+      }
+      if (!authOptions.database) {
+        return c.json({ error: 'Source caching is not configured.' }, 503)
+      }
+      return c.json(
+        {
+          cachedSources: await listCachedSources(
+            authOptions.database,
+            authenticatedUser.id,
+            c.req.valid('query').kind,
+          ),
+        },
         200,
       )
     })

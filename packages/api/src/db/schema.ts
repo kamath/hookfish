@@ -2,7 +2,9 @@ import { relations } from 'drizzle-orm'
 import {
   boolean,
   index,
+  jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -83,6 +85,24 @@ export const apiKey = pgTable(
   (table) => [index('api_key_user_id_idx').on(table.userId)],
 )
 
+export const cachedSource = pgTable(
+  'cached_source',
+  {
+    sourceId: text('source_id').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    metadata: jsonb('metadata').notNull(),
+    createdAt: timestampColumn('created_at').defaultNow().notNull(),
+    updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.sourceId] }),
+    index('cached_source_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+  ],
+)
+
 export const jwks = pgTable('jwks', {
   id: text('id').primaryKey(),
   publicKey: text('public_key').notNull(),
@@ -97,6 +117,7 @@ export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   apiKeys: many(apiKey),
+  cachedSources: many(cachedSource),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -120,15 +141,24 @@ export const apiKeyRelations = relations(apiKey, ({ one }) => ({
   }),
 }))
 
+export const cachedSourceRelations = relations(cachedSource, ({ one }) => ({
+  user: one(user, {
+    fields: [cachedSource.userId],
+    references: [user.id],
+  }),
+}))
+
 export const schema = {
   user,
   session,
   account,
   verification,
   apiKey,
+  cachedSource,
   jwks,
   userRelations,
   sessionRelations,
   accountRelations,
   apiKeyRelations,
+  cachedSourceRelations,
 }

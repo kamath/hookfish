@@ -65,6 +65,51 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
+const cachedObjectSchema = z.record(z.string(), z.any())
+
+export const cachedSourceKindSchema = z.enum(['openapi', 'mcp'])
+
+export const cachedSourceMetadataSchema = z
+  .object({
+    kind: cachedSourceKindSchema,
+    title: z.string(),
+    version: z.string().optional(),
+    description: z.string().optional(),
+    executables: z.array(cachedObjectSchema),
+    groups: z.array(cachedObjectSchema),
+    labels: cachedObjectSchema,
+    adapterData: z.any().optional(),
+  })
+  .openapi('CachedSourceMetadata')
+
+export const cachedSourceParamsSchema = z.object({
+  sourceId: z.string().trim().min(1),
+})
+
+export const cachedSourceQuerySchema = z.object({
+  kind: cachedSourceKindSchema.optional(),
+})
+
+export const cachedSourceSchema = z
+  .object({
+    sourceId: z.string(),
+    metadata: cachedSourceMetadataSchema,
+    cachedAt: z.iso.datetime(),
+  })
+  .openapi('CachedSource')
+
+export const cachedSourceResponseSchema = z
+  .object({
+    cachedSource: cachedSourceSchema,
+  })
+  .openapi('CachedSourceResponse')
+
+export const cachedSourceListSchema = z
+  .object({
+    cachedSources: z.array(cachedSourceSchema),
+  })
+  .openapi('CachedSourceList')
+
 export const signUpRequestSchema = z
   .object({
     name: z.string().trim().min(1),
@@ -138,6 +183,7 @@ export const okSchema = z
 
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
+export type CachedSourceMetadata = z.infer<typeof cachedSourceMetadataSchema>
 export type SignUpRequest = z.infer<typeof signUpRequestSchema>
 export type SignInRequest = z.infer<typeof signInRequestSchema>
 export type AuthUser = z.infer<typeof authUserSchema>
