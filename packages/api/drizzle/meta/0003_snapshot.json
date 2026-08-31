@@ -1,6 +1,6 @@
 {
-  "id": "70e3f235-a5d9-4b46-8550-7d03a2a12263",
-  "prevId": "32946d9d-b5d2-452f-be25-94ba308dc388",
+  "id": "c02fa86e-55bd-466e-8ee1-17c79f580d65",
+  "prevId": "70e3f235-a5d9-4b46-8550-7d03a2a12263",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -234,14 +234,14 @@
         "source_id": {
           "name": "source_id",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "created_by_user_id": {
+          "name": "created_by_user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "kind": {
           "name": "kind",
@@ -271,15 +271,24 @@
         }
       },
       "indexes": {
-        "cached_source_user_id_updated_at_idx": {
-          "name": "cached_source_user_id_updated_at_idx",
+        "cached_source_created_by_user_id_idx": {
+          "name": "cached_source_created_by_user_id_idx",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "created_by_user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cached_source_updated_at_idx": {
+          "name": "cached_source_updated_at_idx",
+          "columns": [
             {
               "expression": "updated_at",
               "isExpression": false,
@@ -294,29 +303,21 @@
         }
       },
       "foreignKeys": {
-        "cached_source_user_id_user_id_fk": {
-          "name": "cached_source_user_id_user_id_fk",
+        "cached_source_created_by_user_id_user_id_fk": {
+          "name": "cached_source_created_by_user_id_user_id_fk",
           "tableFrom": "cached_source",
           "tableTo": "user",
           "columnsFrom": [
-            "user_id"
+            "created_by_user_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "cached_source_user_id_source_id_pk": {
-          "name": "cached_source_user_id_source_id_pk",
-          "columns": [
-            "user_id",
-            "source_id"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
