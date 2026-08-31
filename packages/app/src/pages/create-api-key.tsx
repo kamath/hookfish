@@ -44,6 +44,7 @@ export function CreateApiKeyPage() {
 
   usePaneFlags('apiKeys', {
     canEdit: Boolean(user) && !created,
+    hasKey: created,
   })
 
   useFormPaneNavigation('apiKeys', 'create-api-key-form')

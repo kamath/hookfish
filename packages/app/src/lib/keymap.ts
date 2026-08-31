@@ -142,10 +142,11 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'insert', hotkey: 'I', label: 'edit', flag: 'canEdit' },
       {
         id: 'submitNow',
-        hotkey: 'Enter',
+        hotkey: 'Mod+Enter',
         label: 'submit',
         flag: 'canEdit',
       },
+      { id: 'copy', hotkey: 'Y', label: 'copy key', flag: 'hasKey' },
       { id: 'parent', hotkey: 'Escape', label: 'sources' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
