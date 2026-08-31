@@ -22,10 +22,10 @@ assert.equal(
   'https://hookfish.test/api/openapi.json',
 )
 assert.equal(
-  getApi()['cached-sources'][':sourceId'].$url({
+  getApi().registry[':sourceId'].$url({
     param: { sourceId: 'source-1' },
   }).toString(),
-  'https://hookfish.test/api/cached-sources/source-1',
+  'https://hookfish.test/api/registry/source-1',
 )
 assert.equal(
   getApi().auth.session.$url().toString(),

@@ -27,18 +27,18 @@ import type { RuntimeEnv } from './db/url'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
 import {
-  cacheSourceRequestSchema,
-  cacheSourceResponseSchema,
-  cachedSourceListSchema,
-  cachedSourceParamsSchema,
-  cachedSourceQuerySchema,
-  cachedSourceResponseSchema,
   errorSchema,
   executeRequestSchema,
   executeResultSchema,
   mcpOAuthClientQuerySchema,
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
+  registryEntryParamsSchema,
+  registryEntryResponseSchema,
+  registryListSchema,
+  registryQuerySchema,
+  registrySubmissionResponseSchema,
+  registrySubmissionSchema,
   specRequestSchema,
 } from './schemas'
 import {
@@ -150,55 +150,55 @@ const executeRoute = createRoute({
   },
 })
 
-const putCachedSourceRoute = createRoute({
+const putRegistryEntryRoute = createRoute({
   method: 'put',
-  path: '/cached-sources/{sourceId}',
-  tags: ['Sources'],
-  summary: 'Cache the normalized routes or RPCs displayed for a source',
+  path: '/registry/{sourceId}',
+  tags: ['Registry'],
+  summary: 'Submit normalized OpenAPI routes or MCP RPCs to the registry',
   security: [{ Bearer: [] }],
   request: {
-    params: cachedSourceParamsSchema,
+    params: registryEntryParamsSchema,
     body: {
       required: true,
       content: {
         'application/json': {
-          schema: cacheSourceRequestSchema,
+          schema: registrySubmissionSchema,
         },
       },
     },
   },
   responses: {
     200: {
-      description: 'Source cache result',
-      content: { 'application/json': { schema: cacheSourceResponseSchema } },
+      description: 'Registry submission result',
+      content: { 'application/json': { schema: registrySubmissionResponseSchema } },
     },
     401: {
       description: 'Authentication is required',
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
-      description: 'Source caching is not configured',
+      description: 'The registry is not configured',
       content: { 'application/json': { schema: errorSchema } },
     },
   },
 })
 
-const getCachedSourceRoute = createRoute({
+const getRegistryEntryRoute = createRoute({
   method: 'get',
-  path: '/cached-sources/{sourceId}',
-  tags: ['Sources'],
-  summary: 'Get cached routes or RPCs for a source',
+  path: '/registry/{sourceId}',
+  tags: ['Registry'],
+  summary: 'Get an OpenAPI or MCP registry entry',
   security: [{ Bearer: [] }],
   request: {
-    params: cachedSourceParamsSchema,
+    params: registryEntryParamsSchema,
   },
   responses: {
     200: {
-      description: 'Cached source metadata',
-      content: { 'application/json': { schema: cachedSourceResponseSchema } },
+      description: 'Registry entry',
+      content: { 'application/json': { schema: registryEntryResponseSchema } },
     },
     404: {
-      description: 'No cached metadata exists for this source',
+      description: 'No registry entry exists for this source',
       content: { 'application/json': { schema: errorSchema } },
     },
     401: {
@@ -206,32 +206,32 @@ const getCachedSourceRoute = createRoute({
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
-      description: 'Source caching is not configured',
+      description: 'The registry is not configured',
       content: { 'application/json': { schema: errorSchema } },
     },
   },
 })
 
-const listCachedSourcesRoute = createRoute({
+const listRegistryEntriesRoute = createRoute({
   method: 'get',
-  path: '/cached-sources',
-  tags: ['Sources'],
-  summary: 'List cached OpenAPI and MCP source metadata',
+  path: '/registry',
+  tags: ['Registry'],
+  summary: 'List OpenAPI and MCP registry entries',
   security: [{ Bearer: [] }],
   request: {
-    query: cachedSourceQuerySchema,
+    query: registryQuerySchema,
   },
   responses: {
     200: {
-      description: 'Cached source metadata',
-      content: { 'application/json': { schema: cachedSourceListSchema } },
+      description: 'Registry entries',
+      content: { 'application/json': { schema: registryListSchema } },
     },
     401: {
       description: 'Authentication is required',
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
-      description: 'Source caching is not configured',
+      description: 'The registry is not configured',
       content: { 'application/json': { schema: errorSchema } },
     },
   },
@@ -407,17 +407,17 @@ export function createApi(options: CreateApiOptions = {}) {
         200,
       )
     })
-    .openapi(putCachedSourceRoute, async (c) => {
+    .openapi(putRegistryEntryRoute, async (c) => {
       const authenticatedUser = c.get('authUser')
       if (!authenticatedUser) {
         return c.json({ error: 'Authentication is required.' }, 401)
       }
       const request = c.req.valid('json')
       if (!request.cache) {
-        return c.json({ cached: false, cachedSource: null }, 200)
+        return c.json({ cached: false, entry: null }, 200)
       }
       if (!authOptions.database) {
-        return c.json({ error: 'Source caching is not configured.' }, 503)
+        return c.json({ error: 'The registry is not configured.' }, 503)
       }
       const cached = await putCachedSource(authOptions.database, {
         userId: authenticatedUser.id,
@@ -425,38 +425,38 @@ export function createApi(options: CreateApiOptions = {}) {
         metadata: request.metadata,
       })
       return c.json(
-        { cached: true, cachedSource: summarizeCachedSource(cached) },
+        { cached: true, entry: summarizeCachedSource(cached) },
         200,
       )
     })
-    .openapi(getCachedSourceRoute, async (c) => {
+    .openapi(getRegistryEntryRoute, async (c) => {
       const authenticatedUser = c.get('authUser')
       if (!authenticatedUser) {
         return c.json({ error: 'Authentication is required.' }, 401)
       }
       if (!authOptions.database) {
-        return c.json({ error: 'Source caching is not configured.' }, 503)
+        return c.json({ error: 'The registry is not configured.' }, 503)
       }
       const cached = await getCachedSource(
         authOptions.database,
         c.req.valid('param').sourceId,
       )
       if (!cached) {
-        return c.json({ error: 'Cached source not found.' }, 404)
+        return c.json({ error: 'Registry entry not found.' }, 404)
       }
-      return c.json({ cachedSource: cached }, 200)
+      return c.json({ entry: cached }, 200)
     })
-    .openapi(listCachedSourcesRoute, async (c) => {
+    .openapi(listRegistryEntriesRoute, async (c) => {
       const authenticatedUser = c.get('authUser')
       if (!authenticatedUser) {
         return c.json({ error: 'Authentication is required.' }, 401)
       }
       if (!authOptions.database) {
-        return c.json({ error: 'Source caching is not configured.' }, 503)
+        return c.json({ error: 'The registry is not configured.' }, 503)
       }
       return c.json(
         {
-          cachedSources: await listCachedSources(
+          entries: await listCachedSources(
             authOptions.database,
             c.req.valid('query').kind,
           ),

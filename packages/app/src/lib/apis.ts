@@ -1,6 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
-import type { CachedSourceMetadata } from '@hookfish/api'
+import type { RegistryEntryMetadata } from '@hookfish/api'
 import type { ApiSummary, ClientApi } from './client-types'
 import { getApi as getApiClient } from './api'
 import {
@@ -80,9 +80,9 @@ function cacheableAdapterData(value: unknown) {
   return cacheable
 }
 
-export function cachedSourceMetadata(
+export function registryEntryMetadata(
   client: ClientApi,
-): CachedSourceMetadata | undefined {
+): RegistryEntryMetadata | undefined {
   const kind = client.kind
   if (kind !== 'openapi' && kind !== 'mcp') {
     return undefined
@@ -99,12 +99,12 @@ export function cachedSourceMetadata(
   }
 }
 
-async function cacheSource(client: ClientApi) {
-  const metadata = cachedSourceMetadata(client)
+async function submitRegistryEntry(client: ClientApi) {
+  const metadata = registryEntryMetadata(client)
   if (!metadata) {
     return
   }
-  await getApiClient()['cached-sources'][':sourceId'].$put({
+  await getApiClient().registry[':sourceId'].$put({
     param: { sourceId: client.id },
     json: { metadata },
   })
@@ -192,7 +192,7 @@ export async function addApi(
   }
   saveApis(apis)
   if (summary.cache) {
-    void cacheSource(client).catch(() => {})
+    void submitRegistryEntry(client).catch(() => {})
   }
   return { id }
 }
@@ -210,7 +210,7 @@ export async function getApi(id: string): Promise<ClientApi> {
   )
   rememberSpecMeta(row.id, client)
   if (row.cache !== false) {
-    void cacheSource(client).catch(() => {})
+    void submitRegistryEntry(client).catch(() => {})
   }
 
   return {

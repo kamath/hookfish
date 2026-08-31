@@ -65,79 +65,79 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
-const cachedObjectSchema = z.record(z.string(), z.any())
+const registryObjectSchema = z.record(z.string(), z.any())
 
-export const cachedSourceKindSchema = z.enum(['openapi', 'mcp'])
+export const registryEntryKindSchema = z.enum(['openapi', 'mcp'])
 
-export const cachedSourceMetadataSchema = z
+export const registryEntryMetadataSchema = z
   .object({
-    kind: cachedSourceKindSchema,
+    kind: registryEntryKindSchema,
     title: z.string(),
     version: z.string().optional(),
     description: z.string().optional(),
-    executables: z.array(cachedObjectSchema),
-    groups: z.array(cachedObjectSchema),
-    labels: cachedObjectSchema,
+    executables: z.array(registryObjectSchema),
+    groups: z.array(registryObjectSchema),
+    labels: registryObjectSchema,
     adapterData: z.any().optional(),
   })
-  .openapi('CachedSourceMetadata')
+  .openapi('RegistryEntryMetadata')
 
-export const cacheSourceRequestSchema = z
+export const registrySubmissionSchema = z
   .object({
     cache: z.boolean().default(true),
-    metadata: cachedSourceMetadataSchema,
+    metadata: registryEntryMetadataSchema,
   })
-  .openapi('CacheSourceRequest')
+  .openapi('RegistrySubmission')
 
-export const cachedSourceParamsSchema = z.object({
+export const registryEntryParamsSchema = z.object({
   sourceId: z.string().trim().min(1),
 })
 
-export const cachedSourceQuerySchema = z.object({
-  kind: cachedSourceKindSchema.optional(),
+export const registryQuerySchema = z.object({
+  kind: registryEntryKindSchema.optional(),
 })
 
-export const cachedSourceSchema = z
+export const registryEntrySchema = z
   .object({
     sourceId: z.string(),
     createdByUserId: z.string().nullable(),
-    metadata: cachedSourceMetadataSchema,
+    metadata: registryEntryMetadataSchema,
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .openapi('CachedSource')
+  .openapi('RegistryEntry')
 
-export const cachedSourceSummarySchema = z
+export const registryEntrySummarySchema = z
   .object({
     sourceId: z.string(),
     createdByUserId: z.string().nullable(),
-    kind: cachedSourceKindSchema,
+    kind: registryEntryKindSchema,
     title: z.string(),
     version: z.string().optional(),
     executableCount: z.number().int().nonnegative(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .openapi('CachedSourceSummary')
+  .openapi('RegistryEntrySummary')
 
-export const cachedSourceResponseSchema = z
+export const registryEntryResponseSchema = z
   .object({
-    cachedSource: cachedSourceSchema,
+    entry: registryEntrySchema,
   })
-  .openapi('CachedSourceResponse')
+  .openapi('RegistryEntryResponse')
 
-export const cacheSourceResponseSchema = z
+export const registrySubmissionResponseSchema = z
   .object({
     cached: z.boolean(),
-    cachedSource: cachedSourceSummarySchema.nullable(),
+    entry: registryEntrySummarySchema.nullable(),
   })
-  .openapi('CacheSourceResponse')
+  .openapi('RegistrySubmissionResponse')
 
-export const cachedSourceListSchema = z
+export const registryListSchema = z
   .object({
-    cachedSources: z.array(cachedSourceSummarySchema),
+    entries: z.array(registryEntrySummarySchema),
   })
-  .openapi('CachedSourceList')
+  .openapi('RegistryList')
 
 export const signUpRequestSchema = z
   .object({
@@ -212,7 +212,7 @@ export const okSchema = z
 
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
-export type CachedSourceMetadata = z.infer<typeof cachedSourceMetadataSchema>
+export type RegistryEntryMetadata = z.infer<typeof registryEntryMetadataSchema>
 export type SignUpRequest = z.infer<typeof signUpRequestSchema>
 export type SignInRequest = z.infer<typeof signInRequestSchema>
 export type AuthUser = z.infer<typeof authUserSchema>

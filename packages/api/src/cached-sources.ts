@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm'
 import { cachedSource } from './db/schema'
 import { resolveDatabase, type DatabaseInput } from './db/types'
-import type { CachedSourceMetadata } from './schemas'
+import type { RegistryEntryMetadata } from './schemas'
 
 type CachedSourceRecord = {
   sourceId: string
@@ -12,7 +12,7 @@ type CachedSourceRecord = {
 }
 
 function metadataFor(record: CachedSourceRecord) {
-  return record.metadata as CachedSourceMetadata
+  return record.metadata as RegistryEntryMetadata
 }
 
 function serializeCachedSource(record: CachedSourceRecord) {
@@ -51,7 +51,7 @@ export async function putCachedSource(
   input: {
     userId: string
     sourceId: string
-    metadata: CachedSourceMetadata
+    metadata: RegistryEntryMetadata
   },
 ) {
   const db = await resolveDatabase(database)

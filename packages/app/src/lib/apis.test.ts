@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { cachedSourceMetadata } from './apis'
+import { registryEntryMetadata } from './apis'
 import type { ClientApi } from './client-types'
 
 const source: ClientApi = {
@@ -44,7 +44,7 @@ const source: ClientApi = {
   credentialsStored: true,
 }
 
-const cached = cachedSourceMetadata(source)
+const cached = registryEntryMetadata(source)
 assert.equal(cached?.kind, 'mcp')
 assert.equal(cached?.executables[0]?.name, 'read_widget')
 assert.deepEqual(cached?.adapterData, {
