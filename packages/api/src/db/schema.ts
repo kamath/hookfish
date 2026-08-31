@@ -4,7 +4,6 @@ import {
   index,
   jsonb,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -88,18 +87,18 @@ export const apiKey = pgTable(
 export const cachedSource = pgTable(
   'cached_source',
   {
-    sourceId: text('source_id').notNull(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    sourceId: text('source_id').primaryKey(),
+    createdByUserId: text('created_by_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
     kind: text('kind').notNull(),
     metadata: jsonb('metadata').notNull(),
     createdAt: timestampColumn('created_at').defaultNow().notNull(),
     updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.userId, table.sourceId] }),
-    index('cached_source_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+    index('cached_source_created_by_user_id_idx').on(table.createdByUserId),
+    index('cached_source_updated_at_idx').on(table.updatedAt),
   ],
 )
 
@@ -142,8 +141,8 @@ export const apiKeyRelations = relations(apiKey, ({ one }) => ({
 }))
 
 export const cachedSourceRelations = relations(cachedSource, ({ one }) => ({
-  user: one(user, {
-    fields: [cachedSource.userId],
+  createdBy: one(user, {
+    fields: [cachedSource.createdByUserId],
     references: [user.id],
   }),
 }))

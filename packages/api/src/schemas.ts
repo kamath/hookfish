@@ -82,6 +82,13 @@ export const cachedSourceMetadataSchema = z
   })
   .openapi('CachedSourceMetadata')
 
+export const cacheSourceRequestSchema = z
+  .object({
+    cache: z.boolean().default(true),
+    metadata: cachedSourceMetadataSchema,
+  })
+  .openapi('CacheSourceRequest')
+
 export const cachedSourceParamsSchema = z.object({
   sourceId: z.string().trim().min(1),
 })
@@ -93,7 +100,7 @@ export const cachedSourceQuerySchema = z.object({
 export const cachedSourceSchema = z
   .object({
     sourceId: z.string(),
-    userId: z.string(),
+    createdByUserId: z.string().nullable(),
     metadata: cachedSourceMetadataSchema,
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
@@ -105,6 +112,13 @@ export const cachedSourceResponseSchema = z
     cachedSource: cachedSourceSchema,
   })
   .openapi('CachedSourceResponse')
+
+export const cacheSourceResponseSchema = z
+  .object({
+    cached: z.boolean(),
+    cachedSource: cachedSourceSchema.nullable(),
+  })
+  .openapi('CacheSourceResponse')
 
 export const cachedSourceListSchema = z
   .object({

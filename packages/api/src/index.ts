@@ -10,6 +10,8 @@ export {
   apiKeySummarySchema,
   authSessionSchema,
   authUserSchema,
+  cacheSourceRequestSchema,
+  cacheSourceResponseSchema,
   cachedSourceKindSchema,
   cachedSourceListSchema,
   cachedSourceMetadataSchema,

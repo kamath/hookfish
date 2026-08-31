@@ -51,6 +51,7 @@ function sourceSummary(value: unknown): ApiSummary | undefined {
       sourceUrl,
       executableCount,
       createdAt: row.createdAt,
+      cache: row.cache !== false,
     }
   }
   return undefined
@@ -105,7 +106,7 @@ async function cacheSource(client: ClientApi) {
   }
   await getApiClient()['cached-sources'][':sourceId'].$put({
     param: { sourceId: client.id },
-    json: metadata,
+    json: { metadata },
   })
 }
 
@@ -152,6 +153,7 @@ export async function addApi(
   url: string,
   kind?: string,
   credentials: Record<string, string> = {},
+  options: { cache?: boolean } = {},
 ): Promise<{ id: string }> {
   const id = crypto.randomUUID()
   saveApiAuth(id, credentials)
@@ -180,6 +182,7 @@ export async function addApi(
     sourceUrl: url,
     executableCount: client.executables.length,
     createdAt: new Date().toISOString(),
+    cache: options.cache ?? true,
   }
   const provisionalIndex = apis.findIndex((api) => api.id === id)
   if (provisionalIndex === -1) {
@@ -188,7 +191,9 @@ export async function addApi(
     apis[provisionalIndex] = summary
   }
   saveApis(apis)
-  void cacheSource(client).catch(() => {})
+  if (summary.cache) {
+    void cacheSource(client).catch(() => {})
+  }
   return { id }
 }
 
@@ -204,7 +209,9 @@ export async function getApi(id: string): Promise<ClientApi> {
     readApiAuth(row.id),
   )
   rememberSpecMeta(row.id, client)
-  void cacheSource(client).catch(() => {})
+  if (row.cache !== false) {
+    void cacheSource(client).catch(() => {})
+  }
 
   return {
     ...client,

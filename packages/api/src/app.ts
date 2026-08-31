@@ -26,8 +26,9 @@ import type { RuntimeEnv } from './db/url'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
 import {
+  cacheSourceRequestSchema,
+  cacheSourceResponseSchema,
   cachedSourceListSchema,
-  cachedSourceMetadataSchema,
   cachedSourceParamsSchema,
   cachedSourceQuerySchema,
   cachedSourceResponseSchema,
@@ -160,15 +161,15 @@ const putCachedSourceRoute = createRoute({
       required: true,
       content: {
         'application/json': {
-          schema: cachedSourceMetadataSchema,
+          schema: cacheSourceRequestSchema,
         },
       },
     },
   },
   responses: {
     200: {
-      description: 'Cached source metadata',
-      content: { 'application/json': { schema: cachedSourceResponseSchema } },
+      description: 'Source cache result',
+      content: { 'application/json': { schema: cacheSourceResponseSchema } },
     },
     401: {
       description: 'Authentication is required',
@@ -410,15 +411,19 @@ export function createApi(options: CreateApiOptions = {}) {
       if (!authenticatedUser) {
         return c.json({ error: 'Authentication is required.' }, 401)
       }
+      const request = c.req.valid('json')
+      if (!request.cache) {
+        return c.json({ cached: false, cachedSource: null }, 200)
+      }
       if (!authOptions.database) {
         return c.json({ error: 'Source caching is not configured.' }, 503)
       }
       const cached = await putCachedSource(authOptions.database, {
         userId: authenticatedUser.id,
         sourceId: c.req.valid('param').sourceId,
-        metadata: c.req.valid('json'),
+        metadata: request.metadata,
       })
-      return c.json({ cachedSource: cached }, 200)
+      return c.json({ cached: true, cachedSource: cached }, 200)
     })
     .openapi(getCachedSourceRoute, async (c) => {
       const authenticatedUser = c.get('authUser')
@@ -430,7 +435,6 @@ export function createApi(options: CreateApiOptions = {}) {
       }
       const cached = await getCachedSource(
         authOptions.database,
-        authenticatedUser.id,
         c.req.valid('param').sourceId,
       )
       if (!cached) {
@@ -450,7 +454,6 @@ export function createApi(options: CreateApiOptions = {}) {
         {
           cachedSources: await listCachedSources(
             authOptions.database,
-            authenticatedUser.id,
             c.req.valid('query').kind,
           ),
         },
