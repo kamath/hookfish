@@ -44,6 +44,7 @@ export async function putCachedSource(
       sourceId: input.sourceId,
       kind: input.metadata.kind,
       metadata: input.metadata,
+      createdAt: now,
       updatedAt: now,
     })
     .onConflictDoUpdate({

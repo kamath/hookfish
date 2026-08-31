@@ -96,7 +96,9 @@ const get = await api.request('/cached-sources/source-1', {
   headers: { cookie: firstUser.cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(get.status, 200)
-assert.deepEqual(await get.json(), putBody)
+assert.deepEqual(await get.json(), {
+  cachedSource: putBody.cachedSource,
+})
 
 const updated = await api.request('/cached-sources/source-1', {
   method: 'PUT',
