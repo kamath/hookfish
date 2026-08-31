@@ -1,5 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
+import type { CachedSourceMetadata } from '@hookfish/api'
 import type { ApiSummary, ClientApi } from './client-types'
 import { getApi as getApiClient } from './api'
 import {
@@ -78,12 +79,15 @@ function cacheableAdapterData(value: unknown) {
   return cacheable
 }
 
-export function cachedSourceMetadata(client: ClientApi) {
-  if (client.kind !== 'openapi' && client.kind !== 'mcp') {
+export function cachedSourceMetadata(
+  client: ClientApi,
+): CachedSourceMetadata | undefined {
+  const kind = client.kind
+  if (kind !== 'openapi' && kind !== 'mcp') {
     return undefined
   }
   return {
-    kind: client.kind,
+    kind,
     title: client.title,
     version: client.version,
     description: client.description,
