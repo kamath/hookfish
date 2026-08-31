@@ -20,7 +20,7 @@ function render(created: boolean) {
       onExpirationChange() {},
       onSubmit() {},
       onCopy() {},
-      onReset() {},
+      onCancel() {},
     }),
   )
 }
@@ -34,15 +34,23 @@ assert.match(form, /value="30 days"/)
 assert.match(form, /value="90 days"/)
 assert.match(form, /value="never"/)
 assert.match(form, /Create API key/)
-assert.match(form, /data-oc-enter-submit="true"/)
+assert.match(form, /Cancel/)
+assert.match(form, /flex-1/)
+assert.doesNotMatch(form, /data-oc-enter-submit/)
 assert.doesNotMatch(form, /hf_secret/)
 
 const revealed = render(true)
 assert.match(revealed, /Copy this key now/)
 assert.match(revealed, /hf_secret/)
 assert.match(revealed, /Copy key/)
-assert.match(revealed, /Create another/)
+assert.match(revealed, /Back/)
+assert.doesNotMatch(revealed, /Create another/)
 assert.doesNotMatch(revealed, /Expiration/)
+
+const component = readFileSync(new URL('./create-api-key.tsx', import.meta.url), 'utf8')
+assert.match(component, /hotkey="Mod\+Enter"/)
+assert.match(component, /hotkey="Y"/)
+assert.match(component, /hotkey="Escape"/)
 
 const account = readFileSync(new URL('./account-menu.tsx', import.meta.url), 'utf8')
 assert.match(account, /to="\/api-keys"/)

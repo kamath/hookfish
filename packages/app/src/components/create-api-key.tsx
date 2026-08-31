@@ -1,8 +1,9 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import type { CreateApiKeyRequest } from '@hookfish/api'
-import { Kbd } from './hints'
+import { Kbd, KeyHints } from './hints'
 import { copyText } from '../lib/clipboard'
+import { usePaneActions } from '../lib/keys'
 import { createApiKey, type CreatedApiKey } from '../lib/session'
 import { labelClass, primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
@@ -19,9 +20,11 @@ const expirations: readonly ApiKeyExpiration[] = [
 export function CreateApiKeyForm({
   id = 'create-api-key-form',
   onCreatedChange,
+  onCancel,
 }: {
   id?: string
   onCreatedChange?: (created: boolean) => void
+  onCancel: () => void
 }) {
   const [name, setName] = useState('')
   const [expiration, setExpiration] = useState<ApiKeyExpiration>('30 days')
@@ -53,12 +56,14 @@ export function CreateApiKeyForm({
     setCopied(await copyText(created.key))
   }
 
-  function onReset() {
-    setCreated(null)
-    setCopied(false)
-    create.reset()
-    onCreatedChange?.(false)
-  }
+  usePaneActions('apiKeys', {
+    copy: {
+      callback: () => {
+        void onCopy()
+      },
+      enabled: Boolean(created),
+    },
+  })
 
   return (
     <CreateApiKeyView
@@ -81,7 +86,7 @@ export function CreateApiKeyForm({
       onCopy={() => {
         void onCopy()
       }}
-      onReset={onReset}
+      onCancel={onCancel}
     />
   )
 }
@@ -98,7 +103,7 @@ export function CreateApiKeyView({
   onExpirationChange,
   onSubmit,
   onCopy,
-  onReset,
+  onCancel,
 }: {
   id: string
   name: string
@@ -111,7 +116,7 @@ export function CreateApiKeyView({
   onExpirationChange: (value: ApiKeyExpiration) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onCopy: () => void
-  onReset: () => void
+  onCancel: () => void
 }) {
   if (created) {
     return (
@@ -120,11 +125,13 @@ export function CreateApiKeyView({
         <p className="mt-4 text-sm text-ink">{created.name}</p>
         <p className="mt-3 break-all bg-ink/5 px-3 py-2.5 font-mono text-sm text-ink">{created.key}</p>
         <div className="mt-6 flex gap-2">
-          <button type="button" className={primaryButtonClass} onClick={onCopy}>
-            {copied ? 'Copied' : 'Copy key'}
+          <button type="button" className={`${softButtonClass} flex-1`} onClick={onCancel}>
+            <Kbd hotkey="Escape" />
+            Back
           </button>
-          <button type="button" className={softButtonClass} onClick={onReset}>
-            Create another
+          <button type="button" className={`${primaryButtonClass} flex-1`} onClick={onCopy}>
+            <Kbd hotkey="Y" />
+            {copied ? 'Copied' : 'Copy key'}
           </button>
         </div>
       </div>
@@ -132,7 +139,7 @@ export function CreateApiKeyView({
   }
 
   return (
-    <form id={id} className="mt-8" data-oc-enter-submit="true" onSubmit={onSubmit}>
+    <form id={id} className="mt-8" onSubmit={onSubmit}>
       <Field label="Name">
         <input
           className={`${softInputClass} mt-1`}
@@ -157,9 +164,29 @@ export function CreateApiKeyView({
         </select>
       </Field>
       {error ? <p className="mt-4 text-sm text-warn">{error}</p> : null}
-      <button className={`${primaryButtonClass} mt-6 w-fit`} disabled={pending} type="submit">
-        {pending ? 'Creating…' : 'Create API key'}
-      </button>
+      <div className="mt-6 flex gap-2">
+        <button
+          type="button"
+          data-oc-nav="action"
+          className={`${softButtonClass} flex-1`}
+          onClick={onCancel}
+        >
+          <Kbd hotkey="Escape" />
+          Cancel
+        </button>
+        <button className={`${primaryButtonClass} flex-1`} disabled={pending} type="submit">
+          {pending ? (
+            'Creating…'
+          ) : (
+            <>
+              <KeyHints className="mr-2 inline-flex gap-1">
+                <Kbd hotkey="Mod+Enter" />
+              </KeyHints>
+              Create API key
+            </>
+          )}
+        </button>
+      </div>
     </form>
   )
 }
