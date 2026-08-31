@@ -17,6 +17,7 @@ export {
   cachedSourceMetadataSchema,
   cachedSourceResponseSchema,
   cachedSourceSchema,
+  cachedSourceSummarySchema,
   createApiKeyRequestSchema,
   createApiKeyResponseSchema,
   executeRequestSchema,

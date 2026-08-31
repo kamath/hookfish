@@ -3,19 +3,38 @@ import { cachedSource } from './db/schema'
 import { resolveDatabase, type DatabaseInput } from './db/types'
 import type { CachedSourceMetadata } from './schemas'
 
-function serializeCachedSource(record: {
+type CachedSourceRecord = {
   sourceId: string
   createdByUserId: string | null
   metadata: unknown
   createdAt: Date
   updatedAt: Date
-}) {
+}
+
+function metadataFor(record: CachedSourceRecord) {
+  return record.metadata as CachedSourceMetadata
+}
+
+function serializeCachedSource(record: CachedSourceRecord) {
   return {
     sourceId: record.sourceId,
     createdByUserId: record.createdByUserId,
-    metadata: record.metadata as CachedSourceMetadata,
+    metadata: metadataFor(record),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+  }
+}
+
+export function summarizeCachedSource(record: ReturnType<typeof serializeCachedSource>) {
+  return {
+    sourceId: record.sourceId,
+    createdByUserId: record.createdByUserId,
+    kind: record.metadata.kind,
+    title: record.metadata.title,
+    version: record.metadata.version,
+    executableCount: record.metadata.executables.length,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   }
 }
 
@@ -88,5 +107,5 @@ export async function listCachedSources(
     .where(kind ? eq(cachedSource.kind, kind) : undefined)
     .orderBy(desc(cachedSource.updatedAt))
 
-  return records.map(serializeCachedSource)
+  return records.map((record) => summarizeCachedSource(serializeCachedSource(record)))
 }

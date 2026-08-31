@@ -20,6 +20,7 @@ import {
   getCachedSource,
   listCachedSources,
   putCachedSource,
+  summarizeCachedSource,
 } from './cached-sources'
 import type { DatabaseInput } from './db/types'
 import type { RuntimeEnv } from './db/url'
@@ -423,7 +424,10 @@ export function createApi(options: CreateApiOptions = {}) {
         sourceId: c.req.valid('param').sourceId,
         metadata: request.metadata,
       })
-      return c.json({ cached: true, cachedSource: cached }, 200)
+      return c.json(
+        { cached: true, cachedSource: summarizeCachedSource(cached) },
+        200,
+      )
     })
     .openapi(getCachedSourceRoute, async (c) => {
       const authenticatedUser = c.get('authUser')

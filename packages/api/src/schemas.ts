@@ -107,6 +107,19 @@ export const cachedSourceSchema = z
   })
   .openapi('CachedSource')
 
+export const cachedSourceSummarySchema = z
+  .object({
+    sourceId: z.string(),
+    createdByUserId: z.string().nullable(),
+    kind: cachedSourceKindSchema,
+    title: z.string(),
+    version: z.string().optional(),
+    executableCount: z.number().int().nonnegative(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .openapi('CachedSourceSummary')
+
 export const cachedSourceResponseSchema = z
   .object({
     cachedSource: cachedSourceSchema,
@@ -116,13 +129,13 @@ export const cachedSourceResponseSchema = z
 export const cacheSourceResponseSchema = z
   .object({
     cached: z.boolean(),
-    cachedSource: cachedSourceSchema.nullable(),
+    cachedSource: cachedSourceSummarySchema.nullable(),
   })
   .openapi('CacheSourceResponse')
 
 export const cachedSourceListSchema = z
   .object({
-    cachedSources: z.array(cachedSourceSchema),
+    cachedSources: z.array(cachedSourceSummarySchema),
   })
   .openapi('CachedSourceList')
 
