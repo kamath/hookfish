@@ -1,10 +1,11 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { cachedSource } from './db/schema'
 import { resolveDatabase, type DatabaseInput } from './db/types'
 import type { RegistryEntryMetadata } from './schemas'
 
 type CachedSourceRecord = {
   sourceId: string
+  sourceUrl: string
   createdByUserId: string | null
   metadata: unknown
   createdAt: Date
@@ -18,6 +19,7 @@ function metadataFor(record: CachedSourceRecord) {
 function serializeCachedSource(record: CachedSourceRecord) {
   return {
     sourceId: record.sourceId,
+    sourceUrl: record.sourceUrl,
     createdByUserId: record.createdByUserId,
     metadata: metadataFor(record),
     createdAt: record.createdAt.toISOString(),
@@ -28,6 +30,7 @@ function serializeCachedSource(record: CachedSourceRecord) {
 export function summarizeCachedSource(record: ReturnType<typeof serializeCachedSource>) {
   return {
     sourceId: record.sourceId,
+    sourceUrl: record.sourceUrl,
     createdByUserId: record.createdByUserId,
     kind: record.metadata.kind,
     title: record.metadata.title,
@@ -40,46 +43,122 @@ export function summarizeCachedSource(record: ReturnType<typeof serializeCachedS
 
 const cachedSourceSelection = {
   sourceId: cachedSource.sourceId,
+  sourceUrl: cachedSource.sourceUrl,
   createdByUserId: cachedSource.createdByUserId,
   metadata: cachedSource.metadata,
   createdAt: cachedSource.createdAt,
   updatedAt: cachedSource.updatedAt,
 }
 
+export class RegistrySourceMismatchError extends Error {}
+export class RegistryUpdateForbiddenError extends Error {}
+
 export async function putCachedSource(
   database: DatabaseInput,
   input: {
     userId: string
     sourceId: string
+    sourceUrl: string
     metadata: RegistryEntryMetadata
   },
 ) {
   const db = await resolveDatabase(database)
   const now = new Date()
+  const [existingById] = await db
+    .select(cachedSourceSelection)
+    .from(cachedSource)
+    .where(eq(cachedSource.sourceId, input.sourceId))
+    .limit(1)
+
+  if (existingById) {
+    if (
+      existingById.sourceUrl !== input.sourceUrl ||
+      metadataFor(existingById).kind !== input.metadata.kind
+    ) {
+      throw new RegistrySourceMismatchError(
+        'This registry source ID is already bound to a different source.',
+      )
+    }
+    if (existingById.createdByUserId !== input.userId) {
+      throw new RegistryUpdateForbiddenError(
+        'Only the original submitter can update this registry entry.',
+      )
+    }
+    const [updated] = await db
+      .update(cachedSource)
+      .set({
+        kind: input.metadata.kind,
+        metadata: input.metadata,
+        updatedAt: now,
+      })
+      .where(eq(cachedSource.sourceId, input.sourceId))
+      .returning(cachedSourceSelection)
+    if (!updated) {
+      throw new Error('Could not update the registry entry.')
+    }
+    return serializeCachedSource(updated)
+  }
+
+  const [existingByUrl] = await db
+    .select(cachedSourceSelection)
+    .from(cachedSource)
+    .where(
+      and(
+        eq(cachedSource.kind, input.metadata.kind),
+        eq(cachedSource.sourceUrl, input.sourceUrl),
+      ),
+    )
+    .limit(1)
+  if (existingByUrl) {
+    return serializeCachedSource(existingByUrl)
+  }
+
   const [record] = await db
     .insert(cachedSource)
     .values({
       createdByUserId: input.userId,
       sourceId: input.sourceId,
+      sourceUrl: input.sourceUrl,
       kind: input.metadata.kind,
       metadata: input.metadata,
       createdAt: now,
       updatedAt: now,
     })
-    .onConflictDoUpdate({
-      target: cachedSource.sourceId,
-      set: {
-        kind: input.metadata.kind,
-        metadata: input.metadata,
-        updatedAt: now,
-      },
-    })
+    .onConflictDoNothing()
     .returning(cachedSourceSelection)
 
-  if (!record) {
-    throw new Error('Could not cache the source metadata.')
+  if (record) {
+    return serializeCachedSource(record)
   }
-  return serializeCachedSource(record)
+
+  const [conflictingId] = await db
+    .select(cachedSourceSelection)
+    .from(cachedSource)
+    .where(eq(cachedSource.sourceId, input.sourceId))
+    .limit(1)
+  if (
+    conflictingId &&
+    (conflictingId.sourceUrl !== input.sourceUrl ||
+      metadataFor(conflictingId).kind !== input.metadata.kind)
+  ) {
+    throw new RegistrySourceMismatchError(
+      'This registry source ID is already bound to a different source.',
+    )
+  }
+  const [concurrentEntry] = await db
+    .select(cachedSourceSelection)
+    .from(cachedSource)
+    .where(
+      and(
+        eq(cachedSource.kind, input.metadata.kind),
+        eq(cachedSource.sourceUrl, input.sourceUrl),
+      ),
+    )
+    .limit(1)
+  if (!concurrentEntry) {
+    throw new Error('Could not create the registry entry.')
+  }
+  return serializeCachedSource(concurrentEntry)
 }
 
 export async function getCachedSource(

@@ -88,6 +88,7 @@ export const cachedSource = pgTable(
   'cached_source',
   {
     sourceId: text('source_id').primaryKey(),
+    sourceUrl: text('source_url').notNull(),
     createdByUserId: text('created_by_user_id').references(() => user.id, {
       onDelete: 'set null',
     }),
@@ -97,6 +98,10 @@ export const cachedSource = pgTable(
     updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
   },
   (table) => [
+    uniqueIndex('cached_source_kind_source_url_uidx').on(
+      table.kind,
+      table.sourceUrl,
+    ),
     index('cached_source_created_by_user_id_idx').on(table.createdByUserId),
     index('cached_source_updated_at_idx').on(table.updatedAt),
   ],

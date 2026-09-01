@@ -48,11 +48,12 @@ const metadata = {
   groups: [{ name: 'Widgets' }],
   labels: { executable: 'Endpoint' },
 }
+const sourceUrl = 'https://api.example.com/openapi.json'
 
 const anonymousPut = await api.request('/registry/source-1', {
   method: 'PUT',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ metadata }),
+  body: JSON.stringify({ sourceUrl, metadata }),
 })
 assert.equal(anonymousPut.status, 401)
 
@@ -65,6 +66,7 @@ const put = await api.request('/registry/source-1', {
     'content-type': 'application/json',
   },
   body: JSON.stringify({
+    sourceUrl,
     metadata: {
       ...metadata,
       credentials: { bearer: 'must-not-be-cached' },
@@ -78,6 +80,7 @@ const putBody = (await put.json()) as {
   cached: boolean
   entry: {
     sourceId: string
+    sourceUrl: string
     createdByUserId: string
     kind: string
     title: string
@@ -89,6 +92,7 @@ const putBody = (await put.json()) as {
 }
 assert.equal(putBody.cached, true)
 assert.equal(putBody.entry.sourceId, 'source-1')
+assert.equal(putBody.entry.sourceUrl, sourceUrl)
 assert.equal(putBody.entry.createdByUserId, firstUser.userId)
 assert.equal(putBody.entry.kind, 'openapi')
 assert.equal(putBody.entry.title, 'Widget API')
@@ -104,6 +108,7 @@ assert.equal(get.status, 200)
 const getBody = (await get.json()) as {
   entry: {
     sourceId: string
+    sourceUrl: string
     createdByUserId: string
     metadata: typeof metadata
     createdAt: string
@@ -121,6 +126,7 @@ const updated = await api.request('/registry/source-1', {
     'content-type': 'application/json',
   },
   body: JSON.stringify({
+    sourceUrl,
     metadata: { ...metadata, title: 'Updated Widget API' },
   }),
 })
@@ -137,6 +143,7 @@ const mcpPut = await api.request('/registry/source-2', {
     'content-type': 'application/json',
   },
   body: JSON.stringify({
+    sourceUrl: 'https://mcp.example.com/rpc',
     metadata: {
       ...metadata,
       kind: 'mcp',
@@ -173,6 +180,51 @@ assert.equal(globalGet.status, 200)
 const globalBody = (await globalGet.json()) as typeof getBody
 assert.equal(globalBody.entry.createdByUserId, firstUser.userId)
 
+const mismatchedUrl = await api.request('/registry/source-1', {
+  method: 'PUT',
+  headers: {
+    cookie: firstUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    sourceUrl: 'https://other.example.com/openapi.json',
+    metadata,
+  }),
+})
+assert.equal(mismatchedUrl.status, 409)
+
+const forbiddenUpdate = await api.request('/registry/source-1', {
+  method: 'PUT',
+  headers: {
+    cookie: secondUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    sourceUrl,
+    metadata: { ...metadata, title: 'Spoofed title' },
+  }),
+})
+assert.equal(forbiddenUpdate.status, 403)
+
+const duplicateUrl = await api.request('/registry/other-source-id', {
+  method: 'PUT',
+  headers: {
+    cookie: secondUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    sourceUrl,
+    metadata: { ...metadata, title: 'Spoofed title' },
+  }),
+})
+assert.equal(duplicateUrl.status, 200)
+const duplicateBody = (await duplicateUrl.json()) as typeof putBody
+assert.equal(duplicateBody.entry.sourceId, 'source-1')
+assert.equal(duplicateBody.entry.title, 'Updated Widget API')
+
 const optedOut = await api.request('/registry/source-3', {
   method: 'PUT',
   headers: {
@@ -180,16 +232,36 @@ const optedOut = await api.request('/registry/source-3', {
     origin: 'http://hookfish.test',
     'content-type': 'application/json',
   },
-  body: JSON.stringify({ cache: false, metadata }),
+  body: JSON.stringify({ cache: false, sourceUrl, metadata }),
 })
 assert.equal(optedOut.status, 200)
 assert.deepEqual(await optedOut.json(), {
   cached: false,
   entry: null,
+  reason: 'cache-disabled',
 })
 const optedOutGet = await api.request('/registry/source-3', {
   headers: { cookie: firstUser.cookie, origin: 'http://hookfish.test' },
 })
 assert.equal(optedOutGet.status, 404)
+
+const localSubmission = await api.request('/registry/source-4', {
+  method: 'PUT',
+  headers: {
+    cookie: firstUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    sourceUrl: 'https://localhost:8787/mcp',
+    metadata,
+  }),
+})
+assert.equal(localSubmission.status, 200)
+assert.deepEqual(await localSubmission.json(), {
+  cached: false,
+  entry: null,
+  reason: 'non-public-url',
+})
 
 console.log('cached source tests passed')

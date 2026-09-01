@@ -29,6 +29,13 @@
       "when": 1788204603807,
       "tag": "0003_minor_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788225975349,
+      "tag": "0004_needy_penance",
+      "breakpoints": true
     }
   ]
 }

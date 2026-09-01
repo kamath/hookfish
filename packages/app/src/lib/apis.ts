@@ -106,7 +106,7 @@ async function submitRegistryEntry(client: ClientApi) {
   }
   await getApiClient().registry[':sourceId'].$put({
     param: { sourceId: client.id },
-    json: { metadata },
+    json: { sourceUrl: client.sourceUrl, metadata },
   })
 }
 

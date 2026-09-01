@@ -85,6 +85,7 @@ export const registryEntryMetadataSchema = z
 export const registrySubmissionSchema = z
   .object({
     cache: z.boolean().default(true),
+    sourceUrl: z.string().trim().min(1),
     metadata: registryEntryMetadataSchema,
   })
   .openapi('RegistrySubmission')
@@ -100,6 +101,7 @@ export const registryQuerySchema = z.object({
 export const registryEntrySchema = z
   .object({
     sourceId: z.string(),
+    sourceUrl: z.string(),
     createdByUserId: z.string().nullable(),
     metadata: registryEntryMetadataSchema,
     createdAt: z.iso.datetime(),
@@ -110,6 +112,7 @@ export const registryEntrySchema = z
 export const registryEntrySummarySchema = z
   .object({
     sourceId: z.string(),
+    sourceUrl: z.string(),
     createdByUserId: z.string().nullable(),
     kind: registryEntryKindSchema,
     title: z.string(),
@@ -130,6 +133,15 @@ export const registrySubmissionResponseSchema = z
   .object({
     cached: z.boolean(),
     entry: registryEntrySummarySchema.nullable(),
+    reason: z
+      .enum([
+        'cache-disabled',
+        'invalid-url',
+        'non-https-url',
+        'non-public-url',
+        'credential-bearing-url',
+      ])
+      .optional(),
   })
   .openapi('RegistrySubmissionResponse')
 
