@@ -143,9 +143,10 @@ export async function putCachedSource(
         'Only the original submitter can update this registry entry.',
       )
     }
-    if (input.force) {
-      assertCanForceRefresh(existingById.updatedAt, now.getTime())
+    if (!input.force) {
+      return serializeCachedSource(existingById)
     }
+    assertCanForceRefresh(existingById.updatedAt, now.getTime())
     const [updated] = await db
       .update(cachedSource)
       .set({

@@ -17,7 +17,7 @@ import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
 import { apiAuthStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
-import { listApis, refreshApi } from '../lib/apis'
+import { listApis, refreshApi, sourceCredentialsStored } from '../lib/apis'
 import type {
   Executable,
   ExecutableGroup,
@@ -41,7 +41,7 @@ import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '
 import { useSourceToolbar } from '../lib/toolbar'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
-import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
+import { closeMcpConnection } from '../lib/mcp/client'
 import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
 
 type Search = {
@@ -158,9 +158,12 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     mutationFn: async (value: Record<string, unknown>) => {
       saveApiAuth(apiId, fieldsFromForm(value))
     },
-    onSuccess: async () => {
-      const next = await refreshApi(apiId)
-      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
+    onSuccess: () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current
+          ? { ...current, credentialsStored: sourceCredentialsStored(apiId) }
+          : current,
+      )
     },
   })
 
@@ -170,9 +173,12 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       clearMcpOAuth(apiId)
       await closeMcpConnection(apiId)
     },
-    onSuccess: async () => {
-      const next = await refreshApi(apiId)
-      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
+    onSuccess: () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current
+          ? { ...current, credentialsStored: sourceCredentialsStored(apiId) }
+          : current,
+      )
     },
   })
   const [authDismissed, setAuthDismissed] = useState(false)
@@ -306,17 +312,6 @@ function ApiWorkbench({
   useEffect(() => {
     activate(routePane, 'command')
   }, [api.id, routePane])
-
-  useEffect(() => {
-    if (api.kind !== 'mcp') {
-      return
-    }
-    return subscribeMcpChanges(api.id, () => {
-      void refreshApi(api.id).then((next) => {
-        queryClient.setQueryData(apiQueryOptions(api.id).queryKey, next)
-      })
-    })
-  }, [api.id, api.kind, queryClient])
 
   useEffect(() => {
     const routeFilter = search.q ?? ''
@@ -578,7 +573,7 @@ function ApiWorkbench({
   }
 
   const refreshSource = useMutation({
-    mutationFn: () => refreshApi(api.id, { force: true, updatedAt: api.updatedAt }),
+    mutationFn: () => refreshApi(api.id, { updatedAt: api.updatedAt }),
     onSuccess: (next) => {
       queryClient.setQueryData(apiQueryOptions(api.id).queryKey, next)
       void queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })

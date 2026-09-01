@@ -146,7 +146,7 @@ export function sourceFromRegistryEntry(
     credentialSchema: entry.metadata.credentialSchema as JsonSchema | undefined,
     credentialUiSchema: entry.metadata.credentialUiSchema as FormUiSchema | undefined,
     credentialsRequired: entry.metadata.credentialsRequired,
-    credentialsStored: apiAuthStored(row.id) || hasMcpOAuthTokens(row.id),
+    credentialsStored: sourceCredentialsStored(row.id),
     updatedAt: entry.updatedAt,
   }
 }
@@ -234,7 +234,7 @@ function requireApiRow(id: string) {
 function hydrateLiveApi(id: string, client: ClientApi, updatedAt?: string): ClientApi {
   return {
     ...client,
-    credentialsStored: apiAuthStored(id) || hasMcpOAuthTokens(id),
+    credentialsStored: sourceCredentialsStored(id),
     updatedAt: updatedAt ?? new Date().toISOString(),
   }
 }
@@ -260,6 +260,10 @@ async function loadLiveApi(
   const next = hydrateLiveApi(row.id, client, updatedAt)
   rememberSpecMeta(row.id, next, next.updatedAt)
   return next
+}
+
+export function sourceCredentialsStored(id: string) {
+  return apiAuthStored(id) || hasMcpOAuthTokens(id)
 }
 
 export function listApis(): ApiSummary[] {
@@ -337,6 +341,7 @@ export async function addApi(
 
 export async function getApi(id: string): Promise<ClientApi> {
   const row = requireApiRow(id)
+  // Cached listings are served until the user refreshes. Age is not a TTL.
   if (row.cache !== false) {
     const cached = await readRegistryEntry(row.id)
     if (cached) {
@@ -350,16 +355,14 @@ export async function getApi(id: string): Promise<ClientApi> {
 
 export async function refreshApi(
   id: string,
-  options?: { force?: boolean; updatedAt?: string; now?: number },
+  options?: { updatedAt?: string; now?: number },
 ): Promise<ClientApi> {
   const row = requireApiRow(id)
-  if (options?.force) {
-    const updatedAt =
-      options.updatedAt ??
-      (row.cache !== false ? (await readRegistryEntry(row.id))?.entry.updatedAt : undefined)
-    assertCanForceRefresh(updatedAt, options.now)
-  }
-  return loadLiveApi(row, { force: options?.force })
+  const updatedAt =
+    options?.updatedAt ??
+    (row.cache !== false ? (await readRegistryEntry(row.id))?.entry.updatedAt : undefined)
+  assertCanForceRefresh(updatedAt, options?.now)
+  return loadLiveApi(row, { force: true })
 }
 
 export function removeApi(id: string) {

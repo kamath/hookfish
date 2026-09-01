@@ -81,6 +81,10 @@ assert.equal(hydrated.executables[0]?.name, 'read_widget')
 assert.equal(hydrated.updatedAt, '2026-03-01T15:45:00.000Z')
 assert.deepEqual(hydrated.targets, [source.sourceUrl])
 assert.equal(hydrated.credentialsStored, false)
+assert.ok(
+  Date.parse(hydrated.updatedAt ?? '') < Date.now() - SOURCE_REFRESH_MIN_INTERVAL_MS,
+  'stale registry entries stay readable without revalidation',
+)
 
 const now = Date.parse('2026-03-01T15:45:30.000Z')
 assert.equal(sourceRefreshWaitMs('2026-03-01T15:45:00.000Z', now), 30_000)

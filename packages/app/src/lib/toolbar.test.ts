@@ -32,6 +32,8 @@ const page = readFileSync(
 assert.match(page, /useSourceToolbar/)
 assert.match(page, /refreshApi/)
 assert.match(page, /updatedAt: api.updatedAt/)
+assert.match(page, /sourceCredentialsStored/)
+assert.doesNotMatch(page, /subscribeMcpChanges/)
 assert.doesNotMatch(page, /Brand compact/)
 assert.doesNotMatch(page, /Clear credentials/)
 assert.doesNotMatch(page, /Clear auth/)
