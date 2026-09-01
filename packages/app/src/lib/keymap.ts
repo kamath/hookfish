@@ -161,6 +161,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'nextTab', hotkey: 'Tab', label: 'next' },
       { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous' },
       { id: 'input', hotkey: 'Enter', label: 'input' },
+      { id: 'refresh', hotkey: 'R', label: 'refresh' },
       { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       {
         id: 'clearAuth',
@@ -237,6 +238,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'manyServers',
       },
       { id: 'output', hotkey: 'O', label: 'output', flag: 'hasResult' },
+      { id: 'refresh', hotkey: 'R', label: 'refresh' },
       { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
@@ -268,6 +270,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         flag: 'canToggleChildren',
       },
       { id: 'parent', hotkey: 'Escape', label: 'input' },
+      { id: 'refresh', hotkey: 'R', label: 'refresh' },
       { id: 'trace', hotkey: 'T', label: 'trace', flag: 'hasTrace' },
     ],
   },
@@ -279,6 +282,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous rpc' },
       { id: 'expand', hotkey: 'Enter', label: 'expand' },
       { id: 'trace', hotkey: 'T', label: 'close' },
+      { id: 'refresh', hotkey: 'R', label: 'refresh' },
       {
         id: 'clearAuth',
         hotkey: 'Mod+Backspace',

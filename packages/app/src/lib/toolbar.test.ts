@@ -9,6 +9,9 @@ assert.equal(store.get(sourceToolbarAtom), null, 'toolbar starts empty off a sou
 const root = readFileSync(new URL('../app.tsx', import.meta.url), 'utf8')
 const toolbar = root.slice(root.indexOf('function AppToolbar'), root.indexOf('function TrashIcon'))
 assert.match(toolbar, /useSourceToolbarValue/)
+assert.match(toolbar, /Last updated at/)
+assert.match(toolbar, /Refresh/)
+assert.match(toolbar, /hotkey="R"/)
 assert.match(toolbar, /Clear auth/)
 assert.match(toolbar, /Mod\+Backspace/)
 assert.match(toolbar, /AccountMenu/)
@@ -27,6 +30,8 @@ const page = readFileSync(
   'utf8',
 )
 assert.match(page, /useSourceToolbar/)
+assert.match(page, /refreshApi/)
+assert.match(page, /updatedAt: api.updatedAt/)
 assert.doesNotMatch(page, /Brand compact/)
 assert.doesNotMatch(page, /Clear credentials/)
 assert.doesNotMatch(page, /Clear auth/)

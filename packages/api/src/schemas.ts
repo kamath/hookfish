@@ -79,12 +79,16 @@ export const registryEntryMetadataSchema = z
     groups: z.array(registryObjectSchema),
     labels: registryObjectSchema,
     adapterData: z.any().optional(),
+    credentialSchema: registryObjectSchema.optional(),
+    credentialUiSchema: registryObjectSchema.optional(),
+    credentialsRequired: z.boolean().optional(),
   })
   .openapi('RegistryEntryMetadata')
 
 export const registrySubmissionSchema = z
   .object({
     cache: z.boolean().default(true),
+    force: z.boolean().optional(),
     sourceUrl: z.string().trim().min(1),
     metadata: registryEntryMetadataSchema,
   })

@@ -17,14 +17,15 @@ import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
 import { apiAuthStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
-import { listApis } from '../lib/apis'
+import { listApis, refreshApi } from '../lib/apis'
 import type {
   Executable,
   ExecutableGroup,
   ExecutableSource,
   JsonSchema,
 } from '../lib/client-types'
-import { apiQueryOptions } from '../lib/queries'
+import { apiQueryOptions, apisQueryOptions } from '../lib/queries'
+import { sourceRefreshWaitMs } from '../lib/source-refresh'
 import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
@@ -158,9 +159,8 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       saveApiAuth(apiId, fieldsFromForm(value))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(apiId).queryKey,
-      })
+      const next = await refreshApi(apiId)
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
     },
   })
 
@@ -171,9 +171,8 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       await closeMcpConnection(apiId)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(apiId).queryKey,
-      })
+      const next = await refreshApi(apiId)
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
     },
   })
   const [authDismissed, setAuthDismissed] = useState(false)
@@ -313,8 +312,8 @@ function ApiWorkbench({
       return
     }
     return subscribeMcpChanges(api.id, () => {
-      void queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(api.id).queryKey,
+      void refreshApi(api.id).then((next) => {
+        queryClient.setQueryData(apiQueryOptions(api.id).queryKey, next)
       })
     })
   }, [api.id, api.kind, queryClient])
@@ -578,6 +577,27 @@ function ApiWorkbench({
     }
   }
 
+  const refreshSource = useMutation({
+    mutationFn: () => refreshApi(api.id, { force: true, updatedAt: api.updatedAt }),
+    onSuccess: (next) => {
+      queryClient.setQueryData(apiQueryOptions(api.id).queryKey, next)
+      void queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+    },
+  })
+  const [refreshBlocked, setRefreshBlocked] = useState(
+    () => sourceRefreshWaitMs(api.updatedAt) > 0,
+  )
+  useEffect(() => {
+    const wait = sourceRefreshWaitMs(api.updatedAt)
+    if (wait <= 0) {
+      setRefreshBlocked(false)
+      return
+    }
+    setRefreshBlocked(true)
+    const timer = window.setTimeout(() => setRefreshBlocked(false), wait)
+    return () => window.clearTimeout(timer)
+  }, [api.updatedAt])
+
   const hasTrace = api.kind === 'mcp'
   usePaneFlags('routes', {
     manyServers,
@@ -615,6 +635,11 @@ function ApiWorkbench({
     trace: () => {
       openTrace()
     },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
+    },
   })
 
   usePaneActions('input', {
@@ -628,11 +653,21 @@ function ApiWorkbench({
     trace: () => {
       openTrace()
     },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
+    },
   })
 
   usePaneActions('response', {
     trace: () => {
       openTrace()
+    },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
     },
   })
 
@@ -642,6 +677,11 @@ function ApiWorkbench({
     },
     trace: () => {
       stepBack()
+    },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
     },
   })
 
@@ -714,6 +754,13 @@ function ApiWorkbench({
 
   useSourceToolbar({
     title: api.title,
+    updatedAt: api.updatedAt,
+    onRefresh: async () => {
+      await refreshSource.mutateAsync()
+    },
+    refreshPending: refreshSource.isPending,
+    refreshDisabled: refreshBlocked,
+    refreshError: refreshSource.error,
     onClearAuth,
     authPending,
     backLabel,

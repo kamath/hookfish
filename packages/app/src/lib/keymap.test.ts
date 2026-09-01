@@ -171,6 +171,9 @@ assert.equal(
 assert.equal(isEscapeLike(keyEvent('Enter')), false, 'Enter is not escape-like')
 
 for (const pane of ['routes', 'input', 'response', 'trace'] as const) {
+  const refresh = paneConfig[pane].bindings.find((binding) => binding.id === 'refresh')
+  assert.ok(refresh, `${pane} has refresh`)
+  assert.equal(refresh.hotkey, 'R', `${pane} refresh is R`)
   const clearAuth = paneConfig[pane].bindings.find((binding) => binding.id === 'clearAuth')
   assert.ok(clearAuth, `${pane} has clearAuth`)
   assert.equal(clearAuth.hotkey, 'Mod+Backspace', `${pane} clearAuth is Mod+Backspace`)

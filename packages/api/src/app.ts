@@ -20,6 +20,7 @@ import {
   getCachedSource,
   listCachedSources,
   putCachedSource,
+  RegistryRefreshTooSoonError,
   RegistrySourceMismatchError,
   RegistryUpdateForbiddenError,
   summarizeCachedSource,
@@ -185,6 +186,10 @@ const putRegistryEntryRoute = createRoute({
     },
     409: {
       description: 'The source ID is bound to a different URL or source type',
+      content: { 'application/json': { schema: errorSchema } },
+    },
+    429: {
+      description: 'A force refresh was requested less than a minute after the last update',
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
@@ -446,6 +451,7 @@ export function createApi(options: CreateApiOptions = {}) {
           sourceId: c.req.valid('param').sourceId,
           sourceUrl: eligibleUrl.sourceUrl,
           metadata: request.metadata,
+          force: request.force,
         })
         return c.json(
           { cached: true, entry: summarizeCachedSource(cached) },
@@ -457,6 +463,9 @@ export function createApi(options: CreateApiOptions = {}) {
         }
         if (error instanceof RegistrySourceMismatchError) {
           return c.json({ error: error.message }, 409)
+        }
+        if (error instanceof RegistryRefreshTooSoonError) {
+          return c.json({ error: error.message }, 429)
         }
         throw error
       }

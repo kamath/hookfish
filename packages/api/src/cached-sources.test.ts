@@ -3,7 +3,23 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createApi } from './app'
+import {
+  SOURCE_REFRESH_COOLDOWN_MESSAGE,
+  SOURCE_REFRESH_MIN_INTERVAL_MS,
+  assertCanForceRefresh,
+  sourceRefreshWaitMs,
+} from './cached-sources'
 import { createPgliteDb } from './db/pglite'
+
+const now = Date.parse('2026-03-01T15:45:30.000Z')
+assert.equal(SOURCE_REFRESH_MIN_INTERVAL_MS, 60_000)
+assert.equal(sourceRefreshWaitMs('2026-03-01T15:45:00.000Z', now), 30_000)
+assert.throws(
+  () => assertCanForceRefresh('2026-03-01T15:45:00.000Z', now),
+  (error) =>
+    error instanceof Error && error.message === SOURCE_REFRESH_COOLDOWN_MESSAGE,
+)
+assert.doesNotThrow(() => assertCanForceRefresh('2026-03-01T15:44:00.000Z', now))
 
 const dataDir = mkdtempSync(join(tmpdir(), 'hookfish-source-cache-'))
 const api = createApi({ database: createPgliteDb(dataDir) })
@@ -135,6 +151,42 @@ const updatedBody = (await updated.json()) as typeof putBody
 assert.equal(updatedBody.entry.createdAt, putBody.entry.createdAt)
 assert.ok(updatedBody.entry.updatedAt >= putBody.entry.updatedAt)
 
+const forceTooSoon = await api.request('/registry/source-1', {
+  method: 'PUT',
+  headers: {
+    cookie: firstUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    force: true,
+    sourceUrl,
+    metadata: { ...metadata, title: 'Forced Widget API' },
+  }),
+})
+assert.equal(forceTooSoon.status, 429)
+assert.deepEqual(await forceTooSoon.json(), {
+  error: 'Wait a minute before refreshing again.',
+})
+
+const quietUpdate = await api.request('/registry/source-1', {
+  method: 'PUT',
+  headers: {
+    cookie: firstUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    sourceUrl,
+    metadata: { ...metadata, title: 'Quiet Widget API' },
+  }),
+})
+assert.equal(quietUpdate.status, 200)
+assert.equal(
+  ((await quietUpdate.json()) as typeof putBody).entry.title,
+  'Quiet Widget API',
+)
+
 const mcpPut = await api.request('/registry/source-2', {
   method: 'PUT',
   headers: {
@@ -168,7 +220,7 @@ assert.deepEqual(
   openApiListBody.entries.map((source) => source.sourceId),
   ['source-1'],
 )
-assert.equal(openApiListBody.entries[0]?.title, 'Updated Widget API')
+assert.equal(openApiListBody.entries[0]?.title, 'Quiet Widget API')
 assert.equal(openApiListBody.entries[0]?.executableCount, 1)
 assert.equal('metadata' in (openApiListBody.entries[0] ?? {}), false)
 
@@ -223,7 +275,7 @@ const duplicateUrl = await api.request('/registry/other-source-id', {
 assert.equal(duplicateUrl.status, 200)
 const duplicateBody = (await duplicateUrl.json()) as typeof putBody
 assert.equal(duplicateBody.entry.sourceId, 'source-1')
-assert.equal(duplicateBody.entry.title, 'Updated Widget API')
+assert.equal(duplicateBody.entry.title, 'Quiet Widget API')
 
 const optedOut = await api.request('/registry/source-3', {
   method: 'PUT',

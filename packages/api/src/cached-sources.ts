@@ -50,8 +50,51 @@ const cachedSourceSelection = {
   updatedAt: cachedSource.updatedAt,
 }
 
+export const SOURCE_REFRESH_MIN_INTERVAL_MS = 60_000
+export const SOURCE_REFRESH_COOLDOWN_MESSAGE =
+  'Wait a minute before refreshing again.'
+
 export class RegistrySourceMismatchError extends Error {}
 export class RegistryUpdateForbiddenError extends Error {}
+export class RegistryRefreshTooSoonError extends Error {
+  readonly retryAfterMs: number
+  readonly updatedAt: string
+
+  constructor(retryAfterMs: number, updatedAt: string) {
+    super(SOURCE_REFRESH_COOLDOWN_MESSAGE)
+    this.name = 'RegistryRefreshTooSoonError'
+    this.retryAfterMs = retryAfterMs
+    this.updatedAt = updatedAt
+  }
+}
+
+export function sourceRefreshWaitMs(
+  updatedAt: Date | string | undefined,
+  now = Date.now(),
+) {
+  if (!updatedAt) {
+    return 0
+  }
+  const then =
+    updatedAt instanceof Date ? updatedAt.getTime() : Date.parse(updatedAt)
+  if (Number.isNaN(then)) {
+    return 0
+  }
+  return Math.max(0, then + SOURCE_REFRESH_MIN_INTERVAL_MS - now)
+}
+
+export function assertCanForceRefresh(
+  updatedAt: Date | string | undefined,
+  now = Date.now(),
+) {
+  const wait = sourceRefreshWaitMs(updatedAt, now)
+  if (wait > 0 && updatedAt) {
+    throw new RegistryRefreshTooSoonError(
+      wait,
+      updatedAt instanceof Date ? updatedAt.toISOString() : updatedAt,
+    )
+  }
+}
 
 export async function putCachedSource(
   database: DatabaseInput,
@@ -60,10 +103,12 @@ export async function putCachedSource(
     sourceId: string
     sourceUrl: string
     metadata: RegistryEntryMetadata
+    force?: boolean
+    now?: Date
   },
 ) {
   const db = await resolveDatabase(database)
-  const now = new Date()
+  const now = input.now ?? new Date()
   const findConflicts = async (): Promise<CachedSourceRecord[]> =>
     db
       .select(cachedSourceSelection)
@@ -97,6 +142,9 @@ export async function putCachedSource(
       throw new RegistryUpdateForbiddenError(
         'Only the original submitter can update this registry entry.',
       )
+    }
+    if (input.force) {
+      assertCanForceRefresh(existingById.updatedAt, now.getTime())
     }
     const [updated] = await db
       .update(cachedSource)
