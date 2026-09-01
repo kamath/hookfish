@@ -41,8 +41,14 @@ import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '
 import { useSourceToolbar } from '../lib/toolbar'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
-import { closeMcpConnection } from '../lib/mcp/client'
-import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+import { closeMcpConnection, getMcpConnection } from '../lib/mcp/client'
+import {
+  clearMcpOAuth,
+  clearPendingMcpAuthorization,
+  isMcpOAuthCallback,
+  pendingMcpAuthorizationUrl,
+  takeMcpOAuthReturnUrl,
+} from '../lib/mcp/oauth'
 
 type Search = {
   q?: string
@@ -161,6 +167,38 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     },
   })
 
+  const completeMcpAuth = useMutation({
+    mutationFn: async (source: ExecutableSource) => {
+      await getMcpConnection(source.id, source.sourceUrl)
+      return takeMcpOAuthReturnUrl(source.id)
+    },
+    onSuccess: (returnUrl) => {
+      if (returnUrl) {
+        window.location.replace(returnUrl)
+        return
+      }
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current ? { ...current, credentialsStored: true } : current,
+      )
+    },
+  })
+
+  useEffect(() => {
+    const source = apiQuery.data
+    if (
+      source?.kind === 'mcp' &&
+      isMcpOAuthCallback() &&
+      !completeMcpAuth.isPending &&
+      !completeMcpAuth.isError
+    ) {
+      completeMcpAuth.mutate(source)
+    }
+  }, [
+    apiQuery.data,
+    completeMcpAuth.isError,
+    completeMcpAuth.isPending,
+  ])
+
   const saveAuth = useMutation({
     mutationFn: async (value: Record<string, unknown>) => {
       saveApiAuth(apiId, fieldsFromForm(value))
@@ -212,6 +250,18 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       <AuthCallback />
     ) : (
       <QueryStatus label="Reading the source…" onBack={goHome} />
+    )
+  }
+
+  if (isMcpOAuthCallback()) {
+    return completeMcpAuth.isError ? (
+      <QueryStatus
+        error={completeMcpAuth.error}
+        onRetry={() => completeMcpAuth.reset()}
+        onBack={goHome}
+      />
+    ) : (
+      <AuthCallback />
     )
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { atom, useAtom } from 'jotai'
+import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import type { IChangeEvent } from '@rjsf/core'
@@ -21,8 +22,13 @@ import { blurActive, submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, enterCommand, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
+import {
+  clearPendingMcpAuthorization,
+  pendingMcpAuthorization,
+} from '../lib/mcp/oauth'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
+import { AuthRedirect, finishPendingAuthRedirect } from './auth-status'
 import { Kbd, KeyHints } from './hints'
 import { PaneBackButton } from './pane-back-button'
 import { ResponsePane } from './response-pane'
@@ -160,6 +166,12 @@ export function ExecutableClient({
   const pending = invoke.isPending
   const error = invoke.isError ? queryErrorMessage(invoke.error, 'The execution failed.') : null
   const showAuth = Boolean(askingAuth && needsAuth && authSchema)
+  const pendingAuthorization =
+    invoke.isError && UnauthorizedError.isInstance(invoke.error)
+      ? pendingMcpAuthorization()
+      : undefined
+  const oauthAuthorization =
+    pendingAuthorization?.sourceId === api.id ? pendingAuthorization : undefined
 
   useEffect(() => {
     setAskingAuth(false)
@@ -236,6 +248,7 @@ export function ExecutableClient({
   usePaneFlags('input', {
     hasResult: Boolean(result),
     hasExport: !inspecting && Boolean(adapter.exportSnippet && api.labels.export),
+    hasAuthRedirect: Boolean(oauthAuthorization),
   })
   usePaneActions('input', {
     send: {
@@ -253,6 +266,8 @@ export function ExecutableClient({
       void copyExport()
     },
     inspect: toggleInspect,
+    continueAuth: finishPendingAuthRedirect,
+    cancelAuth: cancelOAuthAuthorization,
   })
   usePaneActions('response', {
     parent: () => showInput(false),
@@ -262,6 +277,11 @@ export function ExecutableClient({
     formDataRef.current = next
     writeOperationFormData(api.id, operation.id, next)
     setFormData(next)
+  }
+
+  function cancelOAuthAuthorization() {
+    clearPendingMcpAuthorization()
+    invoke.reset()
   }
 
   function onSubmit({ formData: next }: IChangeEvent) {
@@ -503,6 +523,14 @@ export function ExecutableClient({
               hasOutputSchema: Boolean(operation.outputSchema),
             }}
           />
+        ) : oauthAuthorization ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6">
+            <AuthRedirect
+              href={oauthAuthorization.url}
+              name={api.title}
+              onCancel={cancelOAuthAuthorization}
+            />
+          </div>
         ) : (
         <div className="px-3 py-3 md:px-4">
           <SwissForm

@@ -18,6 +18,7 @@ type OAuthStore = {
   state?: string
   discovery?: OAuthDiscoveryState
   resourceUrl?: string
+  returnUrl?: string
 }
 
 const CALLBACK_PARAMETERS = [
@@ -127,6 +128,19 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   }
 
   redirectToAuthorization(authorizationUrl: URL) {
+    const currentUrl = new URL(window.location.href)
+    const sourcePath = `/apis/${encodeURIComponent(this.sourceId)}/`
+    const returnUrl =
+      currentUrl.origin === window.location.origin &&
+      currentUrl.pathname.startsWith(sourcePath)
+        ? currentUrl.toString()
+        : undefined
+    if (returnUrl) {
+      writeStore(this.sourceId, {
+        ...readStore(this.sourceId),
+        returnUrl,
+      })
+    }
     pendingAuthorization = {
       sourceId: this.sourceId,
       url: authorizationUrl.toString(),
@@ -249,7 +263,19 @@ export function pendingMcpAuthorizationUrl() {
 }
 
 export function clearPendingMcpAuthorization() {
+  const sourceId = pendingAuthorization?.sourceId
   pendingAuthorization = undefined
+  if (sourceId) {
+    takeMcpOAuthReturnUrl(sourceId)
+  }
+}
+
+export function takeMcpOAuthReturnUrl(sourceId: string) {
+  const store = readStore(sourceId)
+  const returnUrl = store.returnUrl
+  delete store.returnUrl
+  writeStore(sourceId, store)
+  return returnUrl
 }
 
 export function isMcpOAuthCallback(href = window.location.href) {

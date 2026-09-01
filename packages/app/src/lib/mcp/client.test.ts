@@ -7,10 +7,12 @@ import { mcpExecutableAdapter } from './executable'
 import {
   BrowserMcpOAuthProvider,
   clearMcpOAuth,
+  clearPendingMcpAuthorization,
   hasMcpOAuthTokens,
   isMcpOAuthCallback,
   mcpOAuthClientMetadata,
   pendingMcpAuthorizationUrl,
+  takeMcpOAuthReturnUrl,
 } from './oauth'
 import { loadMcpSource } from './source'
 
@@ -533,6 +535,16 @@ assert.deepEqual(mcpOAuthClientMetadata('oauth-source', 'https://hookfish.test')
   grant_types: ['authorization_code', 'refresh_token'],
   token_endpoint_auth_method: 'none',
 })
+
+location.href =
+  'http://hookfish.test/apis/oauth-source/input/tool%3Asearch?q=widgets'
+oauth.redirectToAuthorization(new URL('https://auth.test/authorize'))
+assert.equal(
+  takeMcpOAuthReturnUrl('oauth-source'),
+  'http://hookfish.test/apis/oauth-source/input/tool%3Asearch?q=widgets',
+  'tool OAuth returns to the same input tab',
+)
+clearPendingMcpAuthorization()
 clearMcpOAuth('oauth-source')
 assert.equal(hasMcpOAuthTokens('oauth-source'), false)
 
