@@ -65,6 +65,92 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
+const registryObjectSchema = z.record(z.string(), z.any())
+
+export const registryEntryKindSchema = z.enum(['openapi', 'mcp'])
+
+export const registryEntryMetadataSchema = z
+  .object({
+    kind: registryEntryKindSchema,
+    title: z.string(),
+    version: z.string().optional(),
+    description: z.string().optional(),
+    executables: z.array(registryObjectSchema),
+    groups: z.array(registryObjectSchema),
+    labels: registryObjectSchema,
+    adapterData: z.any().optional(),
+  })
+  .openapi('RegistryEntryMetadata')
+
+export const registrySubmissionSchema = z
+  .object({
+    cache: z.boolean().default(true),
+    sourceUrl: z.string().trim().min(1),
+    metadata: registryEntryMetadataSchema,
+  })
+  .openapi('RegistrySubmission')
+
+export const registryEntryParamsSchema = z.object({
+  sourceId: z.string().trim().min(1),
+})
+
+export const registryQuerySchema = z.object({
+  kind: registryEntryKindSchema.optional(),
+})
+
+export const registryEntrySchema = z
+  .object({
+    sourceId: z.string(),
+    sourceUrl: z.string(),
+    createdByUserId: z.string().nullable(),
+    metadata: registryEntryMetadataSchema,
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .openapi('RegistryEntry')
+
+export const registryEntrySummarySchema = z
+  .object({
+    sourceId: z.string(),
+    sourceUrl: z.string(),
+    createdByUserId: z.string().nullable(),
+    kind: registryEntryKindSchema,
+    title: z.string(),
+    version: z.string().optional(),
+    executableCount: z.number().int().nonnegative(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .openapi('RegistryEntrySummary')
+
+export const registryEntryResponseSchema = z
+  .object({
+    entry: registryEntrySchema,
+  })
+  .openapi('RegistryEntryResponse')
+
+export const registrySubmissionResponseSchema = z
+  .object({
+    cached: z.boolean(),
+    entry: registryEntrySummarySchema.nullable(),
+    reason: z
+      .enum([
+        'cache-disabled',
+        'invalid-url',
+        'non-https-url',
+        'non-public-url',
+        'credential-bearing-url',
+      ])
+      .optional(),
+  })
+  .openapi('RegistrySubmissionResponse')
+
+export const registryListSchema = z
+  .object({
+    entries: z.array(registryEntrySummarySchema),
+  })
+  .openapi('RegistryList')
+
 export const signUpRequestSchema = z
   .object({
     name: z.string().trim().min(1),
@@ -138,6 +224,7 @@ export const okSchema = z
 
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
+export type RegistryEntryMetadata = z.infer<typeof registryEntryMetadataSchema>
 export type SignUpRequest = z.infer<typeof signUpRequestSchema>
 export type SignInRequest = z.infer<typeof signInRequestSchema>
 export type AuthUser = z.infer<typeof authUserSchema>

@@ -117,6 +117,7 @@ export type SourceSummary = {
   sourceUrl: string
   executableCount: number
   createdAt: string
+  cache?: boolean
 }
 
 export type ExecutionResult = {
