@@ -19,22 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1788197974726,
-      "tag": "0002_bent_gabe_jones",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1788204603807,
-      "tag": "0003_minor_raider",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1788225975349,
-      "tag": "0004_needy_penance",
+      "when": 1788226588521,
+      "tag": "0002_careless_rictor",
       "breakpoints": true
     }
   ]
