@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict'
-import { readOperationFormData, writeOperationFormData } from './operation-form-cache.ts'
+import {
+  readOperationFormData,
+  readOperationInspecting,
+  writeOperationFormData,
+  writeOperationInspecting,
+} from './operation-form-cache.ts'
 
 const session = new Map<string, string>()
 Object.defineProperty(globalThis, 'window', {
@@ -33,5 +38,10 @@ assert.deepEqual(
   readOperationFormData('api-after-oauth', 'tool:search'),
   { query: 'keep this after OAuth' },
 )
+
+assert.equal(readOperationInspecting(), true)
+writeOperationInspecting(false)
+assert.equal(readOperationInspecting(), false)
+assert.equal(session.get('oc:operation-view'), 'input')
 
 console.log('operation form cache ok')

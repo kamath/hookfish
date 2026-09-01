@@ -57,6 +57,7 @@ assert.match(operation, /UnauthorizedError\.isInstance\(invoke\.error\)/)
 assert.match(operation, /pendingAuthorization\?\.sourceId === api\.id/)
 assert.match(operation, /<AuthRedirect/)
 assert.match(operation, /clearPendingMcpAuthorization/)
+assert.match(operation, /writeOperationInspecting\(false\)/)
 
 const workbench = readFileSync(
   new URL('../pages/workbench.tsx', import.meta.url),

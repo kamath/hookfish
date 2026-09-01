@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { atom, useAtom } from 'jotai'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -21,7 +20,12 @@ import { validatorForSchema } from '../lib/form-validator'
 import { blurActive, submitForm } from '../lib/focus'
 import { usePaneActions, usePaneFlags } from '../lib/keys'
 import { activate, enterCommand, usePane } from '../lib/mode'
-import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
+import {
+  readOperationFormData,
+  readOperationInspecting,
+  writeOperationFormData,
+  writeOperationInspecting,
+} from '../lib/operation-form-cache'
 import {
   clearPendingMcpAuthorization,
   pendingMcpAuthorization,
@@ -35,7 +39,6 @@ import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
 const AUTH_NOTICE = 'This execution requires credentials.'
-const inspectRouteAtom = atom(true)
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
@@ -137,7 +140,7 @@ export function ExecutableClient({
   const formDataRef = useRef(formData)
   formDataRef.current = formData
   const pane = usePane()
-  const [inspecting, setInspecting] = useAtom(inspectRouteAtom)
+  const [inspecting, setInspecting] = useState(readOperationInspecting)
   const navigate = useNavigate()
   const adapter = executableAdapterFor(api)
   const invoke = useMutation({
@@ -172,6 +175,14 @@ export function ExecutableClient({
       : undefined
   const oauthAuthorization =
     pendingAuthorization?.sourceId === api.id ? pendingAuthorization : undefined
+
+  useEffect(() => {
+    if (!oauthAuthorization) {
+      return
+    }
+    writeOperationInspecting(false)
+    setInspecting(false)
+  }, [oauthAuthorization])
 
   useEffect(() => {
     setAskingAuth(false)
@@ -242,7 +253,11 @@ export function ExecutableClient({
   function toggleInspect() {
     blurActive()
     enterCommand()
-    setInspecting((current) => !current)
+    setInspecting((current) => {
+      const next = !current
+      writeOperationInspecting(next)
+      return next
+    })
   }
 
   usePaneFlags('input', {

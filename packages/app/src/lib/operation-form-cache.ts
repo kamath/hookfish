@@ -1,4 +1,5 @@
 const formDataByApi = new Map<string, Map<string, unknown>>()
+const operationViewStorageKey = 'oc:operation-view'
 
 function storageKey(apiId: string, operationId: string) {
   return `oc:operation-form:${encodeURIComponent(apiId)}:${encodeURIComponent(operationId)}`
@@ -58,5 +59,30 @@ export function writeOperationFormData(
     )
   } catch {
     // In-memory drafts still work when session storage is unavailable.
+  }
+}
+
+export function readOperationInspecting() {
+  if (typeof window === 'undefined') {
+    return true
+  }
+  try {
+    return window.sessionStorage.getItem(operationViewStorageKey) !== 'input'
+  } catch {
+    return true
+  }
+}
+
+export function writeOperationInspecting(inspecting: boolean) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.sessionStorage.setItem(
+      operationViewStorageKey,
+      inspecting ? 'metadata' : 'input',
+    )
+  } catch {
+    // Keep the current in-memory view when session storage is unavailable.
   }
 }
