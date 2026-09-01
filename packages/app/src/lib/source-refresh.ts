@@ -14,6 +14,22 @@ export function isSourceRefreshTooSoonError(
   return error instanceof Error && error.name === 'RegistryRefreshTooSoonError'
 }
 
+export const SOURCE_CACHE_MISSING_MESSAGE =
+  'This source is not cached. Refresh to load it.'
+
+export class SourceCacheMissingError extends Error {
+  constructor() {
+    super(SOURCE_CACHE_MISSING_MESSAGE)
+    this.name = 'SourceCacheMissingError'
+  }
+}
+
+export function isSourceCacheMissingError(
+  error: unknown,
+): error is SourceCacheMissingError {
+  return error instanceof Error && error.name === 'SourceCacheMissingError'
+}
+
 export function formatSourceUpdatedAt(updatedAt: string) {
   const date = new Date(updatedAt)
   if (Number.isNaN(date.getTime())) {

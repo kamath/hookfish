@@ -26,6 +26,7 @@ import {
 } from './mcp/oauth'
 import {
   RegistryRefreshTooSoonError,
+  SourceCacheMissingError,
   assertCanForceRefresh,
   isSourceRefreshTooSoonError,
 } from './source-refresh'
@@ -261,17 +262,13 @@ async function loadLiveApi(
     row.id,
     readApiAuth(row.id),
   )
-  const updatedAt =
-    row.cache !== false
-      ? await submitRegistryEntry(client, options).catch((error) => {
-          // A manual refresh must rewrite the DB cache. Swallowing a failed
-          // PUT would leave the listing looking fresh while the registry stays stale.
-          if (options?.force || isSourceRefreshTooSoonError(error)) {
-            throw error
-          }
-          return undefined
-        })
-      : undefined
+  const updatedAt = await submitRegistryEntry(client, options).catch((error) => {
+    // Refresh is the only write path. A failed PUT must not look like success.
+    if (options?.force || isSourceRefreshTooSoonError(error)) {
+      throw error
+    }
+    return undefined
+  })
   const next = hydrateLiveApi(row.id, client, updatedAt)
   rememberSpecMeta(row.id, next, next.updatedAt)
   return next
@@ -306,7 +303,7 @@ export async function addApi(
   kind?: string,
   credentials: Record<string, string> = {},
   options: { cache?: boolean } = {},
-): Promise<{ id: string }> {
+): Promise<{ id: string; source: ClientApi }> {
   const id = crypto.randomUUID()
   saveApiAuth(id, credentials)
   let client: ClientApi
@@ -351,21 +348,24 @@ export async function addApi(
       rememberSpecMeta(id, client, cachedAt)
     }
   }
-  return { id }
+  const cached = summary.cache ? await readRegistryEntry(summary) : undefined
+  const source = cached
+    ? sourceFromRegistryEntry(summary, cached.entry)
+    : hydrateLiveApi(id, client, summary.updatedAt)
+  rememberSpecMeta(id, source, source.updatedAt)
+  return { id, source }
 }
 
 export async function getApi(id: string): Promise<ClientApi> {
   const row = requireApiRow(id)
-  // Cached listings are served until the user refreshes. Age is not a TTL.
-  if (row.cache !== false) {
-    const cached = await readRegistryEntry(row)
-    if (cached) {
-      const client = sourceFromRegistryEntry(row, cached.entry)
-      rememberSpecMeta(row.id, client, client.updatedAt)
-      return client
-    }
+  // Reads are cache-only. Upstream is fetched only by refreshApi / addApi.
+  const cached = await readRegistryEntry(row)
+  if (!cached) {
+    throw new SourceCacheMissingError()
   }
-  return loadLiveApi(row)
+  const client = sourceFromRegistryEntry(row, cached.entry)
+  rememberSpecMeta(row.id, client, client.updatedAt)
+  return client
 }
 
 export async function refreshApi(

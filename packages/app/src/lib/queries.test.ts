@@ -5,7 +5,10 @@ import {
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
 import { queryErrorMessage } from './queries.ts'
-import { RegistryRefreshTooSoonError } from './source-refresh.ts'
+import {
+  RegistryRefreshTooSoonError,
+  SourceCacheMissingError,
+} from './source-refresh.ts'
 
 assert.equal(queryErrorMessage(undefined, 'Could not load.'), 'Could not load.')
 assert.equal(
@@ -64,6 +67,11 @@ assert.equal(
     'Could not load.',
   ),
   'Wait a minute before refreshing again.',
+)
+
+assert.equal(
+  queryErrorMessage(new SourceCacheMissingError(), 'Could not load.'),
+  'This source is not cached. Refresh to load it.',
 )
 
 console.log('query error message sanitization ok')

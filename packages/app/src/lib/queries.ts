@@ -3,7 +3,10 @@ import { queryOptions } from '@tanstack/react-query'
 import { isNotFound } from '@tanstack/react-router'
 import { getApi, listApis } from './apis'
 import { getCarouselCatalog } from './catalog-data'
-import { isSourceRefreshTooSoonError } from './source-refresh'
+import {
+  isSourceCacheMissingError,
+  isSourceRefreshTooSoonError,
+} from './source-refresh'
 
 export const carouselQueryOptions = queryOptions({
   queryKey: ['carousel-catalog'],
@@ -26,7 +29,8 @@ export function apiQueryOptions(id: string) {
       if (
         isNotFound(error) ||
         UnauthorizedError.isInstance(error) ||
-        isSourceRefreshTooSoonError(error)
+        isSourceRefreshTooSoonError(error) ||
+        isSourceCacheMissingError(error)
       ) {
         return false
       }

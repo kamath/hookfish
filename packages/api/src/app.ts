@@ -204,7 +204,9 @@ const getRegistryEntryRoute = createRoute({
   method: 'get',
   path: '/registry/{sourceId}',
   tags: ['Registry'],
-  summary: 'Get an OpenAPI or MCP registry entry',
+  summary: 'Read a cached OpenAPI or MCP registry entry',
+  description:
+    'Returns the stored cached_source row. This never fetches the upstream source. To replace the cache, PUT with force: true.',
   request: {
     params: registryEntryParamsSchema,
     query: registryLookupQuerySchema,

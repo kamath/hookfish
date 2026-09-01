@@ -16,7 +16,7 @@ import {
 } from '../lib/catalog'
 import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
 import { blurActive } from '../lib/focus'
-import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
+import { apiQueryOptions, apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
 import { fetchSession } from '../lib/session'
@@ -117,14 +117,17 @@ export function HomePage() {
       )
       return existing ? { id: existing.id } : addApi(sourceUrl, kind)
     },
-    onSuccess: async ({ id }) => {
+    onSuccess: async (result) => {
+      if ('source' in result && result.source) {
+        queryClient.setQueryData(apiQueryOptions(result.id).queryKey, result.source)
+      }
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
       setUrl('')
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
-        params: { apiId: id, pane: 'routes', operationId: undefined },
+        params: { apiId: result.id, pane: 'routes', operationId: undefined },
       })
     },
     onError: (error, variables) => {

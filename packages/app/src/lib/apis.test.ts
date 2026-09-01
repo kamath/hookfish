@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import { registryEntryMetadata, sourceFromRegistryEntry } from './apis'
 import type { ClientApi } from './client-types'
 import {
+  SOURCE_CACHE_MISSING_MESSAGE,
   SOURCE_REFRESH_COOLDOWN_MESSAGE,
   SOURCE_REFRESH_MIN_INTERVAL_MS,
+  SourceCacheMissingError,
   assertCanForceRefresh,
   sourceRefreshWaitMs,
 } from './source-refresh'
@@ -100,5 +102,6 @@ assert.throws(
     error instanceof Error && error.message === SOURCE_REFRESH_COOLDOWN_MESSAGE,
 )
 assert.doesNotThrow(() => assertCanForceRefresh('2026-03-01T15:44:00.000Z', now))
+assert.equal(new SourceCacheMissingError().message, SOURCE_CACHE_MISSING_MESSAGE)
 
 console.log('api cache tests passed')

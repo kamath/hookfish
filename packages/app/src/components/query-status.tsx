@@ -49,12 +49,14 @@ export function QueryStatus({
   label,
   error,
   onRetry,
+  retryLabel = 'Try again',
   onBack,
   children,
 }: {
   label?: string
   error?: unknown
   onRetry?: () => void
+  retryLabel?: string
   onBack?: () => void
   children?: ReactNode
 }) {
@@ -103,7 +105,7 @@ export function QueryStatus({
           <div className="mt-3 flex flex-wrap justify-center gap-2">
             {failed && onRetry ? (
               <button type="button" className={primaryButtonClass} onClick={onRetry}>
-                Try again
+                {retryLabel}
                 <Kbd hotkey="Enter" persistent />
               </button>
             ) : null}

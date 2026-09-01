@@ -25,7 +25,7 @@ import type {
   JsonSchema,
 } from '../lib/client-types'
 import { apiQueryOptions, apisQueryOptions } from '../lib/queries'
-import { sourceRefreshWaitMs } from '../lib/source-refresh'
+import { isSourceCacheMissingError, sourceRefreshWaitMs } from '../lib/source-refresh'
 import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
@@ -154,6 +154,13 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     void navigate({ to: '/' })
   }
 
+  const refreshMissingCache = useMutation({
+    mutationFn: () => refreshApi(apiId),
+    onSuccess: (next) => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
+    },
+  })
+
   const saveAuth = useMutation({
     mutationFn: async (value: Record<string, unknown>) => {
       saveApiAuth(apiId, fieldsFromForm(value))
@@ -231,10 +238,16 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
         </StatusPane>
       )
     }
+    const missingCache = isSourceCacheMissingError(apiQuery.error)
     return (
       <QueryStatus
-        error={apiQuery.error}
+        error={refreshMissingCache.error ?? apiQuery.error}
+        retryLabel={missingCache ? 'Refresh' : 'Try again'}
         onRetry={() => {
+          if (missingCache) {
+            void refreshMissingCache.mutateAsync()
+            return
+          }
           setAuthDismissed(false)
           void apiQuery.refetch()
         }}
