@@ -87,6 +87,11 @@ assert.ok(
   Date.parse(hydrated.updatedAt ?? '') < Date.now() - SOURCE_REFRESH_MIN_INTERVAL_MS,
   'stale registry entries stay readable without revalidation',
 )
+assert.notEqual(
+  hydrated.updatedAt,
+  new Date().toISOString(),
+  'opening a cached source keeps the registry updatedAt',
+)
 
 const now = Date.parse('2026-03-01T15:45:30.000Z')
 assert.equal(sourceRefreshWaitMs('2026-03-01T15:45:00.000Z', now), 30_000)

@@ -7,7 +7,7 @@ import { Brand } from '../components/brand'
 import { GITHUB_REPO_URL } from '../components/github-link'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
-import { addApi, removeApi } from '../lib/apis'
+import { addApi, getApi, removeApi } from '../lib/apis'
 import {
   carouselActionId,
   catalogSourceUrl,
@@ -115,7 +115,9 @@ export function HomePage() {
           sourceUrlKey(api.sourceUrl) === key &&
           (kind === undefined || api.kind === kind),
       )
-      return existing ? { id: existing.id } : addApi(sourceUrl, kind)
+      return existing
+        ? { id: existing.id, source: await getApi(existing.id) }
+        : addApi(sourceUrl, kind)
     },
     onSuccess: async (result) => {
       if ('source' in result && result.source) {

@@ -25,6 +25,7 @@ export function apiQueryOptions(id: string) {
     queryKey: ['api', id],
     queryFn: () => getApi(id),
     staleTime: Infinity,
+    refetchOnMount: 'always',
     retry: (count, error) => {
       if (
         isNotFound(error) ||

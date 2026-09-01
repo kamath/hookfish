@@ -30,6 +30,7 @@ import {
   assertCanForceRefresh,
   isSourceRefreshTooSoonError,
 } from './source-refresh'
+import { sourceUrlKey } from './catalog'
 import { readApisJson, writeApisJson } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
@@ -154,6 +155,8 @@ export function sourceFromRegistryEntry(
 
 type RegistryEntryResponse = {
   entry: {
+    sourceId?: string
+    sourceUrl?: string
     metadata: RegistryEntryMetadata
     updatedAt: string
   }
@@ -249,8 +252,64 @@ function hydrateLiveApi(id: string, client: ClientApi, updatedAt?: string): Clie
   return {
     ...client,
     credentialsStored: sourceCredentialsStored(id),
-    updatedAt: updatedAt ?? new Date().toISOString(),
+    updatedAt,
   }
+}
+
+async function lookupCachedSource(
+  sourceUrl: string,
+  kind?: string,
+) {
+  const kinds =
+    kind === 'openapi' || kind === 'mcp'
+      ? [kind]
+      : (['openapi', 'mcp'] as const)
+  for (const next of kinds) {
+    const cached = await readRegistryEntry({
+      id: 'lookup',
+      kind: next,
+      sourceUrl,
+    })
+    if (cached) {
+      return { kind: next, entry: cached.entry }
+    }
+  }
+  return undefined
+}
+
+function rememberCachedSummary(
+  row: {
+    id: string
+    kind: string
+    sourceUrl: string
+    cache?: boolean
+  },
+  source: ClientApi,
+) {
+  const apis = loadApis()
+  const createdAt = new Date().toISOString()
+  const summary: ApiSummary = {
+    id: row.id,
+    kind: source.kind,
+    title: source.title,
+    version: source.version,
+    sourceUrl: row.sourceUrl,
+    executableCount: source.executables.length,
+    createdAt,
+    updatedAt: source.updatedAt,
+    cache: row.cache ?? true,
+  }
+  const index = apis.findIndex((api) => api.id === row.id)
+  if (index === -1) {
+    apis.unshift(summary)
+  } else {
+    const current = apis[index]
+    apis[index] = {
+      ...summary,
+      createdAt: current?.createdAt ?? createdAt,
+    }
+  }
+  saveApis(apis)
 }
 
 async function loadLiveApi(
@@ -304,7 +363,28 @@ export async function addApi(
   credentials: Record<string, string> = {},
   options: { cache?: boolean } = {},
 ): Promise<{ id: string; source: ClientApi }> {
-  const id = crypto.randomUUID()
+  const existing = loadApis().find(
+    (api) =>
+      sourceUrlKey(api.sourceUrl) === sourceUrlKey(url) &&
+      (kind === undefined || api.kind === kind),
+  )
+  const cached =
+    options.cache === false ? undefined : await lookupCachedSource(url, kind)
+  if (cached) {
+    const id = existing?.id ?? cached.entry.sourceId ?? crypto.randomUUID()
+    saveApiAuth(id, credentials)
+    const row = {
+      id,
+      kind: cached.kind,
+      sourceUrl: url,
+      cache: options.cache ?? true,
+    }
+    const source = sourceFromRegistryEntry(row, cached.entry)
+    rememberCachedSummary(row, source)
+    return { id, source }
+  }
+
+  const id = existing?.id ?? crypto.randomUUID()
   saveApiAuth(id, credentials)
   let client: ClientApi
   try {
@@ -322,7 +402,7 @@ export async function addApi(
     await closeMcpConnection(id)
     throw error
   }
-  const updatedAt = new Date().toISOString()
+  const createdAt = new Date().toISOString()
   const apis = loadApis()
   const summary = {
     id,
@@ -331,27 +411,27 @@ export async function addApi(
     version: client.version,
     sourceUrl: url,
     executableCount: client.executables.length,
-    createdAt: updatedAt,
-    updatedAt,
+    createdAt,
     cache: options.cache ?? true,
   }
   const provisionalIndex = apis.findIndex((api) => api.id === id)
   if (provisionalIndex === -1) {
     apis.unshift(summary)
   } else {
-    apis[provisionalIndex] = summary
-  }
-  saveApis(apis)
-  if (summary.cache) {
-    const cachedAt = await submitRegistryEntry(client).catch(() => undefined)
-    if (cachedAt) {
-      rememberSpecMeta(id, client, cachedAt)
+    apis[provisionalIndex] = {
+      ...summary,
+      createdAt: apis[provisionalIndex]?.createdAt ?? createdAt,
     }
   }
-  const cached = summary.cache ? await readRegistryEntry(summary) : undefined
-  const source = cached
-    ? sourceFromRegistryEntry(summary, cached.entry)
-    : hydrateLiveApi(id, client, summary.updatedAt)
+  saveApis(apis)
+  const cachedAt =
+    summary.cache === false
+      ? undefined
+      : await submitRegistryEntry(client).catch(() => undefined)
+  const written = summary.cache === false ? undefined : await readRegistryEntry(summary)
+  const source = written
+    ? sourceFromRegistryEntry(summary, written.entry)
+    : hydrateLiveApi(id, client, cachedAt)
   rememberSpecMeta(id, source, source.updatedAt)
   return { id, source }
 }

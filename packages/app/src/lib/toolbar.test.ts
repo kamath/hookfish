@@ -36,8 +36,17 @@ assert.match(page, /sourceCredentialsStored/)
 
 const apis = readFileSync(new URL('./apis.ts', import.meta.url), 'utf8')
 assert.match(apis, /throw new SourceCacheMissingError/)
+assert.match(apis, /lookupCachedSource/)
+assert.match(apis, /source\.updatedAt/)
+assert.doesNotMatch(
+  apis.slice(apis.indexOf('export async function addApi'), apis.indexOf('export async function getApi')),
+  /updatedAt = new Date/,
+)
 assert.match(apis, /loadLiveApi\(row, \{ force: true \}\)/)
 assert.doesNotMatch(apis, /return loadLiveApi\(row\)/)
+
+const queries = readFileSync(new URL('./queries.ts', import.meta.url), 'utf8')
+assert.match(queries, /refetchOnMount:\s*'always'/)
 assert.match(apis, /Sign in to refresh the cache/)
 assert.match(apis, /options\?\.force \|\| isSourceRefreshTooSoonError/)
 assert.match(page, /isSourceCacheMissingError/)
