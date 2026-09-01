@@ -7,7 +7,7 @@ import { Brand } from '../components/brand'
 import { GITHUB_REPO_URL } from '../components/github-link'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
-import { addApi, removeApi } from '../lib/apis'
+import { addApi, getApi, removeApi } from '../lib/apis'
 import {
   carouselActionId,
   catalogSourceUrl,
@@ -16,7 +16,7 @@ import {
 } from '../lib/catalog'
 import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
 import { blurActive } from '../lib/focus'
-import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
+import { apiQueryOptions, apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
 import { fetchSession } from '../lib/session'
@@ -115,16 +115,21 @@ export function HomePage() {
           sourceUrlKey(api.sourceUrl) === key &&
           (kind === undefined || api.kind === kind),
       )
-      return existing ? { id: existing.id } : addApi(sourceUrl, kind)
+      return existing
+        ? { id: existing.id, source: await getApi(existing.id) }
+        : addApi(sourceUrl, kind)
     },
-    onSuccess: async ({ id }) => {
+    onSuccess: async (result) => {
+      if ('source' in result && result.source) {
+        queryClient.setQueryData(apiQueryOptions(result.id).queryKey, result.source)
+      }
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
       setUrl('')
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
-        params: { apiId: id, pane: 'routes', operationId: undefined },
+        params: { apiId: result.id, pane: 'routes', operationId: undefined },
       })
     },
     onError: (error, variables) => {

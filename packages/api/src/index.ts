@@ -21,6 +21,7 @@ export {
   registryEntrySchema,
   registryEntrySummarySchema,
   registryListSchema,
+  registryLookupQuerySchema,
   registryQuerySchema,
   registrySubmissionResponseSchema,
   registrySubmissionSchema,
@@ -46,3 +47,10 @@ export { isOwnOpenApiUrl } from './self'
 export { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
 export { registryUrl } from './registry-url'
 export type { RegistryUrlRejection, RegistryUrlResult } from './registry-url'
+export {
+  SOURCE_REFRESH_COOLDOWN_MESSAGE,
+  SOURCE_REFRESH_MIN_INTERVAL_MS,
+  RegistryRefreshTooSoonError,
+  assertCanForceRefresh,
+  sourceRefreshWaitMs,
+} from './cached-sources'

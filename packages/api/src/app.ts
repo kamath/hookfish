@@ -17,9 +17,10 @@ import {
 import { createApiKey, listApiKeys } from './api-keys'
 import { authBasePathForMount } from './auth-path'
 import {
-  getCachedSource,
+  findCachedSource,
   listCachedSources,
   putCachedSource,
+  RegistryRefreshTooSoonError,
   RegistrySourceMismatchError,
   RegistryUpdateForbiddenError,
   summarizeCachedSource,
@@ -39,6 +40,7 @@ import {
   registryEntryParamsSchema,
   registryEntryResponseSchema,
   registryListSchema,
+  registryLookupQuerySchema,
   registryQuerySchema,
   registrySubmissionResponseSchema,
   registrySubmissionSchema,
@@ -187,6 +189,10 @@ const putRegistryEntryRoute = createRoute({
       description: 'The source ID is bound to a different URL or source type',
       content: { 'application/json': { schema: errorSchema } },
     },
+    429: {
+      description: 'A force refresh was requested less than a minute after the last update',
+      content: { 'application/json': { schema: errorSchema } },
+    },
     503: {
       description: 'The registry is not configured',
       content: { 'application/json': { schema: errorSchema } },
@@ -198,10 +204,12 @@ const getRegistryEntryRoute = createRoute({
   method: 'get',
   path: '/registry/{sourceId}',
   tags: ['Registry'],
-  summary: 'Get an OpenAPI or MCP registry entry',
-  security: [{ Bearer: [] }],
+  summary: 'Read a cached OpenAPI or MCP registry entry',
+  description:
+    'Returns the stored cached_source row. This never fetches the upstream source. To replace the cache, PUT with force: true.',
   request: {
     params: registryEntryParamsSchema,
+    query: registryLookupQuerySchema,
   },
   responses: {
     200: {
@@ -210,10 +218,6 @@ const getRegistryEntryRoute = createRoute({
     },
     404: {
       description: 'No registry entry exists for this source',
-      content: { 'application/json': { schema: errorSchema } },
-    },
-    401: {
-      description: 'Authentication is required',
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
@@ -446,6 +450,7 @@ export function createApi(options: CreateApiOptions = {}) {
           sourceId: c.req.valid('param').sourceId,
           sourceUrl: eligibleUrl.sourceUrl,
           metadata: request.metadata,
+          force: request.force,
         })
         return c.json(
           { cached: true, entry: summarizeCachedSource(cached) },
@@ -458,21 +463,23 @@ export function createApi(options: CreateApiOptions = {}) {
         if (error instanceof RegistrySourceMismatchError) {
           return c.json({ error: error.message }, 409)
         }
+        if (error instanceof RegistryRefreshTooSoonError) {
+          return c.json({ error: error.message }, 429)
+        }
         throw error
       }
     })
     .openapi(getRegistryEntryRoute, async (c) => {
-      const authenticatedUser = c.get('authUser')
-      if (!authenticatedUser) {
-        return c.json({ error: 'Authentication is required.' }, 401)
-      }
       if (!authOptions.database) {
         return c.json({ error: 'The registry is not configured.' }, 503)
       }
-      const cached = await getCachedSource(
-        authOptions.database,
-        c.req.valid('param').sourceId,
-      )
+      const lookup = c.req.valid('query')
+      const eligibleUrl = lookup.sourceUrl ? registryUrl(lookup.sourceUrl) : undefined
+      const cached = await findCachedSource(authOptions.database, {
+        sourceId: c.req.valid('param').sourceId,
+        sourceUrl: eligibleUrl?.eligible ? eligibleUrl.sourceUrl : lookup.sourceUrl,
+        kind: lookup.kind,
+      })
       if (!cached) {
         return c.json({ error: 'Registry entry not found.' }, 404)
       }

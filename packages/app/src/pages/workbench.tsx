@@ -17,14 +17,15 @@ import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
 import { apiAuthStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
-import { listApis } from '../lib/apis'
+import { listApis, refreshApi, sourceCredentialsStored } from '../lib/apis'
 import type {
   Executable,
   ExecutableGroup,
   ExecutableSource,
   JsonSchema,
 } from '../lib/client-types'
-import { apiQueryOptions } from '../lib/queries'
+import { apiQueryOptions, apisQueryOptions } from '../lib/queries'
+import { isSourceCacheMissingError, sourceRefreshWaitMs } from '../lib/source-refresh'
 import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
@@ -40,8 +41,14 @@ import { activate, enterEdit, getPane, isInsertMode, usePane, type Pane } from '
 import { useSourceToolbar } from '../lib/toolbar'
 import { asRecord } from '../lib/build-request'
 import { inputClass } from '../lib/ui'
-import { closeMcpConnection, subscribeMcpChanges } from '../lib/mcp/client'
-import { clearMcpOAuth, clearPendingMcpAuthorization, isMcpOAuthCallback, pendingMcpAuthorizationUrl } from '../lib/mcp/oauth'
+import { closeMcpConnection, getMcpConnection } from '../lib/mcp/client'
+import {
+  clearMcpOAuth,
+  clearPendingMcpAuthorization,
+  isMcpOAuthCallback,
+  pendingMcpAuthorizationUrl,
+  takeMcpOAuthReturnUrl,
+} from '../lib/mcp/oauth'
 
 type Search = {
   q?: string
@@ -153,14 +160,55 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     void navigate({ to: '/' })
   }
 
+  const refreshMissingCache = useMutation({
+    mutationFn: () => refreshApi(apiId),
+    onSuccess: (next) => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, next)
+    },
+  })
+
+  const completeMcpAuth = useMutation({
+    mutationFn: async (source: ExecutableSource) => {
+      await getMcpConnection(source.id, source.sourceUrl)
+      return takeMcpOAuthReturnUrl(source.id)
+    },
+    onSuccess: (returnUrl) => {
+      if (returnUrl) {
+        window.location.replace(returnUrl)
+        return
+      }
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current ? { ...current, credentialsStored: true } : current,
+      )
+    },
+  })
+
+  useEffect(() => {
+    const source = apiQuery.data
+    if (
+      source?.kind === 'mcp' &&
+      isMcpOAuthCallback() &&
+      !completeMcpAuth.isPending &&
+      !completeMcpAuth.isError
+    ) {
+      completeMcpAuth.mutate(source)
+    }
+  }, [
+    apiQuery.data,
+    completeMcpAuth.isError,
+    completeMcpAuth.isPending,
+  ])
+
   const saveAuth = useMutation({
     mutationFn: async (value: Record<string, unknown>) => {
       saveApiAuth(apiId, fieldsFromForm(value))
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(apiId).queryKey,
-      })
+    onSuccess: () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current
+          ? { ...current, credentialsStored: sourceCredentialsStored(apiId) }
+          : current,
+      )
     },
   })
 
@@ -170,10 +218,12 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       clearMcpOAuth(apiId)
       await closeMcpConnection(apiId)
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(apiId).queryKey,
-      })
+    onSuccess: () => {
+      queryClient.setQueryData(apiQueryOptions(apiId).queryKey, (current) =>
+        current
+          ? { ...current, credentialsStored: sourceCredentialsStored(apiId) }
+          : current,
+      )
     },
   })
   const [authDismissed, setAuthDismissed] = useState(false)
@@ -203,6 +253,18 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     )
   }
 
+  if (isMcpOAuthCallback()) {
+    return completeMcpAuth.isError ? (
+      <QueryStatus
+        error={completeMcpAuth.error}
+        onRetry={() => completeMcpAuth.reset()}
+        onBack={goHome}
+      />
+    ) : (
+      <AuthCallback />
+    )
+  }
+
   if (apiQuery.isError) {
     if (isNotFound(apiQuery.error)) {
       throw notFound()
@@ -226,10 +288,16 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
         </StatusPane>
       )
     }
+    const missingCache = isSourceCacheMissingError(apiQuery.error)
     return (
       <QueryStatus
-        error={apiQuery.error}
+        error={refreshMissingCache.error ?? apiQuery.error}
+        retryLabel={missingCache ? 'Refresh' : 'Try again'}
         onRetry={() => {
+          if (missingCache) {
+            void refreshMissingCache.mutateAsync()
+            return
+          }
           setAuthDismissed(false)
           void apiQuery.refetch()
         }}
@@ -307,17 +375,6 @@ function ApiWorkbench({
   useEffect(() => {
     activate(routePane, 'command')
   }, [api.id, routePane])
-
-  useEffect(() => {
-    if (api.kind !== 'mcp') {
-      return
-    }
-    return subscribeMcpChanges(api.id, () => {
-      void queryClient.invalidateQueries({
-        queryKey: apiQueryOptions(api.id).queryKey,
-      })
-    })
-  }, [api.id, api.kind, queryClient])
 
   useEffect(() => {
     const routeFilter = search.q ?? ''
@@ -578,6 +635,27 @@ function ApiWorkbench({
     }
   }
 
+  const refreshSource = useMutation({
+    mutationFn: () => refreshApi(api.id, { updatedAt: api.updatedAt }),
+    onSuccess: (next) => {
+      queryClient.setQueryData(apiQueryOptions(api.id).queryKey, next)
+      void queryClient.invalidateQueries({ queryKey: apisQueryOptions.queryKey })
+    },
+  })
+  const [refreshBlocked, setRefreshBlocked] = useState(
+    () => sourceRefreshWaitMs(api.updatedAt) > 0,
+  )
+  useEffect(() => {
+    const wait = sourceRefreshWaitMs(api.updatedAt)
+    if (wait <= 0) {
+      setRefreshBlocked(false)
+      return
+    }
+    setRefreshBlocked(true)
+    const timer = window.setTimeout(() => setRefreshBlocked(false), wait)
+    return () => window.clearTimeout(timer)
+  }, [api.updatedAt])
+
   const hasTrace = api.kind === 'mcp'
   usePaneFlags('routes', {
     manyServers,
@@ -615,6 +693,11 @@ function ApiWorkbench({
     trace: () => {
       openTrace()
     },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
+    },
   })
 
   usePaneActions('input', {
@@ -628,11 +711,21 @@ function ApiWorkbench({
     trace: () => {
       openTrace()
     },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
+    },
   })
 
   usePaneActions('response', {
     trace: () => {
       openTrace()
+    },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
     },
   })
 
@@ -642,6 +735,11 @@ function ApiWorkbench({
     },
     trace: () => {
       stepBack()
+    },
+    refresh: () => {
+      if (!refreshSource.isPending) {
+        void refreshSource.mutateAsync()
+      }
     },
   })
 
@@ -714,6 +812,13 @@ function ApiWorkbench({
 
   useSourceToolbar({
     title: api.title,
+    updatedAt: api.updatedAt,
+    onRefresh: async () => {
+      await refreshSource.mutateAsync()
+    },
+    refreshPending: refreshSource.isPending,
+    refreshDisabled: refreshBlocked,
+    refreshError: refreshSource.error,
     onClearAuth,
     authPending,
     backLabel,

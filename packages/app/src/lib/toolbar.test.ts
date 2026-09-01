@@ -9,6 +9,9 @@ assert.equal(store.get(sourceToolbarAtom), null, 'toolbar starts empty off a sou
 const root = readFileSync(new URL('../app.tsx', import.meta.url), 'utf8')
 const toolbar = root.slice(root.indexOf('function AppToolbar'), root.indexOf('function TrashIcon'))
 assert.match(toolbar, /useSourceToolbarValue/)
+assert.match(toolbar, /Last updated at/)
+assert.match(toolbar, /Refresh/)
+assert.match(toolbar, /hotkey="R"/)
 assert.match(toolbar, /Clear auth/)
 assert.match(toolbar, /Mod\+Backspace/)
 assert.match(toolbar, /AccountMenu/)
@@ -27,6 +30,28 @@ const page = readFileSync(
   'utf8',
 )
 assert.match(page, /useSourceToolbar/)
+assert.match(page, /refreshApi/)
+assert.match(page, /updatedAt: api.updatedAt/)
+assert.match(page, /sourceCredentialsStored/)
+
+const apis = readFileSync(new URL('./apis.ts', import.meta.url), 'utf8')
+assert.match(apis, /throw new SourceCacheMissingError/)
+assert.match(apis, /lookupCachedSource/)
+assert.match(apis, /source\.updatedAt/)
+assert.doesNotMatch(
+  apis.slice(apis.indexOf('export async function addApi'), apis.indexOf('export async function getApi')),
+  /updatedAt = new Date/,
+)
+assert.match(apis, /loadLiveApi\(row, \{ force: true \}\)/)
+assert.doesNotMatch(apis, /return loadLiveApi\(row\)/)
+
+const queries = readFileSync(new URL('./queries.ts', import.meta.url), 'utf8')
+assert.match(queries, /refetchOnMount:\s*'always'/)
+assert.match(apis, /Sign in to refresh the cache/)
+assert.match(apis, /options\?\.force \|\| isSourceRefreshTooSoonError/)
+assert.match(page, /isSourceCacheMissingError/)
+assert.match(page, /retryLabel=\{missingCache \? 'Refresh' : 'Try again'\}/)
+assert.doesNotMatch(page, /subscribeMcpChanges/)
 assert.doesNotMatch(page, /Brand compact/)
 assert.doesNotMatch(page, /Clear credentials/)
 assert.doesNotMatch(page, /Clear auth/)

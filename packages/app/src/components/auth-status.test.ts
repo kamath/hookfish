@@ -49,4 +49,22 @@ const home = readFileSync(new URL('../pages/home.tsx', import.meta.url), 'utf8')
 assert.match(home, /StatusPane/)
 assert.doesNotMatch(home, /absolute inset-0 z-10/)
 
+const operation = readFileSync(
+  new URL('./operation-client.tsx', import.meta.url),
+  'utf8',
+)
+assert.match(operation, /UnauthorizedError\.isInstance\(invoke\.error\)/)
+assert.match(operation, /pendingAuthorization\?\.sourceId === api\.id/)
+assert.match(operation, /<AuthRedirect/)
+assert.match(operation, /clearPendingMcpAuthorization/)
+assert.match(operation, /writeOperationInspecting\(false\)/)
+
+const workbench = readFileSync(
+  new URL('../pages/workbench.tsx', import.meta.url),
+  'utf8',
+)
+assert.match(workbench, /getMcpConnection/)
+assert.match(workbench, /takeMcpOAuthReturnUrl/)
+assert.match(workbench, /window\.location\.replace\(returnUrl\)/)
+
 console.log('auth redirect wait copy ok')

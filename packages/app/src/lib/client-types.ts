@@ -107,6 +107,7 @@ export type ExecutableSource = {
   credentialUiSchema?: FormUiSchema
   credentialsRequired?: boolean
   credentialsStored?: boolean
+  updatedAt?: string
 }
 
 export type SourceSummary = {
@@ -117,6 +118,7 @@ export type SourceSummary = {
   sourceUrl: string
   executableCount: number
   createdAt: string
+  updatedAt?: string
   cache?: boolean
 }
 

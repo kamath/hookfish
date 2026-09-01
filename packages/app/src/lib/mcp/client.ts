@@ -33,6 +33,54 @@ const connections = new Map<string, McpConnection>()
 const changeListeners = new Map<string, Set<() => void>>()
 const traceListeners = new Map<string, Set<() => void>>()
 
+function traceStorageKey(sourceId: string) {
+  return `oc:mcp-trace:${encodeURIComponent(sourceId)}`
+}
+
+function readPersistedTrace(sourceId: string): {
+  trace: ProtocolTraceEntry[]
+  startedAt: number
+} | undefined {
+  try {
+    const raw = window.sessionStorage.getItem(traceStorageKey(sourceId))
+    if (!raw) {
+      return undefined
+    }
+    const value = JSON.parse(raw) as {
+      trace?: ProtocolTraceEntry[]
+      startedAt?: number
+    }
+    if (!Array.isArray(value.trace) || typeof value.startedAt !== 'number') {
+      return undefined
+    }
+    return { trace: value.trace, startedAt: value.startedAt }
+  } catch {
+    return undefined
+  }
+}
+
+function persistTrace(connection: TraceSink) {
+  try {
+    window.sessionStorage.setItem(
+      traceStorageKey(connection.sourceId),
+      JSON.stringify({
+        trace: connection.trace,
+        startedAt: connection.startedAt,
+      }),
+    )
+  } catch {
+    // Live in-memory traces still work when session storage is unavailable.
+  }
+}
+
+function clearPersistedTrace(sourceId: string) {
+  try {
+    window.sessionStorage.removeItem(traceStorageKey(sourceId))
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
+
 function emitTrace(sourceId: string) {
   for (const listener of traceListeners.get(sourceId) ?? []) {
     listener()
@@ -47,6 +95,7 @@ function traceEntry(connection: TraceSink, entry: Omit<ProtocolTraceEntry, 'atMs
   if (connection.trace.length > 500) {
     connection.trace.splice(0, connection.trace.length - 500)
   }
+  persistTrace(connection)
   emitTrace(connection.sourceId)
 }
 
@@ -216,10 +265,11 @@ export async function getMcpConnection(
     await current.client.close().catch(() => {})
   }
 
+  const persisted = readPersistedTrace(sourceId)
   const pending: TraceSink = {
     sourceId,
-    trace: [] as ProtocolTraceEntry[],
-    startedAt: Date.now(),
+    trace: persisted?.trace ?? [],
+    startedAt: persisted?.startedAt ?? Date.now(),
   }
   const authProvider = new BrowserMcpOAuthProvider(sourceId)
   const callbackParameters = authProvider.callbackParameters()
@@ -340,7 +390,11 @@ export function traceSince(connection: McpConnection, mark: number) {
 }
 
 export function getMcpTrace(sourceId: string): ProtocolTraceEntry[] {
-  return connections.get(sourceId)?.trace.slice() ?? []
+  return (
+    connections.get(sourceId)?.trace.slice() ??
+    readPersistedTrace(sourceId)?.trace.slice() ??
+    []
+  )
 }
 
 export function subscribeMcpTrace(sourceId: string, listener: () => void) {
@@ -370,6 +424,7 @@ export function subscribeMcpChanges(sourceId: string, listener: () => void) {
 export async function closeMcpConnection(sourceId: string) {
   const connection = connections.get(sourceId)
   connections.delete(sourceId)
+  clearPersistedTrace(sourceId)
   emitTrace(sourceId)
   if (!connection) {
     return

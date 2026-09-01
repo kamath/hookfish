@@ -1,8 +1,16 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
-import type { RegistryEntryMetadata } from '@hookfish/api'
-import type { ApiSummary, ClientApi } from './client-types'
-import { getApi as getApiClient } from './api'
+import { registryUrl, type RegistryEntryMetadata } from '@hookfish/api'
+import type {
+  ApiSummary,
+  ClientApi,
+  Executable,
+  ExecutableGroup,
+  FormUiSchema,
+  JsonSchema,
+  SourceLabels,
+} from './client-types'
+import { apiJson, getApi as getApiClient } from './api'
 import {
   apiAuthStored,
   clearApiAuth,
@@ -16,6 +24,13 @@ import {
   hasMcpOAuthTokens,
   pendingMcpAuthorization,
 } from './mcp/oauth'
+import {
+  RegistryRefreshTooSoonError,
+  SourceCacheMissingError,
+  assertCanForceRefresh,
+  isSourceRefreshTooSoonError,
+} from './source-refresh'
+import { sourceUrlKey } from './catalog'
 import { readApisJson, writeApisJson } from './storage'
 
 function sourceSummary(value: unknown): ApiSummary | undefined {
@@ -41,7 +56,8 @@ function sourceSummary(value: unknown): ApiSummary | undefined {
     sourceUrl &&
     executableCount !== undefined &&
     typeof row.createdAt === 'string' &&
-    (row.version === undefined || typeof row.version === 'string')
+    (row.version === undefined || typeof row.version === 'string') &&
+    (row.updatedAt === undefined || typeof row.updatedAt === 'string')
   ) {
     return {
       id: row.id,
@@ -51,6 +67,7 @@ function sourceSummary(value: unknown): ApiSummary | undefined {
       sourceUrl,
       executableCount,
       createdAt: row.createdAt,
+      updatedAt: row.updatedAt as string | undefined,
       cache: row.cache !== false,
     }
   }
@@ -96,21 +113,114 @@ export function registryEntryMetadata(
     groups: client.groups,
     labels: client.labels,
     adapterData: cacheableAdapterData(client.adapterData),
+    credentialSchema: client.credentialSchema,
+    credentialUiSchema: client.credentialUiSchema,
+    credentialsRequired: client.credentialsRequired,
   }
 }
 
-async function submitRegistryEntry(client: ClientApi) {
+export function sourceFromRegistryEntry(
+  row: Pick<ApiSummary, 'id' | 'kind' | 'sourceUrl'>,
+  entry: {
+    metadata: RegistryEntryMetadata
+    updatedAt: string
+  },
+): ClientApi {
+  const adapterData = cacheableAdapterData(entry.metadata.adapterData)
+  return {
+    id: row.id,
+    kind: entry.metadata.kind,
+    title: entry.metadata.title,
+    version: entry.metadata.version,
+    description: entry.metadata.description,
+    sourceUrl: row.sourceUrl,
+    targets: [row.sourceUrl],
+    executables: entry.metadata.executables as Executable[],
+    groups: entry.metadata.groups as ExecutableGroup[],
+    labels: entry.metadata.labels as SourceLabels,
+    adapterData:
+      row.kind === 'mcp' || entry.metadata.kind === 'mcp'
+        ? {
+            ...(adapterData && typeof adapterData === 'object' ? adapterData : {}),
+            oauthAuthorized: hasMcpOAuthTokens(row.id),
+          }
+        : adapterData,
+    credentialSchema: entry.metadata.credentialSchema as JsonSchema | undefined,
+    credentialUiSchema: entry.metadata.credentialUiSchema as FormUiSchema | undefined,
+    credentialsRequired: entry.metadata.credentialsRequired,
+    credentialsStored: sourceCredentialsStored(row.id),
+    updatedAt: entry.updatedAt,
+  }
+}
+
+type RegistryEntryResponse = {
+  entry: {
+    sourceId?: string
+    sourceUrl?: string
+    metadata: RegistryEntryMetadata
+    updatedAt: string
+  }
+}
+
+async function readRegistryEntry(row: Pick<ApiSummary, 'id' | 'kind' | 'sourceUrl'>) {
+  try {
+    const kind = row.kind === 'openapi' || row.kind === 'mcp' ? row.kind : undefined
+    const eligible = registryUrl(row.sourceUrl)
+    const response = await getApiClient().registry[':sourceId'].$get({
+      param: { sourceId: row.id },
+      query: {
+        ...(kind ? { kind } : {}),
+        ...(eligible.eligible ? { sourceUrl: eligible.sourceUrl } : {}),
+      },
+    })
+    if (!response.ok) {
+      return undefined
+    }
+    return await apiJson<RegistryEntryResponse>(response)
+  } catch {
+    return undefined
+  }
+}
+
+async function submitRegistryEntry(
+  client: ClientApi,
+  options?: { force?: boolean },
+) {
   const metadata = registryEntryMetadata(client)
   if (!metadata) {
     return
   }
-  await getApiClient().registry[':sourceId'].$put({
+  const response = await getApiClient().registry[':sourceId'].$put({
     param: { sourceId: client.id },
-    json: { sourceUrl: client.sourceUrl, metadata },
+    json: {
+      sourceUrl: client.sourceUrl,
+      metadata,
+      ...(options?.force ? { force: true } : {}),
+    },
   })
+  if (response.status === 429) {
+    throw new RegistryRefreshTooSoonError(
+      60_000,
+      client.updatedAt ?? new Date().toISOString(),
+    )
+  }
+  if (!response.ok) {
+    if (options?.force) {
+      throw new Error(
+        response.status === 401
+          ? 'Sign in to refresh the cache.'
+          : 'Could not refresh the cache.',
+      )
+    }
+    return
+  }
+  const body = (await response.json()) as {
+    entry?: { updatedAt?: string } | null
+  }
+  return typeof body.entry?.updatedAt === 'string' ? body.entry.updatedAt : undefined
 }
 
-function rememberSpecMeta(id: string, client: ClientApi) {
+function rememberSpecMeta(id: string, client: ClientApi, updatedAt?: string) {
   const apis = loadApis()
   const index = apis.findIndex((api) => api.id === id)
   if (index === -1) {
@@ -125,8 +235,106 @@ function rememberSpecMeta(id: string, client: ClientApi) {
     title: client.title,
     version: client.version,
     executableCount: client.executables.length,
+    updatedAt: updatedAt ?? client.updatedAt ?? current.updatedAt,
   }
   saveApis(apis)
+}
+
+function requireApiRow(id: string) {
+  const row = loadApis().find((api) => api.id === id)
+  if (!row) {
+    throw notFound()
+  }
+  return row
+}
+
+function hydrateLiveApi(id: string, client: ClientApi, updatedAt?: string): ClientApi {
+  return {
+    ...client,
+    credentialsStored: sourceCredentialsStored(id),
+    updatedAt,
+  }
+}
+
+async function lookupCachedSource(
+  sourceUrl: string,
+  kind?: string,
+) {
+  const kinds =
+    kind === 'openapi' || kind === 'mcp'
+      ? [kind]
+      : (['openapi', 'mcp'] as const)
+  for (const next of kinds) {
+    const cached = await readRegistryEntry({
+      id: 'lookup',
+      kind: next,
+      sourceUrl,
+    })
+    if (cached) {
+      return { kind: next, entry: cached.entry }
+    }
+  }
+  return undefined
+}
+
+function rememberCachedSummary(
+  row: {
+    id: string
+    kind: string
+    sourceUrl: string
+    cache?: boolean
+  },
+  source: ClientApi,
+) {
+  const apis = loadApis()
+  const createdAt = new Date().toISOString()
+  const summary: ApiSummary = {
+    id: row.id,
+    kind: source.kind,
+    title: source.title,
+    version: source.version,
+    sourceUrl: row.sourceUrl,
+    executableCount: source.executables.length,
+    createdAt,
+    updatedAt: source.updatedAt,
+    cache: row.cache ?? true,
+  }
+  const index = apis.findIndex((api) => api.id === row.id)
+  if (index === -1) {
+    apis.unshift(summary)
+  } else {
+    const current = apis[index]
+    apis[index] = {
+      ...summary,
+      createdAt: current?.createdAt ?? createdAt,
+    }
+  }
+  saveApis(apis)
+}
+
+async function loadLiveApi(
+  row: ApiSummary,
+  options?: { force?: boolean },
+): Promise<ClientApi> {
+  const client = await sourceAdapterFor(row.kind).load(
+    row.sourceUrl,
+    row.id,
+    readApiAuth(row.id),
+  )
+  const updatedAt = await submitRegistryEntry(client, options).catch((error) => {
+    // Refresh is the only write path. A failed PUT must not look like success.
+    if (options?.force || isSourceRefreshTooSoonError(error)) {
+      throw error
+    }
+    return undefined
+  })
+  const next = hydrateLiveApi(row.id, client, updatedAt)
+  rememberSpecMeta(row.id, next, next.updatedAt)
+  return next
+}
+
+export function sourceCredentialsStored(id: string) {
+  return apiAuthStored(id) || hasMcpOAuthTokens(id)
 }
 
 export function listApis(): ApiSummary[] {
@@ -154,8 +362,29 @@ export async function addApi(
   kind?: string,
   credentials: Record<string, string> = {},
   options: { cache?: boolean } = {},
-): Promise<{ id: string }> {
-  const id = crypto.randomUUID()
+): Promise<{ id: string; source: ClientApi }> {
+  const existing = loadApis().find(
+    (api) =>
+      sourceUrlKey(api.sourceUrl) === sourceUrlKey(url) &&
+      (kind === undefined || api.kind === kind),
+  )
+  const cached =
+    options.cache === false ? undefined : await lookupCachedSource(url, kind)
+  if (cached) {
+    const id = existing?.id ?? cached.entry.sourceId ?? crypto.randomUUID()
+    saveApiAuth(id, credentials)
+    const row = {
+      id,
+      kind: cached.kind,
+      sourceUrl: url,
+      cache: options.cache ?? true,
+    }
+    const source = sourceFromRegistryEntry(row, cached.entry)
+    rememberCachedSummary(row, source)
+    return { id, source }
+  }
+
+  const id = existing?.id ?? crypto.randomUUID()
   saveApiAuth(id, credentials)
   let client: ClientApi
   try {
@@ -173,6 +402,7 @@ export async function addApi(
     await closeMcpConnection(id)
     throw error
   }
+  const createdAt = new Date().toISOString()
   const apis = loadApis()
   const summary = {
     id,
@@ -181,42 +411,53 @@ export async function addApi(
     version: client.version,
     sourceUrl: url,
     executableCount: client.executables.length,
-    createdAt: new Date().toISOString(),
+    createdAt,
     cache: options.cache ?? true,
   }
   const provisionalIndex = apis.findIndex((api) => api.id === id)
   if (provisionalIndex === -1) {
     apis.unshift(summary)
   } else {
-    apis[provisionalIndex] = summary
+    apis[provisionalIndex] = {
+      ...summary,
+      createdAt: apis[provisionalIndex]?.createdAt ?? createdAt,
+    }
   }
   saveApis(apis)
-  if (summary.cache) {
-    void submitRegistryEntry(client).catch(() => {})
-  }
-  return { id }
+  const cachedAt =
+    summary.cache === false
+      ? undefined
+      : await submitRegistryEntry(client).catch(() => undefined)
+  const written = summary.cache === false ? undefined : await readRegistryEntry(summary)
+  const source = written
+    ? sourceFromRegistryEntry(summary, written.entry)
+    : hydrateLiveApi(id, client, cachedAt)
+  rememberSpecMeta(id, source, source.updatedAt)
+  return { id, source }
 }
 
 export async function getApi(id: string): Promise<ClientApi> {
-  const row = loadApis().find((api) => api.id === id)
-  if (!row) {
-    throw notFound()
+  const row = requireApiRow(id)
+  // Reads are cache-only. Upstream is fetched only by refreshApi / addApi.
+  const cached = await readRegistryEntry(row)
+  if (!cached) {
+    throw new SourceCacheMissingError()
   }
+  const client = sourceFromRegistryEntry(row, cached.entry)
+  rememberSpecMeta(row.id, client, client.updatedAt)
+  return client
+}
 
-  const client = await sourceAdapterFor(row.kind).load(
-    row.sourceUrl,
-    row.id,
-    readApiAuth(row.id),
-  )
-  rememberSpecMeta(row.id, client)
-  if (row.cache !== false) {
-    void submitRegistryEntry(client).catch(() => {})
-  }
-
-  return {
-    ...client,
-    credentialsStored: apiAuthStored(row.id) || hasMcpOAuthTokens(row.id),
-  }
+export async function refreshApi(
+  id: string,
+  options?: { updatedAt?: string; now?: number },
+): Promise<ClientApi> {
+  const row = requireApiRow(id)
+  const updatedAt =
+    options?.updatedAt ??
+    (row.cache !== false ? (await readRegistryEntry(row))?.entry.updatedAt : undefined)
+  assertCanForceRefresh(updatedAt, options?.now)
+  return loadLiveApi(row, { force: true })
 }
 
 export function removeApi(id: string) {

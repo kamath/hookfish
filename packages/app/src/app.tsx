@@ -12,6 +12,8 @@ import { configureApp } from './config'
 import { bindEnterMode, useGlobalKeybindings } from './lib/keymap'
 import { bindModeFromFocus } from './lib/mode'
 import { bindTheme } from './lib/theme'
+import { queryErrorMessage } from './lib/queries'
+import { formatSourceUpdatedAt, SOURCE_REFRESH_COOLDOWN_MESSAGE } from './lib/source-refresh'
 import { useSourceToolbarValue } from './lib/toolbar'
 
 const hotkeyDefaults = {
@@ -62,6 +64,43 @@ function AppToolbar() {
         <>
           <Brand compact />
           <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
+          {source.updatedAt ? (
+            <span
+              className="hidden min-w-0 shrink-0 text-xs text-mute md:inline"
+              title={source.updatedAt}
+            >
+              Last updated at {formatSourceUpdatedAt(source.updatedAt) ?? source.updatedAt}
+            </span>
+          ) : null}
+          {source.onRefresh ? (
+            <button
+              type="button"
+              className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
+              aria-label="Refresh source"
+              title={
+                source.refreshDisabled
+                  ? SOURCE_REFRESH_COOLDOWN_MESSAGE
+                  : 'Refresh this source'
+              }
+              disabled={source.refreshPending || source.refreshDisabled}
+              onClick={() => {
+                void source.onRefresh?.()
+              }}
+            >
+              <span className="oc-bar-action-label">
+                {source.refreshPending ? 'Refreshing…' : 'Refresh'}
+              </span>
+              <span className="oc-bar-action-icon" aria-hidden="true">
+                <RefreshIcon />
+              </span>
+              <Kbd hotkey="R" />
+            </button>
+          ) : null}
+          {source.refreshError ? (
+            <span className="min-w-0 truncate text-xs text-error" role="alert">
+              {queryErrorMessage(source.refreshError, 'Could not refresh.')}
+            </span>
+          ) : null}
           {source.onClearAuth ? (
             <button
               type="button"
@@ -98,6 +137,24 @@ function AppToolbar() {
         <ThemeToggle />
       </div>
     </div>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-2.3-6" />
+      <path d="M21 4v6h-6" />
+    </svg>
   )
 }
 

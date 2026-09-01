@@ -3,6 +3,10 @@ import { queryOptions } from '@tanstack/react-query'
 import { isNotFound } from '@tanstack/react-router'
 import { getApi, listApis } from './apis'
 import { getCarouselCatalog } from './catalog-data'
+import {
+  isSourceCacheMissingError,
+  isSourceRefreshTooSoonError,
+} from './source-refresh'
 
 export const carouselQueryOptions = queryOptions({
   queryKey: ['carousel-catalog'],
@@ -20,8 +24,15 @@ export function apiQueryOptions(id: string) {
   return queryOptions({
     queryKey: ['api', id],
     queryFn: () => getApi(id),
+    staleTime: Infinity,
+    refetchOnMount: 'always',
     retry: (count, error) => {
-      if (isNotFound(error) || UnauthorizedError.isInstance(error)) {
+      if (
+        isNotFound(error) ||
+        UnauthorizedError.isInstance(error) ||
+        isSourceRefreshTooSoonError(error) ||
+        isSourceCacheMissingError(error)
+      ) {
         return false
       }
       return count < 1
@@ -30,6 +41,9 @@ export function apiQueryOptions(id: string) {
 }
 
 export function queryErrorMessage(error: unknown, fallback: string) {
+  if (isSourceRefreshTooSoonError(error)) {
+    return error.message
+  }
   if (UnauthorizedError.isInstance(error)) {
     return 'This server needs you to sign in.'
   }
