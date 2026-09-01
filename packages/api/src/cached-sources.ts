@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, or } from 'drizzle-orm'
 import { cachedSource } from './db/schema'
 import { resolveDatabase, type DatabaseInput } from './db/types'
 import type { RegistryEntryMetadata } from './schemas'
@@ -64,11 +64,25 @@ export async function putCachedSource(
 ) {
   const db = await resolveDatabase(database)
   const now = new Date()
-  const [existingById] = await db
-    .select(cachedSourceSelection)
-    .from(cachedSource)
-    .where(eq(cachedSource.sourceId, input.sourceId))
-    .limit(1)
+  const findConflicts = async (): Promise<CachedSourceRecord[]> =>
+    db
+      .select(cachedSourceSelection)
+      .from(cachedSource)
+      .where(
+        or(
+          eq(cachedSource.sourceId, input.sourceId),
+          and(
+            eq(cachedSource.kind, input.metadata.kind),
+            eq(cachedSource.sourceUrl, input.sourceUrl),
+          ),
+        ),
+      )
+      .limit(2)
+
+  const conflicts = await findConflicts()
+  const existingById = conflicts.find(
+    (record) => record.sourceId === input.sourceId,
+  )
 
   if (existingById) {
     if (
@@ -99,16 +113,11 @@ export async function putCachedSource(
     return serializeCachedSource(updated)
   }
 
-  const [existingByUrl] = await db
-    .select(cachedSourceSelection)
-    .from(cachedSource)
-    .where(
-      and(
-        eq(cachedSource.kind, input.metadata.kind),
-        eq(cachedSource.sourceUrl, input.sourceUrl),
-      ),
-    )
-    .limit(1)
+  const existingByUrl = conflicts.find(
+    (record) =>
+      metadataFor(record).kind === input.metadata.kind &&
+      record.sourceUrl === input.sourceUrl,
+  )
   if (existingByUrl) {
     return serializeCachedSource(existingByUrl)
   }
@@ -131,11 +140,10 @@ export async function putCachedSource(
     return serializeCachedSource(record)
   }
 
-  const [conflictingId] = await db
-    .select(cachedSourceSelection)
-    .from(cachedSource)
-    .where(eq(cachedSource.sourceId, input.sourceId))
-    .limit(1)
+  const concurrentConflicts = await findConflicts()
+  const conflictingId = concurrentConflicts.find(
+    (candidate) => candidate.sourceId === input.sourceId,
+  )
   if (
     conflictingId &&
     (conflictingId.sourceUrl !== input.sourceUrl ||
@@ -145,16 +153,21 @@ export async function putCachedSource(
       'This registry source ID is already bound to a different source.',
     )
   }
-  const [concurrentEntry] = await db
-    .select(cachedSourceSelection)
-    .from(cachedSource)
-    .where(
-      and(
-        eq(cachedSource.kind, input.metadata.kind),
-        eq(cachedSource.sourceUrl, input.sourceUrl),
-      ),
+  if (
+    conflictingId &&
+    conflictingId.createdByUserId !== input.userId
+  ) {
+    throw new RegistryUpdateForbiddenError(
+      'Only the original submitter can update this registry entry.',
     )
-    .limit(1)
+  }
+  const concurrentEntry =
+    conflictingId ??
+    concurrentConflicts.find(
+      (candidate) =>
+        metadataFor(candidate).kind === input.metadata.kind &&
+        candidate.sourceUrl === input.sourceUrl,
+    )
   if (!concurrentEntry) {
     throw new Error('Could not create the registry entry.')
   }
