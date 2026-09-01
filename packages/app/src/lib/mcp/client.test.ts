@@ -17,6 +17,7 @@ import {
 import { loadMcpSource } from './source'
 
 const browserStorage = new Map<string, string>()
+const sessionStorage = new Map<string, string>()
 let assignedUrl: string | undefined
 const location = {
   origin: 'http://hookfish.test',
@@ -40,6 +41,11 @@ Object.defineProperty(globalThis, 'window', {
       getItem: (key: string) => browserStorage.get(key) ?? null,
       setItem: (key: string, value: string) => browserStorage.set(key, value),
       removeItem: (key: string) => browserStorage.delete(key),
+    },
+    sessionStorage: {
+      getItem: (key: string) => sessionStorage.get(key) ?? null,
+      setItem: (key: string, value: string) => sessionStorage.set(key, value),
+      removeItem: (key: string) => sessionStorage.delete(key),
     },
     prompt: () => null,
   },
@@ -470,6 +476,10 @@ await assert.rejects(
   loadMcpSource('https://mcp.test/oauth', 'oauth-flow', {}),
   (error) => UnauthorizedError.isInstance(error),
 )
+assert.ok(
+  getMcpTrace('oauth-flow').length > 0,
+  'OAuth challenge traces survive without an open connection',
+)
 assert.equal(assignedUrl, undefined)
 const pendingUrl = pendingMcpAuthorizationUrl()
 assert.ok(pendingUrl)
@@ -543,6 +553,16 @@ assert.equal(
   takeMcpOAuthReturnUrl('oauth-source'),
   'http://hookfish.test/apis/oauth-source/input/tool%3Asearch?q=widgets',
   'tool OAuth returns to the same input tab',
+)
+clearPendingMcpAuthorization()
+
+location.href =
+  'http://hookfish.test/apis/oauth-source/response/tool%3Asearch?q=widgets'
+oauth.redirectToAuthorization(new URL('https://auth.test/authorize'))
+assert.equal(
+  takeMcpOAuthReturnUrl('oauth-source'),
+  'http://hookfish.test/apis/oauth-source/input/tool%3Asearch?q=widgets',
+  'OAuth from a response pane returns to the matching input form',
 )
 clearPendingMcpAuthorization()
 clearMcpOAuth('oauth-source')

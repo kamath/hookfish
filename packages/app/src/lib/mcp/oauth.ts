@@ -63,6 +63,24 @@ function callbackUrl(sourceId: string, origin = window.location.origin) {
   return new URL(`/apis/${encodeURIComponent(sourceId)}/routes`, origin)
 }
 
+function inputReturnUrl(sourceId: string) {
+  const currentUrl = new URL(window.location.href)
+  const sourcePath = `/apis/${encodeURIComponent(sourceId)}/`
+  const sourceIndex = currentUrl.pathname.indexOf(sourcePath)
+  if (currentUrl.origin !== window.location.origin || sourceIndex === -1) {
+    return undefined
+  }
+  const panePath = currentUrl.pathname.slice(sourceIndex + sourcePath.length)
+  const [pane, operationId] = panePath.split('/')
+  if (pane === 'response' && operationId) {
+    currentUrl.pathname = `${currentUrl.pathname.slice(
+      0,
+      sourceIndex + sourcePath.length,
+    )}input/${operationId}`
+  }
+  return currentUrl.toString()
+}
+
 export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   readonly clientMetadataUrl: string | undefined
 
@@ -128,13 +146,7 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
   }
 
   redirectToAuthorization(authorizationUrl: URL) {
-    const currentUrl = new URL(window.location.href)
-    const sourcePath = `/apis/${encodeURIComponent(this.sourceId)}/`
-    const returnUrl =
-      currentUrl.origin === window.location.origin &&
-      currentUrl.pathname.startsWith(sourcePath)
-        ? currentUrl.toString()
-        : undefined
+    const returnUrl = inputReturnUrl(this.sourceId)
     if (returnUrl) {
       writeStore(this.sourceId, {
         ...readStore(this.sourceId),
