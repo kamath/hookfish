@@ -24,7 +24,7 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json && node scripts/write-css-types.mjs",
     "dev": "vite build --watch",
-    "test": "tsx src/lib/api.test.ts && tsx src/lib/carousel.test.ts && tsx src/lib/catalog.test.ts && tsx src/lib/cloud.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/openapi.test.ts && tsx src/lib/source-kind.test.ts && tsx src/lib/theme.test.ts && tsx src/lib/toolbar.test.ts && tsx src/lib/login.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/queries.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/mcp/trace.test.ts && tsx src/lib/keymap.test.ts && tsx src/components/auth-status.test.ts && tsx src/components/create-api-key.test.ts && tsx src/components/mcp-server-panel.test.ts && node scripts/pack-smoke.mjs",
+    "test": "tsx src/lib/api.test.ts && tsx src/lib/carousel.test.ts && tsx src/lib/catalog.test.ts && tsx src/lib/cloud.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/openapi.test.ts && tsx src/lib/reveal.test.ts && tsx src/lib/source-kind.test.ts && tsx src/lib/theme.test.ts && tsx src/lib/toolbar.test.ts && tsx src/lib/login.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/queries.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/mcp/trace.test.ts && tsx src/lib/keymap.test.ts && tsx src/components/auth-status.test.ts && tsx src/components/create-api-key.test.ts && tsx src/components/mcp-server-panel.test.ts && node scripts/pack-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

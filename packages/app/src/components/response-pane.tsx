@@ -11,6 +11,7 @@ import type { ExecutableAnnotation, ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
 import { usePaneActions, usePaneFlags, useStepKeys } from '../lib/keys'
 import type { Pane } from '../lib/mode'
+import { revealInList } from '../lib/reveal'
 import { paneBarButtonClass } from '../lib/ui'
 import { Kbd, KeyHints } from './hints'
 
@@ -204,6 +205,8 @@ export function ResponsePane({
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [descriptionClipped, setDescriptionClipped] = useState(false)
   const treeRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const selectedRowRef = useRef<HTMLDivElement>(null)
   const selectedTextRef = useRef<HTMLSpanElement>(null)
   const descriptionRef = useRef<HTMLParagraphElement>(null)
   const rows = useMemo(
@@ -246,6 +249,10 @@ export function ResponsePane({
   }, [])
 
   useLayoutEffect(measureSelected)
+
+  useLayoutEffect(() => {
+    revealInList(selectedRowRef.current, listRef.current)
+  }, [selected])
 
   const measureDescription = useCallback(() => {
     const description = descriptionRef.current
@@ -470,7 +477,10 @@ export function ResponsePane({
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 md:px-4">
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 md:px-4"
+      >
         {inspection ? (
           <>
             <section className="mb-5">
@@ -611,6 +621,7 @@ export function ResponsePane({
             return (
               <div
                 key={node.id}
+                ref={isSelected ? selectedRowRef : undefined}
                 role="treeitem"
                 aria-selected={isSelected}
                 aria-expanded={expandable ? showsAll : undefined}
