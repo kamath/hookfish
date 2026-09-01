@@ -102,6 +102,11 @@ export const registryQuerySchema = z.object({
   kind: registryEntryKindSchema.optional(),
 })
 
+export const registryLookupQuerySchema = z.object({
+  kind: registryEntryKindSchema.optional(),
+  sourceUrl: z.string().trim().min(1).optional(),
+})
+
 export const registryEntrySchema = z
   .object({
     sourceId: z.string(),

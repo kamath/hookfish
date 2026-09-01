@@ -21,6 +21,7 @@ export {
   registryEntrySchema,
   registryEntrySummarySchema,
   registryListSchema,
+  registryLookupQuerySchema,
   registryQuerySchema,
   registrySubmissionResponseSchema,
   registrySubmissionSchema,

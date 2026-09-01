@@ -24,8 +24,9 @@ assert.equal(
 assert.equal(
   getApi().registry[':sourceId'].$url({
     param: { sourceId: 'source-1' },
+    query: { kind: 'openapi', sourceUrl: 'https://api.example.com/openapi.json' },
   }).toString(),
-  'https://hookfish.test/api/registry/source-1',
+  'https://hookfish.test/api/registry/source-1?kind=openapi&sourceUrl=https%3A%2F%2Fapi.example.com%2Fopenapi.json',
 )
 assert.equal(
   getApi().auth.session.$url().toString(),

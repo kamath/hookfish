@@ -119,10 +119,8 @@ assert.ok(Date.parse(putBody.entry.createdAt))
 assert.ok(Date.parse(putBody.entry.updatedAt))
 assert.equal(JSON.stringify(putBody).includes('must-not-be-cached'), false)
 
-const get = await api.request('/registry/source-1', {
-  headers: { cookie: firstUser.cookie, origin: 'http://hookfish.test' },
-})
-assert.equal(get.status, 200)
+const get = await api.request('/registry/source-1')
+assert.equal(get.status, 200, 'reading the cache does not require a session')
 const getBody = (await get.json()) as {
   entry: {
     sourceId: string
@@ -135,6 +133,15 @@ const getBody = (await get.json()) as {
 }
 assert.deepEqual(getBody.entry.metadata, metadata)
 assert.equal(getBody.entry.createdAt, putBody.entry.createdAt)
+
+const getByUrl = await api.request(
+  `/registry/other-local-id?kind=openapi&sourceUrl=${encodeURIComponent(sourceUrl)}`,
+)
+assert.equal(getByUrl.status, 200)
+assert.equal(
+  ((await getByUrl.json()) as typeof getBody).entry.sourceId,
+  'source-1',
+)
 
 const updated = await api.request('/registry/source-1', {
   method: 'PUT',
@@ -201,6 +208,33 @@ const forced = await putCachedSource(database, {
 assert.equal(forced.metadata.title, 'Forced Widget API')
 assert.ok(forced.updatedAt > putBody.entry.updatedAt)
 
+const forceByUrlTooSoon = await api.request('/registry/browser-local-id', {
+  method: 'PUT',
+  headers: {
+    cookie: firstUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    force: true,
+    sourceUrl,
+    metadata: { ...metadata, title: 'Browser refresh' },
+  }),
+})
+assert.equal(forceByUrlTooSoon.status, 429)
+
+const forcedByUrl = await putCachedSource(database, {
+  userId: firstUser.userId,
+  sourceId: 'browser-local-id',
+  sourceUrl,
+  metadata: { ...metadata, title: 'Browser refresh' },
+  force: true,
+  now: new Date(Date.parse(forced.updatedAt) + SOURCE_REFRESH_MIN_INTERVAL_MS),
+})
+assert.equal(forcedByUrl.sourceId, 'source-1')
+assert.equal(forcedByUrl.metadata.title, 'Browser refresh')
+assert.ok(forcedByUrl.updatedAt > forced.updatedAt)
+
 const mcpPut = await api.request('/registry/source-2', {
   method: 'PUT',
   headers: {
@@ -234,7 +268,7 @@ assert.deepEqual(
   openApiListBody.entries.map((source) => source.sourceId),
   ['source-1'],
 )
-assert.equal(openApiListBody.entries[0]?.title, 'Forced Widget API')
+assert.equal(openApiListBody.entries[0]?.title, 'Browser refresh')
 assert.equal(openApiListBody.entries[0]?.executableCount, 1)
 assert.equal('metadata' in (openApiListBody.entries[0] ?? {}), false)
 
@@ -289,7 +323,22 @@ const duplicateUrl = await api.request('/registry/other-source-id', {
 assert.equal(duplicateUrl.status, 200)
 const duplicateBody = (await duplicateUrl.json()) as typeof putBody
 assert.equal(duplicateBody.entry.sourceId, 'source-1')
-assert.equal(duplicateBody.entry.title, 'Forced Widget API')
+assert.equal(duplicateBody.entry.title, 'Browser refresh')
+
+const hijackRefresh = await api.request('/registry/hijack-id', {
+  method: 'PUT',
+  headers: {
+    cookie: secondUser.cookie,
+    origin: 'http://hookfish.test',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    force: true,
+    sourceUrl,
+    metadata: { ...metadata, title: 'Hijacked' },
+  }),
+})
+assert.equal(hijackRefresh.status, 403)
 
 const optedOut = await api.request('/registry/source-3', {
   method: 'PUT',

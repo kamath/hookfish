@@ -96,6 +96,40 @@ export function assertCanForceRefresh(
   }
 }
 
+async function rewriteCachedSource(
+  db: Awaited<ReturnType<typeof resolveDatabase>>,
+  existing: CachedSourceRecord,
+  input: {
+    userId: string
+    metadata: RegistryEntryMetadata
+    force?: boolean
+    now: Date
+  },
+) {
+  if (existing.createdByUserId !== input.userId) {
+    throw new RegistryUpdateForbiddenError(
+      'Only the original submitter can update this registry entry.',
+    )
+  }
+  if (!input.force) {
+    return serializeCachedSource(existing)
+  }
+  assertCanForceRefresh(existing.updatedAt, input.now.getTime())
+  const [updated] = await db
+    .update(cachedSource)
+    .set({
+      kind: input.metadata.kind,
+      metadata: input.metadata,
+      updatedAt: input.now,
+    })
+    .where(eq(cachedSource.sourceId, existing.sourceId))
+    .returning(cachedSourceSelection)
+  if (!updated) {
+    throw new Error('Could not update the registry entry.')
+  }
+  return serializeCachedSource(updated)
+}
+
 export async function putCachedSource(
   database: DatabaseInput,
   input: {
@@ -138,28 +172,12 @@ export async function putCachedSource(
         'This registry source ID is already bound to a different source.',
       )
     }
-    if (existingById.createdByUserId !== input.userId) {
-      throw new RegistryUpdateForbiddenError(
-        'Only the original submitter can update this registry entry.',
-      )
-    }
-    if (!input.force) {
-      return serializeCachedSource(existingById)
-    }
-    assertCanForceRefresh(existingById.updatedAt, now.getTime())
-    const [updated] = await db
-      .update(cachedSource)
-      .set({
-        kind: input.metadata.kind,
-        metadata: input.metadata,
-        updatedAt: now,
-      })
-      .where(eq(cachedSource.sourceId, input.sourceId))
-      .returning(cachedSourceSelection)
-    if (!updated) {
-      throw new Error('Could not update the registry entry.')
-    }
-    return serializeCachedSource(updated)
+    return rewriteCachedSource(db, existingById, {
+      userId: input.userId,
+      metadata: input.metadata,
+      force: input.force,
+      now,
+    })
   }
 
   const existingByUrl = conflicts.find(
@@ -168,7 +186,15 @@ export async function putCachedSource(
       record.sourceUrl === input.sourceUrl,
   )
   if (existingByUrl) {
-    return serializeCachedSource(existingByUrl)
+    if (!input.force) {
+      return serializeCachedSource(existingByUrl)
+    }
+    return rewriteCachedSource(db, existingByUrl, {
+      userId: input.userId,
+      metadata: input.metadata,
+      force: true,
+      now,
+    })
   }
 
   const [record] = await db
@@ -232,6 +258,36 @@ export async function getCachedSource(
     .select(cachedSourceSelection)
     .from(cachedSource)
     .where(eq(cachedSource.sourceId, sourceId))
+    .limit(1)
+
+  return record ? serializeCachedSource(record) : null
+}
+
+export async function findCachedSource(
+  database: DatabaseInput,
+  input: {
+    sourceId: string
+    sourceUrl?: string
+    kind?: 'openapi' | 'mcp'
+  },
+) {
+  const byId = await getCachedSource(database, input.sourceId)
+  if (byId) {
+    return byId
+  }
+  if (!input.sourceUrl || !input.kind) {
+    return null
+  }
+  const db = await resolveDatabase(database)
+  const [record] = await db
+    .select(cachedSourceSelection)
+    .from(cachedSource)
+    .where(
+      and(
+        eq(cachedSource.kind, input.kind),
+        eq(cachedSource.sourceUrl, input.sourceUrl),
+      ),
+    )
     .limit(1)
 
   return record ? serializeCachedSource(record) : null

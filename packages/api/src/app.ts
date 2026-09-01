@@ -17,7 +17,7 @@ import {
 import { createApiKey, listApiKeys } from './api-keys'
 import { authBasePathForMount } from './auth-path'
 import {
-  getCachedSource,
+  findCachedSource,
   listCachedSources,
   putCachedSource,
   RegistryRefreshTooSoonError,
@@ -40,6 +40,7 @@ import {
   registryEntryParamsSchema,
   registryEntryResponseSchema,
   registryListSchema,
+  registryLookupQuerySchema,
   registryQuerySchema,
   registrySubmissionResponseSchema,
   registrySubmissionSchema,
@@ -204,9 +205,9 @@ const getRegistryEntryRoute = createRoute({
   path: '/registry/{sourceId}',
   tags: ['Registry'],
   summary: 'Get an OpenAPI or MCP registry entry',
-  security: [{ Bearer: [] }],
   request: {
     params: registryEntryParamsSchema,
+    query: registryLookupQuerySchema,
   },
   responses: {
     200: {
@@ -215,10 +216,6 @@ const getRegistryEntryRoute = createRoute({
     },
     404: {
       description: 'No registry entry exists for this source',
-      content: { 'application/json': { schema: errorSchema } },
-    },
-    401: {
-      description: 'Authentication is required',
       content: { 'application/json': { schema: errorSchema } },
     },
     503: {
@@ -471,17 +468,16 @@ export function createApi(options: CreateApiOptions = {}) {
       }
     })
     .openapi(getRegistryEntryRoute, async (c) => {
-      const authenticatedUser = c.get('authUser')
-      if (!authenticatedUser) {
-        return c.json({ error: 'Authentication is required.' }, 401)
-      }
       if (!authOptions.database) {
         return c.json({ error: 'The registry is not configured.' }, 503)
       }
-      const cached = await getCachedSource(
-        authOptions.database,
-        c.req.valid('param').sourceId,
-      )
+      const lookup = c.req.valid('query')
+      const eligibleUrl = lookup.sourceUrl ? registryUrl(lookup.sourceUrl) : undefined
+      const cached = await findCachedSource(authOptions.database, {
+        sourceId: c.req.valid('param').sourceId,
+        sourceUrl: eligibleUrl?.eligible ? eligibleUrl.sourceUrl : lookup.sourceUrl,
+        kind: lookup.kind,
+      })
       if (!cached) {
         return c.json({ error: 'Registry entry not found.' }, 404)
       }

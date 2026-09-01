@@ -1,6 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
-import type { RegistryEntryMetadata } from '@hookfish/api'
+import { registryUrl, type RegistryEntryMetadata } from '@hookfish/api'
 import type {
   ApiSummary,
   ClientApi,
@@ -158,10 +158,16 @@ type RegistryEntryResponse = {
   }
 }
 
-async function readRegistryEntry(sourceId: string) {
+async function readRegistryEntry(row: Pick<ApiSummary, 'id' | 'kind' | 'sourceUrl'>) {
   try {
+    const kind = row.kind === 'openapi' || row.kind === 'mcp' ? row.kind : undefined
+    const eligible = registryUrl(row.sourceUrl)
     const response = await getApiClient().registry[':sourceId'].$get({
-      param: { sourceId },
+      param: { sourceId: row.id },
+      query: {
+        ...(kind ? { kind } : {}),
+        ...(eligible.eligible ? { sourceUrl: eligible.sourceUrl } : {}),
+      },
     })
     if (!response.ok) {
       return undefined
@@ -195,6 +201,13 @@ async function submitRegistryEntry(
     )
   }
   if (!response.ok) {
+    if (options?.force) {
+      throw new Error(
+        response.status === 401
+          ? 'Sign in to refresh the cache.'
+          : 'Could not refresh the cache.',
+      )
+    }
     return
   }
   const body = (await response.json()) as {
@@ -251,7 +264,9 @@ async function loadLiveApi(
   const updatedAt =
     row.cache !== false
       ? await submitRegistryEntry(client, options).catch((error) => {
-          if (isSourceRefreshTooSoonError(error)) {
+          // A manual refresh must rewrite the DB cache. Swallowing a failed
+          // PUT would leave the listing looking fresh while the registry stays stale.
+          if (options?.force || isSourceRefreshTooSoonError(error)) {
             throw error
           }
           return undefined
@@ -343,7 +358,7 @@ export async function getApi(id: string): Promise<ClientApi> {
   const row = requireApiRow(id)
   // Cached listings are served until the user refreshes. Age is not a TTL.
   if (row.cache !== false) {
-    const cached = await readRegistryEntry(row.id)
+    const cached = await readRegistryEntry(row)
     if (cached) {
       const client = sourceFromRegistryEntry(row, cached.entry)
       rememberSpecMeta(row.id, client, client.updatedAt)
@@ -360,7 +375,7 @@ export async function refreshApi(
   const row = requireApiRow(id)
   const updatedAt =
     options?.updatedAt ??
-    (row.cache !== false ? (await readRegistryEntry(row.id))?.entry.updatedAt : undefined)
+    (row.cache !== false ? (await readRegistryEntry(row))?.entry.updatedAt : undefined)
   assertCanForceRefresh(updatedAt, options?.now)
   return loadLiveApi(row, { force: true })
 }
