@@ -64,5 +64,20 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
+export const suggestedSourceSchema = z
+  .object({
+    url: z.string(),
+    title: z.string(),
+    category_name: z.string(),
+  })
+  .openapi('SuggestedSource')
+
+export const suggestedSourcesSchema = z
+  .object({
+    suggestions: z.array(suggestedSourceSchema),
+  })
+  .openapi('SuggestedSources')
+
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
+export type SuggestedSource = z.infer<typeof suggestedSourceSchema>

@@ -7,7 +7,7 @@ import { getCarouselCatalog } from './catalog-data'
 export const carouselQueryOptions = queryOptions({
   queryKey: ['carousel-catalog'],
   queryFn: () => getCarouselCatalog(),
-  staleTime: Infinity,
+  staleTime: 5 * 60 * 1000,
 })
 
 export const apisQueryOptions = queryOptions({

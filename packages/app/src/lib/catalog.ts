@@ -1,9 +1,6 @@
-export type CatalogHotkey = '1' | '2' | '3' | '4' | '5'
-
 export type CatalogEntry = {
   id: string
-  kind: string
-  hotkey: CatalogHotkey
+  kind?: string
   title: string
   detail: string
   url: string

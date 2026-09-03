@@ -10,7 +10,9 @@ import {
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
   specRequestSchema,
+  suggestedSourcesSchema,
 } from './schemas'
+import { resolveDatabase, type DatabaseInput } from './db/types'
 import {
   INTERNAL_FETCH_HEADER,
   isOwnOpenApiUrl,
@@ -21,6 +23,7 @@ import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
+  database?: DatabaseInput
   openapi?: {
     title?: string
     version?: string
@@ -29,6 +32,31 @@ export type CreateApiOptions = {
 }
 
 const specDocumentSchema = z.any().openapi('SpecDocument')
+
+const suggestionsRoute = createRoute({
+  method: 'get',
+  path: '/suggestions',
+  tags: ['Suggestions'],
+  summary: 'List suggested MCP and OpenAPI sources',
+  responses: {
+    200: {
+      description: 'Suggested sources',
+      content: {
+        'application/json': {
+          schema: suggestedSourcesSchema,
+        },
+      },
+    },
+    503: {
+      description: 'The suggestions database is not configured',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
 
 const specRoute = createRoute({
   method: 'post',
@@ -191,6 +219,13 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
+    .openapi(suggestionsRoute, async (c) => {
+      if (!options.database) {
+        return c.json({ error: 'The suggestions database is not configured.' }, 503)
+      }
+      const database = await resolveDatabase(options.database)
+      return c.json({ suggestions: await database.listSuggestedSources() }, 200)
+    })
     .openapi(specRoute, async (c) => {
       try {
         const specUrl = c.req.valid('json').url

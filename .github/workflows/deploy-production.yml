@@ -13,11 +13,13 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Cloudflare Worker
+    name: Migrate Neon and deploy Cloudflare Worker
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       WORKER_NAME: smithery
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -41,14 +43,55 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Resolve primary Neon connection
+        run: |
+          BRANCHES=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            --header "Authorization: Bearer $NEON_API_KEY")
+          BRANCH_ID=$(jq -er \
+            '[.branches[] | select(.default == true)][0].id //
+             [.branches[] | select(.primary == true)][0].id' \
+            <<< "$BRANCHES")
+
+          DATABASES=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID/databases" \
+            --header "Authorization: Bearer $NEON_API_KEY")
+          DATABASE=$(jq -er '[.databases[] | select(.name == "neondb")][0].name // .databases[0].name' \
+            <<< "$DATABASES")
+          ROLE=$(jq -er '[.databases[] | select(.name == $database)][0].owner_name' \
+            --arg database "$DATABASE" <<< "$DATABASES")
+          QUERY=$(jq -nr --arg database "$DATABASE" --arg role "$ROLE" \
+            '"database_name=" + ($database | @uri) + "&role_name=" + ($role | @uri) + "&pooled=false"')
+
+          CONNECTION=$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?$QUERY" \
+            --header "Authorization: Bearer $NEON_API_KEY")
+          POSTGRES_URL=$(jq -er '.uri' <<< "$CONNECTION")
+          echo "::add-mask::$POSTGRES_URL"
+          echo "POSTGRES_URL=$POSTGRES_URL" >> "$GITHUB_ENV"
+
+      - name: Apply database migrations
+        run: pnpm --filter @hookfish/api db:migrate:prod
+
       - name: Build Worker
         run: pnpm turbo run build --filter=@hookfish/example-cloudflare
+
+      - name: Create Worker secrets file
+        run: |
+          SECRETS_FILE="$RUNNER_TEMP/worker-secrets.json"
+          jq -n \
+            --arg postgresUrl "$POSTGRES_URL" \
+            '{POSTGRES_URL: $postgresUrl}' \
+            > "$SECRETS_FILE"
+          chmod 600 "$SECRETS_FILE"
+          echo "SECRETS_FILE=$SECRETS_FILE" >> "$GITHUB_ENV"
 
       - name: Deploy production Worker
         run: |
           pnpm --filter @hookfish/example-cloudflare exec wrangler deploy \
             --config dist/server/wrangler.json \
-            --name "$WORKER_NAME"
+            --name "$WORKER_NAME" \
+            --secrets-file "$SECRETS_FILE"
 
       - name: Resolve production URL
         id: production
@@ -63,11 +106,16 @@ jobs:
       - name: Smoke test production
         env:
           PRODUCTION_URL: ${{ steps.production.outputs.url }}
+          PUBLIC_URL: https://smithery.app
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/" > /dev/null
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/api/openapi.json" > /dev/null
+          for URL in "$PRODUCTION_URL" "$PUBLIC_URL"; do
+            test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
+              "$URL/api/suggestions" | jq '.suggestions | length')" -gt 0
+          done
 
       - name: Publish deployment summary
         env:
@@ -77,5 +125,5 @@ jobs:
             echo "### Production deployed"
             echo
             echo "- Worker: [$WORKER_NAME]($PRODUCTION_URL)"
-            echo "- Application and OpenAPI smoke tests passed."
+            echo "- Primary Neon migrations and database-backed suggestions smoke tests passed."
           } >> "$GITHUB_STEP_SUMMARY"
