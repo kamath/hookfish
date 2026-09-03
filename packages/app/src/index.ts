@@ -9,7 +9,6 @@ export {
   type AppRouterOptions,
 } from './router'
 export { HomePage } from './pages/home'
-export { LoginPage } from './pages/login'
 export {
   WorkbenchPage,
   validateWorkbenchSearch,

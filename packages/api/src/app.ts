@@ -1,20 +1,5 @@
 import { Hono } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import {
-  applySetCookies,
-  handleNativeAuth,
-  handleSession,
-  handleSignIn,
-  handleSignOut,
-  handleSignUp,
-  sessionRoute,
-  signInRoute,
-  signOutRoute,
-  signUpRoute,
-} from './auth-openapi'
-import { authBasePathForMount } from './auth-path'
-import type { DatabaseInput } from './db/types'
-import type { RuntimeEnv } from './db/url'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
 import {
@@ -36,9 +21,6 @@ import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
-  env?: RuntimeEnv
-  database?: DatabaseInput
-  authBasePath?: string
   openapi?: {
     title?: string
     version?: string
@@ -177,11 +159,6 @@ function errorMessage(error: unknown, fallback: string) {
 
 export function createApi(options: CreateApiOptions = {}) {
   const upstreamFetch = options.fetch ?? fetch
-  const authOptions = {
-    env: options.env,
-    database: options.database,
-    authBasePath: options.authBasePath ?? '/auth',
-  }
   const app = new OpenAPIHono({
     defaultHook: (result, c) => {
       if (!result.success) {
@@ -214,33 +191,6 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
-    .openapi(signUpRoute, async (c) => {
-      const result = await handleSignUp(c, c.req.valid('json'), authOptions)
-      applySetCookies(c, result.cookies)
-      if (!result.ok || !result.user) {
-        return c.json({ error: result.ok ? 'Could not create the account.' : result.error }, 400)
-      }
-      return c.json({ user: result.user }, 200)
-    })
-    .openapi(signInRoute, async (c) => {
-      const result = await handleSignIn(c, c.req.valid('json'), authOptions)
-      applySetCookies(c, result.cookies)
-      if (!result.ok || !result.user) {
-        return c.json({ error: result.ok ? 'Could not sign in.' : result.error }, 400)
-      }
-      return c.json({ user: result.user }, 200)
-    })
-    .openapi(signOutRoute, async (c) => {
-      applySetCookies(c, await handleSignOut(c, authOptions))
-      return c.json({ ok: true as const }, 200)
-    })
-    .openapi(sessionRoute, async (c) => {
-      const result = await handleSession(c, authOptions)
-      if (result.cookies) {
-        applySetCookies(c, result.cookies)
-      }
-      return c.json({ user: result.user }, 200)
-    })
     .openapi(specRoute, async (c) => {
       try {
         const specUrl = c.req.valid('json').url
@@ -291,8 +241,6 @@ export function createApi(options: CreateApiOptions = {}) {
     proxyMcpRequest(c.req.raw, upstreamFetch),
   )
 
-  routes.on(['GET', 'POST'], '/auth/*', (c) => handleNativeAuth(c, authOptions))
-
   return routes.doc31('/openapi.json', openApiConfig)
 }
 
@@ -303,7 +251,6 @@ export function mountApi(basePath = '/api', options: CreateApiOptions = {}) {
     basePath,
     createApi({
       ...options,
-      authBasePath: options.authBasePath ?? authBasePathForMount(basePath),
       openapi: {
         ...options.openapi,
         servers: options.openapi?.servers ?? [{ url: basePath }],

@@ -88,7 +88,7 @@ try {
     [
       '--input-type=module',
       '--eval',
-      "import('@hookfish/api/app').then((api) => { if (typeof api.mountApi !== 'function') process.exit(1) })",
+      "import('@hookfish/api').then((api) => { if (typeof api.mountApi !== 'function') process.exit(1) })",
     ],
     consumerDirectory,
   )

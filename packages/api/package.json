@@ -4,74 +4,32 @@
   "description": "Mountable Smithery Hono API",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
   "files": [
-    "dist",
-    "drizzle"
+    "dist"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    },
-    "./app": {
-      "types": "./dist/app.d.ts",
-      "import": "./dist/app.js",
-      "default": "./dist/app.js"
-    },
-    "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.js",
-      "default": "./dist/client.js"
-    },
-    "./pglite": {
-      "types": "./dist/db/pglite.d.ts",
-      "import": "./dist/db/pglite.js",
-      "default": "./dist/db/pglite.js"
-    },
-    "./postgres": {
-      "types": "./dist/db/postgres.d.ts",
-      "import": "./dist/db/postgres.js",
-      "default": "./dist/db/postgres.js"
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/app.ts src/client.ts src/db/pglite.ts src/db/postgres.ts --format esm --dts --clean --sourcemap --external cloudflare:workers --external @electric-sql/pglite",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "db:migrate:prod": "drizzle-kit migrate",
-    "db:studio:prod": "drizzle-kit studio",
-    "test": "tsx src/app.test.ts && tsx src/upstream.test.ts && tsx src/self.test.ts && tsx src/db/url.test.ts && tsx src/auth-client.test.ts && tsx src/auth-rpc.test.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean --sourcemap",
+    "test": "tsx src/app.test.ts && tsx src/upstream.test.ts && tsx src/self.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.7.2",
     "@hono/zod-openapi": "^1.6.1",
-    "better-auth": "^1.7.2",
-    "drizzle-orm": "^0.45.2",
     "hono": "^4.11.4",
-    "postgres": "^3.4.9",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^22.10.2",
-    "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.10",
     "tsup": "^8.5.1",
     "tsx": "^4.23.12",
     "typescript": "^6.0.2"
-  },
-  "peerDependencies": {
-    "@electric-sql/pglite": "^0.5.8"
-  },
-  "peerDependenciesMeta": {
-    "@electric-sql/pglite": {
-      "optional": true
-    }
   },
   "publishConfig": {
     "access": "public"

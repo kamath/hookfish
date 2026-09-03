@@ -1,17 +1,8 @@
-import { mountApi } from '@hookfish/api/app'
-import { createPostgresDb } from '@hookfish/api/postgres'
+import { mountApi } from '@hookfish/api'
 import { createFileRoute } from '@tanstack/react-router'
 import type {} from '@tanstack/react-start'
 
-const api = mountApi('/api', {
-  database: () => {
-    const postgresUrl = process.env.POSTGRES_URL
-    if (!postgresUrl) {
-      throw new Error('POSTGRES_URL is required.')
-    }
-    return createPostgresDb(postgresUrl)
-  },
-})
+const api = mountApi('/api')
 
 const handle = ({ request }: { request: Request }) => api.fetch(request)
 

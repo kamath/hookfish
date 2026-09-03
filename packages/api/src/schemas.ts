@@ -64,46 +64,5 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
-export const signUpRequestSchema = z
-  .object({
-    name: z.string().trim().min(1),
-    email: z.string().trim().email(),
-    password: z.string().min(8),
-  })
-  .openapi('SignUpRequest')
-
-export const signInRequestSchema = z
-  .object({
-    email: z.string().trim().email(),
-    password: z.string().min(1),
-  })
-  .openapi('SignInRequest')
-
-export const authUserSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    image: z.string().nullable().optional(),
-    emailVerified: z.boolean().optional(),
-  })
-  .openapi('AuthUser')
-
-export const authSessionSchema = z
-  .object({
-    user: authUserSchema.nullable(),
-  })
-  .openapi('AuthSession')
-
-export const okSchema = z
-  .object({
-    ok: z.literal(true),
-  })
-  .openapi('Ok')
-
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
-export type SignUpRequest = z.infer<typeof signUpRequestSchema>
-export type SignInRequest = z.infer<typeof signInRequestSchema>
-export type AuthUser = z.infer<typeof authUserSchema>
-export type AuthSession = z.infer<typeof authSessionSchema>

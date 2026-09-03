@@ -253,11 +253,6 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   background-color: transparent;
 }
 
-/* Keep the selected login field visible while its input is active. */
-#login-form[data-oc-mode='insert'] [data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
-}
-
 .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
   width: calc(100% + var(--oc-gutter) + 1px);
   max-width: calc(28rem + var(--oc-gutter) + 1px);

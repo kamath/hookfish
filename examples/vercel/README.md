@@ -8,9 +8,6 @@ pnpm --filter @hookfish/example-vercel build
 vercel deploy
 ```
 
-Configure `POSTGRES_URL` in the Vercel project environment. The API route passes
-that connection string directly to `mountApi`.
-
 TanStack Start has no Vercel preset in v1, so the wiring is explicit and small:
 
 - [`vercel.json`](./vercel.json) sets `outputDirectory` to `dist/client` and rewrites
