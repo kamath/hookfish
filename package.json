@@ -5,11 +5,7 @@
   "scripts": {
     "build": "turbo run build",
     "cli": "pnpm build && pnpm --filter hookfish start",
-    "db:migrate": "pnpm --filter @hookfish/api db:migrate",
-    "db:studio": "pnpm --filter @hookfish/api db:studio",
-    "db:migrate:prod": "pnpm --filter @hookfish/api db:migrate:prod",
-    "db:studio:prod": "pnpm --filter @hookfish/api db:studio:prod",
-    "dev": "turbo run dev --filter=@hookfish/app --filter=@hookfish/example-node",
+    "dev": "turbo run dev --filter=@hookfish/web",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },
@@ -19,5 +15,12 @@
   "packageManager": "pnpm@10.33.3",
   "engines": {
     "node": ">=22.12.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss",
+      "sharp"
+    ]
   }
 }

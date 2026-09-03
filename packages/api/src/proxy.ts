@@ -1,7 +1,5 @@
 import { isHttpUrl } from './http'
 
-export const MCP_PROXY_AUTHORIZATION_HEADER = 'x-hookfish-mcp-authorization'
-
 const REQUEST_HEADER_BLOCKLIST = new Set([
   'connection',
   'content-length',
@@ -13,7 +11,6 @@ const REQUEST_HEADER_BLOCKLIST = new Set([
   'x-forwarded-for',
   'x-forwarded-host',
   'x-forwarded-proto',
-  MCP_PROXY_AUTHORIZATION_HEADER,
 ])
 
 const RESPONSE_HEADER_BLOCKLIST = new Set([
@@ -47,22 +44,13 @@ export async function proxyMcpRequest(
   }
 
   const headers = filteredHeaders(request.headers, REQUEST_HEADER_BLOCKLIST)
-  const upstreamAuthorization = request.headers.get(MCP_PROXY_AUTHORIZATION_HEADER)
-  if (upstreamAuthorization) {
-    headers.set('authorization', upstreamAuthorization)
-  }
-  const body =
-    request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body
   const response = await upstreamFetch(target, {
     method: request.method,
     headers,
-    body,
-    // Node streams a request body only when told the request is half-duplex; without this it
-    // throws before the request leaves the process. Workers accepts and ignores the option.
-    ...(body ? { duplex: 'half' } : {}),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
     redirect: 'manual',
     signal: request.signal,
-  } as RequestInit)
+  })
   const responseHeaders = filteredHeaders(response.headers, RESPONSE_HEADER_BLOCKLIST)
   if (responseHeaders.get('content-type')?.includes('text/event-stream')) {
     responseHeaders.set('Cache-Control', 'no-cache, no-transform')

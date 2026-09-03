@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { hc } from 'hono/client'
 import { createApi, mountApi, type AppType } from './app'
 import { mcpOAuthClientMetadata } from './oauth'
-import { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
 
 const seen: Array<{ url: string; init?: RequestInit }> = []
 
@@ -84,20 +83,6 @@ assert.equal(proxied.status, 200)
 assert.equal(proxied.headers.get('mcp-session-id'), 'session-1')
 assert.equal(seen.at(-1)?.url, 'https://mcp.test/sse')
 
-const authorizedProxy = await api.request(
-  '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fauthorized',
-  {
-    method: 'POST',
-    headers: {
-      [MCP_PROXY_AUTHORIZATION_HEADER]: 'Bearer upstream-token',
-    },
-  },
-)
-assert.equal(authorizedProxy.status, 200)
-const authorizedHeaders = new Headers(seen.at(-1)?.init?.headers)
-assert.equal(authorizedHeaders.get('authorization'), 'Bearer upstream-token')
-assert.equal(authorizedHeaders.get(MCP_PROXY_AUTHORIZATION_HEADER), null)
-
 const rejectedProxy = await client['mcp-proxy'].$get({ query: { url: 'file:///tmp/mcp' } })
 assert.equal(rejectedProxy.status, 400)
 
@@ -107,40 +92,12 @@ const document = (await openapi.json()) as {
   openapi: string
   paths: Record<string, unknown>
   servers?: Array<{ url: string }>
-  components?: {
-    securitySchemes?: Record<string, unknown>
-  }
 }
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
-assert.ok(document.paths['/registry'])
-assert.ok(document.paths['/registry/{sourceId}'])
-assert.ok(document.paths['/auth/sign-up'])
-assert.ok(document.paths['/auth/login'])
-assert.ok(document.paths['/auth/sign-out'])
-assert.ok(document.paths['/auth/session'])
-assert.ok(document.paths['/auth/api-keys'])
-assert.deepEqual(document.components?.securitySchemes?.Bearer, {
-  type: 'http',
-  scheme: 'bearer',
-  bearerFormat: 'JWT or API key',
-  description: 'A user JWT or an API key returned by POST /auth/api-keys.',
-})
-const apiKeyOperations = document.paths['/auth/api-keys'] as {
-  get?: { security?: Array<Record<string, unknown>> }
-  post?: { security?: Array<Record<string, unknown>> }
-}
-assert.deepEqual(apiKeyOperations.get?.security, [{ Bearer: [] }])
-assert.deepEqual(apiKeyOperations.post?.security, [{ Bearer: [] }])
-
-assert.equal(client.auth['sign-up'].$url().toString(), 'http://hookfish.test/auth/sign-up')
-assert.equal(client.auth.login.$url().toString(), 'http://hookfish.test/auth/login')
-assert.equal(client.auth['sign-out'].$url().toString(), 'http://hookfish.test/auth/sign-out')
-assert.equal(client.auth.session.$url().toString(), 'http://hookfish.test/auth/session')
-assert.equal(client.auth['api-keys'].$url().toString(), 'http://hookfish.test/auth/api-keys')
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
 const mountedSpec = await mounted.request('/api/spec', {

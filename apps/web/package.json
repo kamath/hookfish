@@ -1,0 +1,52 @@
+{
+  "name": "@hookfish/web",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "vite build --mode cloudflare",
+    "build:node": "vite build --mode node",
+    "dev": "vite dev --port 3000",
+    "generate-routes": "tsr generate",
+    "test": "tsx src/lib/api.test.ts && tsx src/lib/catalog.test.ts && tsx src/lib/cloud.test.ts && tsx src/lib/export-snippet.test.ts && tsx src/lib/form-validator.test.ts && tsx src/lib/operation-form-cache.test.ts && tsx src/lib/openapi.test.ts && tsx src/lib/theme.test.ts && tsx src/lib/toolbar.test.ts && tsx src/lib/upstream.test.ts && tsx src/lib/queries.test.ts && tsx src/lib/mcp/client.test.ts && tsx src/lib/mcp/trace.test.ts && tsx src/lib/keymap.test.ts && tsx src/components/auth-status.test.ts && tsx src/components/mcp-server-panel.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookfish/api": "workspace:*",
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@rjsf/core": "^6.8.0",
+    "@rjsf/utils": "^6.8.0",
+    "@rjsf/validator-ajv8": "^6.8.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-devtools": "latest",
+    "@tanstack/react-hotkeys": "^0.10.0",
+    "@tanstack/react-query": "^5.102.4",
+    "@tanstack/react-router": "latest",
+    "@tanstack/react-router-devtools": "latest",
+    "@tanstack/react-start": "latest",
+    "ajv": "^8.20.0",
+    "hono": "^4.11.4",
+    "jotai": "^2.20.3",
+    "json-schema-to-zod": "^2.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.0",
+    "@tanstack/devtools-vite": "latest",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0",
+    "wrangler": "^4.126.0"
+  }
+}
