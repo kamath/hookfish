@@ -1,16 +1,5 @@
 import { apiJson, getApi } from './api'
-import type {
-  AuthSession,
-  CreateApiKeyRequest,
-  SignInRequest,
-  SignUpRequest,
-} from '@hookfish/api'
-
-export type CreatedApiKey = {
-  name: string
-  expiresAt: string | null
-  key: string
-}
+import type { AuthSession, SignInRequest, SignUpRequest } from '@hookfish/api'
 
 export async function fetchSession() {
   return apiJson<AuthSession>(await getApi().auth.session.$get())
@@ -26,11 +15,4 @@ export async function signUp(body: SignUpRequest) {
 
 export async function signOut() {
   return apiJson<{ ok: true }>(await getApi().auth['sign-out'].$post())
-}
-
-export async function createApiKey(body: CreateApiKeyRequest) {
-  const result = await apiJson<{ apiKey: CreatedApiKey }>(
-    await getApi().auth['api-keys'].$post({ json: body }),
-  )
-  return result.apiKey
 }

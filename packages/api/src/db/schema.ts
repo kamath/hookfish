@@ -1,8 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
   boolean,
-  index,
-  jsonb,
   pgTable,
   text,
   timestamp,
@@ -69,59 +67,9 @@ export const verification = pgTable('verification', {
   updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
 })
 
-export const apiKey = pgTable(
-  'api_key',
-  {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
-    keyHash: text('key_hash').notNull().unique(),
-    expiresAt: timestampColumn('expires_at'),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    createdAt: timestampColumn('created_at').defaultNow().notNull(),
-  },
-  (table) => [index('api_key_user_id_idx').on(table.userId)],
-)
-
-export const cachedSource = pgTable(
-  'cached_source',
-  {
-    sourceId: text('source_id').primaryKey(),
-    sourceUrl: text('source_url').notNull(),
-    createdByUserId: text('created_by_user_id').references(() => user.id, {
-      onDelete: 'set null',
-    }),
-    kind: text('kind').notNull(),
-    metadata: jsonb('metadata').notNull(),
-    createdAt: timestampColumn('created_at').defaultNow().notNull(),
-    updatedAt: timestampColumn('updated_at').defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex('cached_source_kind_source_url_uidx').on(
-      table.kind,
-      table.sourceUrl,
-    ),
-    index('cached_source_created_by_user_id_idx').on(table.createdByUserId),
-    index('cached_source_updated_at_idx').on(table.updatedAt),
-  ],
-)
-
-export const jwks = pgTable('jwks', {
-  id: text('id').primaryKey(),
-  publicKey: text('public_key').notNull(),
-  privateKey: text('private_key').notNull(),
-  createdAt: timestampColumn('created_at').notNull(),
-  expiresAt: timestampColumn('expires_at'),
-  alg: text('alg'),
-  crv: text('crv'),
-})
-
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
-  apiKeys: many(apiKey),
-  cachedSources: many(cachedSource),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -138,31 +86,12 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }))
 
-export const apiKeyRelations = relations(apiKey, ({ one }) => ({
-  user: one(user, {
-    fields: [apiKey.userId],
-    references: [user.id],
-  }),
-}))
-
-export const cachedSourceRelations = relations(cachedSource, ({ one }) => ({
-  createdBy: one(user, {
-    fields: [cachedSource.createdByUserId],
-    references: [user.id],
-  }),
-}))
-
 export const schema = {
   user,
   session,
   account,
   verification,
-  apiKey,
-  cachedSource,
-  jwks,
   userRelations,
   sessionRelations,
   accountRelations,
-  apiKeyRelations,
-  cachedSourceRelations,
 }

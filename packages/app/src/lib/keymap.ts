@@ -130,27 +130,6 @@ export const paneConfig: Record<Pane, PaneConfig> = {
       { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
     ],
   },
-  apiKeys: {
-    parent: 'specs',
-    path: '/api-keys',
-    title: 'Create an API key',
-    bindings: [
-      { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next field' },
-      { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous field' },
-      { id: 'nextTab', hotkey: 'Tab', label: 'next field' },
-      { id: 'previousTab', hotkey: 'Shift+Tab', label: 'previous field' },
-      { id: 'insert', hotkey: 'I', label: 'edit', flag: 'canEdit' },
-      {
-        id: 'submitNow',
-        hotkey: 'Mod+Enter',
-        label: 'submit',
-        flag: 'canEdit',
-      },
-      { id: 'copy', hotkey: 'Y', label: 'copy key', flag: 'hasKey' },
-      { id: 'parent', hotkey: 'Escape', label: 'sources' },
-      { id: 'command', hotkey: 'Escape', label: 'command', modes: ['edit'] },
-    ],
-  },
   routes: {
     parent: 'specs',
     path: '/apis/$apiId/routes',

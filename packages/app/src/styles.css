@@ -253,8 +253,8 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   background-color: transparent;
 }
 
-/* Keep selected standalone form fields visible while their inputs are active. */
-:is(#login-form, #create-api-key-form)[data-oc-mode='insert'] [data-oc-current='true'] {
+/* Keep the selected login field visible while its input is active. */
+#login-form[data-oc-mode='insert'] [data-oc-current='true'] {
   background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
 }
 

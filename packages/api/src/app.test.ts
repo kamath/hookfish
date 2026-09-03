@@ -107,40 +107,21 @@ const document = (await openapi.json()) as {
   openapi: string
   paths: Record<string, unknown>
   servers?: Array<{ url: string }>
-  components?: {
-    securitySchemes?: Record<string, unknown>
-  }
 }
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
-assert.ok(document.paths['/registry'])
-assert.ok(document.paths['/registry/{sourceId}'])
 assert.ok(document.paths['/auth/sign-up'])
 assert.ok(document.paths['/auth/login'])
 assert.ok(document.paths['/auth/sign-out'])
 assert.ok(document.paths['/auth/session'])
-assert.ok(document.paths['/auth/api-keys'])
-assert.deepEqual(document.components?.securitySchemes?.Bearer, {
-  type: 'http',
-  scheme: 'bearer',
-  bearerFormat: 'JWT or API key',
-  description: 'A user JWT or an API key returned by POST /auth/api-keys.',
-})
-const apiKeyOperations = document.paths['/auth/api-keys'] as {
-  get?: { security?: Array<Record<string, unknown>> }
-  post?: { security?: Array<Record<string, unknown>> }
-}
-assert.deepEqual(apiKeyOperations.get?.security, [{ Bearer: [] }])
-assert.deepEqual(apiKeyOperations.post?.security, [{ Bearer: [] }])
 
 assert.equal(client.auth['sign-up'].$url().toString(), 'http://hookfish.test/auth/sign-up')
 assert.equal(client.auth.login.$url().toString(), 'http://hookfish.test/auth/login')
 assert.equal(client.auth['sign-out'].$url().toString(), 'http://hookfish.test/auth/sign-out')
 assert.equal(client.auth.session.$url().toString(), 'http://hookfish.test/auth/session')
-assert.equal(client.auth['api-keys'].$url().toString(), 'http://hookfish.test/auth/api-keys')
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
 const mountedSpec = await mounted.request('/api/spec', {
