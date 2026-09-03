@@ -38,15 +38,20 @@ try {
           react: '^19.2.0',
           'react-dom': '^19.2.0',
         },
-        pnpm: {
-          overrides: {
-            '@hookfish/api': `file:${join(packagesDirectory, apiTarball)}`,
-          },
-        },
       },
       null,
       2,
     ),
+  )
+  await writeFile(
+    join(temporaryDirectory, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      '  - consumer',
+      'overrides:',
+      `  '@hookfish/api': file:${join(packagesDirectory, apiTarball)}`,
+      '',
+    ].join('\n'),
   )
   await writeFile(
     join(consumerDirectory, 'index.html'),
