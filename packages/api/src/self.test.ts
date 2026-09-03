@@ -1,11 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  apiMountPrefix,
-  isOwnOpenApiUrl,
-  ownApiPath,
-  ownApiRequest,
-  withInternalFetchHeader,
-} from './self'
+import { apiMountPrefix, isOwnOpenApiUrl, ownApiPath, ownApiRequest } from './self'
 
 assert.equal(apiMountPrefix('http://localhost/api/spec'), '/api')
 assert.equal(apiMountPrefix('http://localhost/spec'), '')
@@ -27,19 +21,5 @@ const rewritten = ownApiRequest(
 assert.ok(rewritten)
 assert.equal(new URL(rewritten.url).pathname, '/openapi.json')
 assert.equal(rewritten.method, 'GET')
-
-const authenticated = withInternalFetchHeader(
-  new Request('http://hookfish.internal/auth/api-keys', {
-    headers: { authorization: 'Bearer operation-token' },
-  }),
-  new Headers({
-    authorization: 'Bearer user-token',
-    cookie: 'session=secret',
-    'x-api-key': 'hf_secret',
-  }),
-)
-assert.equal(authenticated.headers.get('authorization'), 'Bearer operation-token')
-assert.equal(authenticated.headers.get('cookie'), 'session=secret')
-assert.equal(authenticated.headers.get('x-api-key'), null)
 
 console.log('self-url tests passed')

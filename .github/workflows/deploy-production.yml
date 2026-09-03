@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Migrate Neon and deploy Cloudflare Worker
+    name: Resolve Neon and deploy Cloudflare Worker
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -70,31 +70,14 @@ jobs:
           echo "::add-mask::$POSTGRES_URL"
           echo "POSTGRES_URL=$POSTGRES_URL" >> "$GITHUB_ENV"
 
-      - name: Apply database migrations
-        run: pnpm --filter @hookfish/api db:migrate:prod
-
       - name: Build Worker
-        run: pnpm turbo run build --filter=@hookfish/example-cloudflare
-
-      - name: Create Worker secrets file
-        env:
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-        run: |
-          SECRETS_FILE="$RUNNER_TEMP/worker-secrets.json"
-          jq -n \
-            --arg postgresUrl "$POSTGRES_URL" \
-            --arg authSecret "$BETTER_AUTH_SECRET" \
-            '{POSTGRES_URL: $postgresUrl, BETTER_AUTH_SECRET: $authSecret}' \
-            > "$SECRETS_FILE"
-          chmod 600 "$SECRETS_FILE"
-          echo "SECRETS_FILE=$SECRETS_FILE" >> "$GITHUB_ENV"
+        run: pnpm turbo run build --filter=@hookfish/web
 
       - name: Deploy production Worker
         run: |
-          pnpm --filter @hookfish/example-cloudflare exec wrangler deploy \
+          pnpm --filter @hookfish/web exec wrangler deploy \
             --config dist/server/wrangler.json \
-            --name "$WORKER_NAME" \
-            --secrets-file "$SECRETS_FILE"
+            --name "$WORKER_NAME"
 
       - name: Resolve production URL
         id: production
@@ -115,15 +98,10 @@ jobs:
             "$PRODUCTION_URL/" > /dev/null
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/api/openapi.json" > /dev/null
-          test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
-            "$PRODUCTION_URL/api/auth/session" | jq -r '.user')" = "null"
-          for URL in "$PRODUCTION_URL" "$PUBLIC_URL"; do
-            test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-              --request POST "$URL/api/auth/login" \
-              --header "origin: $URL" \
-              --header "content-type: application/json" \
-              --data '{"email":"smoke-test@example.invalid","password":"invalid"}')" = "400"
-          done
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
+            "$PUBLIC_URL/" > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
+            "$PUBLIC_URL/api/openapi.json" > /dev/null
 
       - name: Publish deployment summary
         env:
@@ -133,5 +111,5 @@ jobs:
             echo "### Production deployed"
             echo
             echo "- Worker: [$WORKER_NAME]($PRODUCTION_URL)"
-            echo "- Primary Neon migrations and database smoke tests passed."
+            echo "- Homepage and OpenAPI smoke tests passed."
           } >> "$GITHUB_STEP_SUMMARY"

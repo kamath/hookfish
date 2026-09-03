@@ -6,10 +6,9 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "types": ["node"]
   },
-    "include": ["src/**/*.ts", "src/**/*.d.ts", "drizzle.config.ts"]
+  "include": ["src/**/*.ts"]
 }
