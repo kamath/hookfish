@@ -43,6 +43,7 @@ const api = createApi({
           url: 'https://mcp.example.test',
           title: 'Example MCP',
           category_name: 'MCP Servers',
+          type: 'MCP',
         },
       ]
     },
@@ -59,6 +60,7 @@ assert.deepEqual(await registryFeed.json(), {
     {
       url: 'https://mcp.example.test',
       title: 'Example MCP',
+      type: 'MCP',
     },
   ],
 })

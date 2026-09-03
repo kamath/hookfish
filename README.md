@@ -91,7 +91,8 @@ Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally n
 
 ## Suggested sources database
 
-The `suggested_source` table contains only `url`, `title`, and `category_name` text columns.
+The `suggested_source` table contains `url`, `title`, `category_name`, and `type` text columns.
+`type` is constrained to `MCP` or `API`.
 The homepage reads the category-keyed response from `GET /api/registry/feed`.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 

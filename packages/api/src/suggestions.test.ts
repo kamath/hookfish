@@ -18,7 +18,12 @@ try {
   assert.deepEqual(Object.keys(suggestions[0] ?? {}).sort(), [
     'category_name',
     'title',
+    'type',
     'url',
+  ])
+  assert.deepEqual([...new Set(suggestions.map((suggestion) => suggestion.type))].sort(), [
+    'API',
+    'MCP',
   ])
 } finally {
   await rm(dataDir, { force: true, recursive: true })

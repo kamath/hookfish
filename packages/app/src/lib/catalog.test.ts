@@ -7,16 +7,19 @@ const carousel = registryFeedToCarousel({
     {
       url: 'https://mcp.example.test/mcp',
       title: 'Example MCP',
+      type: 'MCP',
     },
   ],
   OpenAPI: [
     {
       url: '/api/openapi.json',
       title: 'Smithery API',
+      type: 'API',
     },
     {
       url: 'https://petstore.example.test/openapi.json',
       title: 'Petstore',
+      type: 'API',
     },
   ],
 })
@@ -30,7 +33,9 @@ assert.deepEqual(
   ],
 )
 assert.equal(carousel[1]?.items[0]?.detail, 'mcp.example.test')
+assert.equal(carousel[1]?.items[0]?.kind, 'mcp')
 assert.equal(carousel[2]?.items[0]?.detail, '/api/openapi.json')
+assert.equal(carousel[2]?.items[0]?.kind, 'openapi')
 assert.equal(
   catalogSourceUrl(carousel[2]!.items[0]!),
   'http://localhost/api/openapi.json',

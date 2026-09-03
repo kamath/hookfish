@@ -1,0 +1,61 @@
+{
+  "id": "0c2e2fa2-0a45-44bb-a3ab-80296063516b",
+  "prevId": "ddb66f7e-ebbc-4dbc-8cbf-eb5ba2947ea8",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.suggested_source": {
+      "name": "suggested_source",
+      "schema": "",
+      "columns": {
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category_name": {
+          "name": "category_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "suggested_source_type_check": {
+          "name": "suggested_source_type_check",
+          "value": "\"suggested_source\".\"type\" IN ('MCP', 'API')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

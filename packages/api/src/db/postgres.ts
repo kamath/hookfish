@@ -31,6 +31,7 @@ export function createPostgresDb(connection: PostgresConnection): AppDatabase {
         url: row.url,
         title: row.title,
         category_name: row.categoryName,
+        type: row.type,
       }))
     },
   }

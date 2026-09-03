@@ -17,6 +17,7 @@ function suggestionDetail(url: string) {
 function catalogEntry(suggestion: RegistryFeed[string][number]): CatalogEntry {
   return {
     id: suggestion.url,
+    kind: suggestion.type === 'MCP' ? 'mcp' : 'openapi',
     title: suggestion.title,
     detail: suggestionDetail(suggestion.url),
     url: suggestion.url,

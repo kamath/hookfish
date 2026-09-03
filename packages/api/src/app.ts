@@ -224,10 +224,17 @@ export function createApi(options: CreateApiOptions = {}) {
         return c.json({ error: 'The registry feed database is not configured.' }, 503)
       }
       const database = await resolveDatabase(options.database)
-      const feed: Record<string, Array<{ url: string; title: string }>> = {}
+      const feed: Record<
+        string,
+        Array<{ url: string; title: string; type: 'MCP' | 'API' }>
+      > = {}
       for (const suggestion of await database.listSuggestedSources()) {
         const category = feed[suggestion.category_name] ?? []
-        category.push({ url: suggestion.url, title: suggestion.title })
+        category.push({
+          url: suggestion.url,
+          title: suggestion.title,
+          type: suggestion.type,
+        })
         feed[suggestion.category_name] = category
       }
       return c.json(feed, 200)

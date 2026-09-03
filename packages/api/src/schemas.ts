@@ -68,6 +68,7 @@ export const registryFeedItemSchema = z
   .object({
     url: z.string(),
     title: z.string(),
+    type: z.enum(['MCP', 'API']),
   })
   .openapi('RegistryFeedItem')
 

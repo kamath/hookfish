@@ -2,6 +2,7 @@ export type SuggestedSource = {
   url: string
   title: string
   category_name: string
+  type: 'MCP' | 'API'
 }
 
 export type AppDatabase = {
