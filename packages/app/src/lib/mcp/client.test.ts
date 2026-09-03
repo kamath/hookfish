@@ -526,7 +526,7 @@ oauth.cleanCallbackUrl()
 assert.equal(location.href, 'http://hookfish.test/apis/oauth-source/routes')
 assert.throws(() => oauth.codeVerifier(), /verifier is missing/)
 assert.deepEqual(mcpOAuthClientMetadata('oauth-source', 'https://hookfish.test'), {
-  client_name: 'Smithery MCP Inspector',
+  client_name: 'Hookfish MCP Inspector',
   client_uri: 'https://hookfish.test',
   redirect_uris: ['https://hookfish.test/apis/oauth-source/routes'],
   response_types: ['code'],

@@ -1,7 +1,7 @@
 {
   "name": "hookfish",
   "version": "0.13.0",
-  "description": "Run the Smithery OpenAPI client locally",
+  "description": "Run the Hookfish OpenAPI client locally",
   "type": "module",
   "bin": {
     "hookfish": "dist/index.js"

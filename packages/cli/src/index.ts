@@ -70,7 +70,7 @@ async function startServer(options: { host: string; port: number }) {
 
   await server.ready()
   console.log(
-    `Smithery CLI ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
+    `Hookfish CLI ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
   )
 
   const shutdown = async () => {
@@ -83,7 +83,7 @@ async function startServer(options: { host: string; port: number }) {
 
 const program = new Command()
   .name('hookfish')
-  .description('Run the Smithery OpenAPI client locally')
+  .description('Run the Hookfish OpenAPI client locally')
   .version(version)
   .allowExcessArguments()
   .option('-p, --port <number>', 'port to listen on', parsePort, 3000)

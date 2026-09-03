@@ -8,7 +8,7 @@ assert.deepEqual(
   OPENAPI_CATALOG.map((entry) => [entry.hotkey, entry.id, entry.title]),
   [
     ['1', 'arcade-api', 'Arcade API'],
-    ['2', 'smithery-api', 'Smithery API'],
+    ['2', 'hookfish-api', 'Hookfish API'],
     ['3', 'petstore', 'Swagger Petstore'],
     ['4', 'openai', 'OpenAI'],
     ['5', 'anthropic', 'Anthropic'],
@@ -27,7 +27,7 @@ assert.equal(
 configureApp({ apiBaseUrl: 'https://backend.test/v1/' })
 const configuredEntry = getCarouselCatalog()
   .flatMap((row) => row.items)
-  .find((entry) => entry.id === 'smithery-api')
+  .find((entry) => entry.id === 'hookfish-api')
 assert.equal(configuredEntry?.url, 'https://backend.test/v1/openapi.json')
 
 console.log('openapi catalog order ok')

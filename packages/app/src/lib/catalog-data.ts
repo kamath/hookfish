@@ -56,10 +56,10 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
     url: 'https://api.arcade.dev/v1/swagger',
   },
   {
-    id: 'smithery-api',
+    id: 'hookfish-api',
     kind: 'openapi',
     hotkey: '2',
-    title: 'Smithery API',
+    title: 'Hookfish API',
     detail: `${API_BASE_URL}/openapi.json`,
     url: `${API_BASE_URL}/openapi.json`,
   },
@@ -92,7 +92,7 @@ export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
 export function getCarouselCatalog(): CarouselListContract[] {
   const ownOpenApiUrl = configuredApiUrl('/openapi.json')
   const openApiCatalog = OPENAPI_CATALOG.map((entry) =>
-    entry.id === 'smithery-api'
+    entry.id === 'hookfish-api'
       ? {
           ...entry,
           detail: ownOpenApiUrl,
