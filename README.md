@@ -13,10 +13,10 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The launcher opens ten curated sources from command mode:
-`1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
-bar and press `Enter` to connect to it as an MCP server or `Cmd`/`Ctrl`+`Enter` to read it as
-an OpenAPI document.
+Open `http://localhost:3000`. The homepage lists Recent, MCP servers, and OpenAPI specs
+from the server catalog. In command mode, `H`/`L` move between lists and `1`–`5` open the
+active list. Paste any other URL in the bar and press `Enter` to connect to it as an MCP
+server or `Cmd`/`Ctrl`+`Enter` to read it as an OpenAPI document.
 
 ## Adding a source type
 
@@ -25,7 +25,7 @@ The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` t
 `apps/web/src/lib/source-adapters.ts`; the launcher's submit buttons and their shortcuts come
 from that registry. A source parser supplies executable names, badges, accent colors, JSON
 Schema inputs, targets, credentials, and UI labels. Curated entries and their number keys live
-in `apps/web/src/lib/catalog.ts`; adding a row there also registers its keybinding.
+in `packages/api/src/catalog.ts` and are served from `GET /api/catalog`.
 
 Register execution behavior with `registerExecutableAdapter()` in
 `apps/web/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,

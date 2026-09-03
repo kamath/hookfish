@@ -96,8 +96,22 @@ const document = (await openapi.json()) as {
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
+assert.ok(document.paths['/catalog'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
+
+const catalog = await client.catalog.$get()
+assert.equal(catalog.status, 200)
+const catalogBody = await catalog.json()
+assert.deepEqual(
+  catalogBody.lists.map((list) => list.id),
+  ['recent', 'mcp', 'openapi'],
+)
+assert.equal(catalogBody.lists[0]?.items.length, 0)
+assert.equal(
+  catalogBody.lists[2]?.items.find((entry) => entry.id === 'smithery-api')?.url,
+  '/openapi.json',
+)
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
 const mountedSpec = await mounted.request('/api/spec', {

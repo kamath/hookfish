@@ -2,7 +2,9 @@ import { Hono } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
+import { catalogLists } from './catalog'
 import {
+  catalogResponseSchema,
   errorSchema,
   executeRequestSchema,
   executeResultSchema,
@@ -100,6 +102,23 @@ const executeRoute = createRoute({
   },
 })
 
+const catalogRoute = createRoute({
+  method: 'get',
+  path: '/catalog',
+  tags: ['Catalog'],
+  summary: 'List homepage source carousels',
+  responses: {
+    200: {
+      description: 'Recent, MCP, and OpenAPI source lists',
+      content: {
+        'application/json': {
+          schema: catalogResponseSchema,
+        },
+      },
+    },
+  },
+})
+
 const oauthRoute = createRoute({
   method: 'get',
   path: '/mcp-oauth-client',
@@ -191,6 +210,9 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
+    .openapi(catalogRoute, (c) => {
+      return c.json({ lists: catalogLists(c.req.url) }, 200)
+    })
     .openapi(specRoute, async (c) => {
       try {
         const specUrl = c.req.valid('json').url

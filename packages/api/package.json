@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx src/app.test.ts && tsx src/upstream.test.ts && tsx src/self.test.ts",
+    "test": "tsx src/app.test.ts && tsx src/upstream.test.ts && tsx src/self.test.ts && tsx src/catalog.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

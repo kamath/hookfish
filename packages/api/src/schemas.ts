@@ -64,5 +64,35 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
+export const catalogHotkeySchema = z.enum(['1', '2', '3', '4', '5'])
+
+export const catalogEntrySchema = z
+  .object({
+    id: z.string(),
+    kind: z.string(),
+    hotkey: catalogHotkeySchema,
+    title: z.string(),
+    detail: z.string(),
+    url: z.string(),
+  })
+  .openapi('CatalogEntry')
+
+export const catalogListSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    source: z.enum(['recent', 'catalog']),
+    items: z.array(catalogEntrySchema),
+  })
+  .openapi('CatalogList')
+
+export const catalogResponseSchema = z
+  .object({
+    lists: z.array(catalogListSchema),
+  })
+  .openapi('CatalogResponse')
+
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
+export type CatalogEntry = z.infer<typeof catalogEntrySchema>
+export type CatalogList = z.infer<typeof catalogListSchema>

@@ -20,6 +20,10 @@ assert.equal(
   getApi()['openapi.json'].$url().toString(),
   'https://hookfish.test/api/openapi.json',
 )
+assert.equal(
+  getApi().catalog.$url().toString(),
+  'https://hookfish.test/api/catalog',
+)
 
 assert.equal(isOwnOpenApiUrl('/api/openapi.json'), true)
 assert.equal(isOwnOpenApiUrl('https://hookfish.test/api/openapi.json'), true)

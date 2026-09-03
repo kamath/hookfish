@@ -77,7 +77,26 @@ assert.ok(
 
 const specsRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'remove')
 assert.equal(specsRemove?.hotkey, 'D', 'specs remove is D')
-assert.equal(specsRemove?.flag, 'hasSpecs', 'specs remove requires sources')
+assert.equal(specsRemove?.flag, 'hasRecent', 'specs remove requires a recent item')
+
+const carouselItems = paneConfig.specs.bindings.filter((binding) =>
+  binding.id.startsWith('carousel-'),
+)
+assert.deepEqual(
+  carouselItems.map((binding) => binding.hotkey),
+  ['1', '2', '3', '4', '5'],
+  'active carousel row uses 1-5',
+)
+assert.equal(
+  paneConfig.specs.bindings.find((binding) => binding.id === 'carouselPrevious')?.hotkey,
+  'H',
+  'carousel scrolls left with H',
+)
+assert.equal(
+  paneConfig.specs.bindings.find((binding) => binding.id === 'carouselNext')?.hotkey,
+  'L',
+  'carousel scrolls right with L',
+)
 const confirmRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'confirmRemove')
 const cancelRemove = paneConfig.specs.bindings.find((binding) => binding.id === 'cancelRemove')
 assert.equal(confirmRemove?.hotkey, 'Enter', 'confirm remove is Enter')
