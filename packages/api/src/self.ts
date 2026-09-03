@@ -51,24 +51,8 @@ export function ownApiRequest(
   return input instanceof Request ? new Request(url, input) : new Request(url, init)
 }
 
-export function withInternalFetchHeader(
-  request: Request,
-  authenticationHeaders?: Headers,
-): Request {
+export function withInternalFetchHeader(request: Request): Request {
   const headers = new Headers(request.headers)
   headers.set(INTERNAL_FETCH_HEADER, '1')
-  const cookie = authenticationHeaders?.get('cookie')
-  if (cookie && !headers.has('cookie')) {
-    headers.set('cookie', cookie)
-  }
-  if (!headers.has('authorization') && !headers.has('x-api-key')) {
-    const apiKey = authenticationHeaders?.get('x-api-key')
-    const authorization = authenticationHeaders?.get('authorization')
-    if (apiKey) {
-      headers.set('x-api-key', apiKey)
-    } else if (authorization) {
-      headers.set('authorization', authorization)
-    }
-  }
   return new Request(request, { headers })
 }

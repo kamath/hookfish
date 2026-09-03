@@ -9,9 +9,7 @@ import {
 import { createRoot } from 'react-dom/client'
 import { useCallback } from 'react'
 import { App, AppErrorPage, AppNotFound } from './app'
-import { CreateApiKeyPage } from './pages/create-api-key'
 import { HomePage } from './pages/home'
-import { LoginPage } from './pages/login'
 import {
   WorkbenchPage,
   validateWorkbenchSearch,
@@ -38,18 +36,6 @@ export function createAppRouter(options: AppRouterOptions = {}) {
     getParentRoute: () => rootRoute,
     path: '/',
     component: HomePage,
-  })
-
-  const loginRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/login',
-    component: LoginPage,
-  })
-
-  const apiKeysRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/api-keys',
-    component: CreateApiKeyPage,
   })
 
   const workbenchRoute = createRoute({
@@ -86,7 +72,7 @@ export function createAppRouter(options: AppRouterOptions = {}) {
   })
 
   return createRouter({
-    routeTree: rootRoute.addChildren({ indexRoute, loginRoute, apiKeysRoute, workbenchRoute }),
+    routeTree: rootRoute.addChildren({ indexRoute, workbenchRoute }),
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',

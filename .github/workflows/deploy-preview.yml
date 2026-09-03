@@ -15,13 +15,12 @@ concurrency:
 
 jobs:
   deploy:
-    name: Neon branch and Cloudflare Worker
+    name: Cloudflare Worker
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       WORKER_NAME: smithery-pr-${{ github.event.pull_request.number }}
-      NEON_BRANCH: preview/pr-${{ github.event.pull_request.number }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -127,47 +126,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Set branch expiration
-        id: expiration
-        run: echo "expires_at=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
-
-      - name: Create or reuse Neon branch
-        id: neon
-        uses: neondatabase/create-branch-action@v6
-        with:
-          project_id: ${{ secrets.NEON_PROJECT_ID }}
-          api_key: ${{ secrets.NEON_API_KEY }}
-          branch_name: ${{ env.NEON_BRANCH }}
-          expires_at: ${{ steps.expiration.outputs.expires_at }}
-
-      - name: Apply database migrations
-        run: pnpm --filter @hookfish/api db:migrate:prod
-        env:
-          POSTGRES_URL: ${{ steps.neon.outputs.db_url }}
-
       - name: Build Worker
         run: pnpm turbo run build --filter=@hookfish/example-cloudflare
-
-      - name: Create Worker secrets file
-        env:
-          POSTGRES_URL: ${{ steps.neon.outputs.db_url }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-        run: |
-          SECRETS_FILE="$RUNNER_TEMP/worker-secrets.json"
-          jq -n \
-            --arg postgresUrl "$POSTGRES_URL" \
-            --arg authSecret "$BETTER_AUTH_SECRET" \
-            '{POSTGRES_URL: $postgresUrl, BETTER_AUTH_SECRET: $authSecret}' \
-            > "$SECRETS_FILE"
-          chmod 600 "$SECRETS_FILE"
-          echo "SECRETS_FILE=$SECRETS_FILE" >> "$GITHUB_ENV"
 
       - name: Deploy preview Worker
         run: |
           pnpm --filter @hookfish/example-cloudflare exec wrangler deploy \
             --config dist/server/wrangler.json \
-            --name "$WORKER_NAME" \
-            --secrets-file "$SECRETS_FILE"
+            --name "$WORKER_NAME"
 
       - name: Smoke test preview
         env:
@@ -177,25 +143,16 @@ jobs:
             "$PREVIEW_URL/" > /dev/null
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PREVIEW_URL/api/openapi.json" > /dev/null
-          test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
-            "$PREVIEW_URL/api/auth/session" | jq -r '.user')" = "null"
-          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            --request POST "$PREVIEW_URL/api/auth/login" \
-            --header "origin: $PREVIEW_URL" \
-            --header "content-type: application/json" \
-            --data '{"email":"smoke-test@example.invalid","password":"invalid"}')" = "400"
 
       - name: Publish deployment summary
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
-          NEON_BRANCH_ID: ${{ steps.neon.outputs.branch_id }}
         run: |
           {
             echo "### Preview deployed"
             echo
             echo "- Worker: [$WORKER_NAME]($PREVIEW_URL)"
-            echo "- Neon branch: \`$NEON_BRANCH\` (\`$NEON_BRANCH_ID\`)"
-            echo "- Migrations and authenticated database smoke tests passed."
+            echo "- Application and OpenAPI smoke tests passed."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update pull request deployment comment
@@ -205,8 +162,6 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
           PREVIOUS_EXISTS: ${{ steps.preview.outputs.previous_exists }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-          NEON_BRANCH_ID: ${{ steps.neon.outputs.branch_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         with:
@@ -228,10 +183,6 @@ jobs:
             const previewUrl = process.env.PREVIEW_URL
             const runUrl = process.env.RUN_URL
             const shortSha = process.env.COMMIT_SHA.slice(0, 7)
-            const neonBranchId = process.env.NEON_BRANCH_ID
-            const neonBranchUrl = neonBranchId
-              ? `https://console.neon.tech/app/projects/${process.env.NEON_PROJECT_ID}/branches/${neonBranchId}`
-              : null
 
             const lines = [
               marker,
@@ -247,9 +198,6 @@ jobs:
               lines.push('The build failed and no previous deployment is available.')
             }
 
-            if (neonBranchUrl) {
-              lines.push('', `[Open the Neon branch](${neonBranchUrl})`)
-            }
             lines.push('', `Commit: \`${shortSha}\``, `[View build logs](${runUrl})`)
             const body = lines.join('\n')
 

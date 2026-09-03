@@ -16,9 +16,7 @@ export function getApiBaseUrl(origin?: string) {
 }
 
 export function getApi(origin?: string) {
-  return hc<AppType>(getApiBaseUrl(origin), {
-    init: { credentials: 'include' },
-  })
+  return hc<AppType>(getApiBaseUrl(origin))
 }
 
 export function isOwnOpenApiUrl(sourceUrl: string, origin?: string) {

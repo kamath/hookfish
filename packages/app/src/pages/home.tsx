@@ -19,7 +19,6 @@ import { blurActive } from '../lib/focus'
 import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
-import { fetchSession } from '../lib/session'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
 import { primaryButtonClass, softInputClass } from '../lib/ui'
 
@@ -60,10 +59,6 @@ type CarouselRow = {
 export function HomePage() {
   const apisQuery = useQuery(apisQueryOptions)
   const carouselQuery = useQuery(carouselQueryOptions)
-  const session = useQuery({
-    queryKey: ['auth-session'],
-    queryFn: fetchSession,
-  })
   const queryClient = useQueryClient()
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -243,7 +238,6 @@ export function HomePage() {
   usePaneFlags('specs', {
     hasCarousel: carouselRows.length > 0,
     hasAuthRedirect: Boolean(pendingAuth),
-    signedOut: !session.data?.user,
   })
   useStepKeys('specs', moveItem, carouselRows.length > 0 && !dialogOpen)
   usePaneActions('specs', {
@@ -290,12 +284,6 @@ export function HomePage() {
         urlRef.current?.focus()
       },
       enabled: !dialogOpen,
-    },
-    signIn: {
-      callback: () => {
-        void router.navigate({ to: '/login' })
-      },
-      enabled: !dialogOpen && !session.data?.user,
     },
     command: () => {
       enterCommand()

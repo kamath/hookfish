@@ -2,7 +2,7 @@ import { atom, getDefaultStore, useAtomValue } from 'jotai'
 import { isEditing } from './focus'
 
 export type Mode = 'command' | 'edit'
-export type Pane = 'specs' | 'login' | 'apiKeys' | 'routes' | 'input' | 'response' | 'trace'
+export type Pane = 'specs' | 'routes' | 'input' | 'response' | 'trace'
 
 export const store = getDefaultStore()
 
@@ -102,12 +102,6 @@ export function paneForTarget(target: EventTarget | null): Pane | undefined {
   }
   if (target.id === 'url') {
     return 'specs'
-  }
-  if (target.closest('#login-form') || target.closest('#login-pane')) {
-    return 'login'
-  }
-  if (target.closest('#create-api-key-form') || target.closest('#api-keys-pane')) {
-    return 'apiKeys'
   }
   if (target.closest('#call-form')) {
     return 'input'

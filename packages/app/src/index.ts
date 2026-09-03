@@ -8,9 +8,7 @@ export {
   type AppRouter,
   type AppRouterOptions,
 } from './router'
-export { CreateApiKeyPage } from './pages/create-api-key'
 export { HomePage } from './pages/home'
-export { LoginPage } from './pages/login'
 export {
   WorkbenchPage,
   validateWorkbenchSearch,

@@ -1,8 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
-import type { RegistryEntryMetadata } from '@hookfish/api'
 import type { ApiSummary, ClientApi } from './client-types'
-import { getApi as getApiClient } from './api'
 import {
   apiAuthStored,
   clearApiAuth,
@@ -51,7 +49,6 @@ function sourceSummary(value: unknown): ApiSummary | undefined {
       sourceUrl,
       executableCount,
       createdAt: row.createdAt,
-      cache: row.cache !== false,
     }
   }
   return undefined
@@ -66,48 +63,6 @@ function loadApis(): ApiSummary[] {
 
 function saveApis(apis: ApiSummary[]) {
   writeApisJson(apis)
-}
-
-function cacheableAdapterData(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return value
-  }
-  const {
-    sessionId: _sessionId,
-    oauthAuthorized: _oauthAuthorized,
-    ...cacheable
-  } = value as Record<string, unknown>
-  return cacheable
-}
-
-export function registryEntryMetadata(
-  client: ClientApi,
-): RegistryEntryMetadata | undefined {
-  const kind = client.kind
-  if (kind !== 'openapi' && kind !== 'mcp') {
-    return undefined
-  }
-  return {
-    kind,
-    title: client.title,
-    version: client.version,
-    description: client.description,
-    executables: client.executables,
-    groups: client.groups,
-    labels: client.labels,
-    adapterData: cacheableAdapterData(client.adapterData),
-  }
-}
-
-async function submitRegistryEntry(client: ClientApi) {
-  const metadata = registryEntryMetadata(client)
-  if (!metadata) {
-    return
-  }
-  await getApiClient().registry[':sourceId'].$put({
-    param: { sourceId: client.id },
-    json: { sourceUrl: client.sourceUrl, metadata },
-  })
 }
 
 function rememberSpecMeta(id: string, client: ClientApi) {
@@ -153,7 +108,6 @@ export async function addApi(
   url: string,
   kind?: string,
   credentials: Record<string, string> = {},
-  options: { cache?: boolean } = {},
 ): Promise<{ id: string }> {
   const id = crypto.randomUUID()
   saveApiAuth(id, credentials)
@@ -182,7 +136,6 @@ export async function addApi(
     sourceUrl: url,
     executableCount: client.executables.length,
     createdAt: new Date().toISOString(),
-    cache: options.cache ?? true,
   }
   const provisionalIndex = apis.findIndex((api) => api.id === id)
   if (provisionalIndex === -1) {
@@ -191,9 +144,6 @@ export async function addApi(
     apis[provisionalIndex] = summary
   }
   saveApis(apis)
-  if (summary.cache) {
-    void submitRegistryEntry(client).catch(() => {})
-  }
   return { id }
 }
 
@@ -209,9 +159,6 @@ export async function getApi(id: string): Promise<ClientApi> {
     readApiAuth(row.id),
   )
   rememberSpecMeta(row.id, client)
-  if (row.cache !== false) {
-    void submitRegistryEntry(client).catch(() => {})
-  }
 
   return {
     ...client,

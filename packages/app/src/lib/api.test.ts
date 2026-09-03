@@ -21,24 +21,6 @@ assert.equal(
   getApi()['openapi.json'].$url().toString(),
   'https://hookfish.test/api/openapi.json',
 )
-assert.equal(
-  getApi().registry[':sourceId'].$url({
-    param: { sourceId: 'source-1' },
-  }).toString(),
-  'https://hookfish.test/api/registry/source-1',
-)
-assert.equal(
-  getApi().auth.session.$url().toString(),
-  'https://hookfish.test/api/auth/session',
-)
-assert.equal(
-  getApi().auth.login.$url().toString(),
-  'https://hookfish.test/api/auth/login',
-)
-assert.equal(
-  getApi().auth['api-keys'].$url().toString(),
-  'https://hookfish.test/api/auth/api-keys',
-)
 
 assert.equal(isOwnOpenApiUrl('/api/openapi.json'), true)
 assert.equal(isOwnOpenApiUrl('https://hookfish.test/api/openapi.json'), true)

@@ -16,7 +16,6 @@ todos.json
 .pnpm-store
 .turbo
 *.tgz
-.data
 /packages/cli/web
 package-lock.json
 worker-configuration.d.ts

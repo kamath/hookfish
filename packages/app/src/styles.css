@@ -253,11 +253,6 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   background-color: transparent;
 }
 
-/* Keep selected standalone form fields visible while their inputs are active. */
-:is(#login-form, #create-api-key-form)[data-oc-mode='insert'] [data-oc-current='true'] {
-  background-color: color-mix(in srgb, var(--signal) 10%, var(--paper));
-}
-
 .oc-nest [data-oc-nav='field'][data-oc-current='true'] {
   width: calc(100% + var(--oc-gutter) + 1px);
   max-width: calc(28rem + var(--oc-gutter) + 1px);
