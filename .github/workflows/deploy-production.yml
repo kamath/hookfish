@@ -114,7 +114,7 @@ jobs:
             "$PRODUCTION_URL/api/openapi.json" > /dev/null
           for URL in "$PRODUCTION_URL" "$PUBLIC_URL"; do
             test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
-              "$URL/api/suggestions" | jq '.suggestions | length')" -gt 0
+              "$URL/api/registry/feed" | jq 'length')" -gt 0
           done
 
       - name: Publish deployment summary

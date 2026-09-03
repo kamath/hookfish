@@ -14,5 +14,5 @@ const response = await api.fetch(request)
 
 The returned application uses Web-standard `Request` and `Response` objects and can be
 adapted to Node, Vercel, or Cloudflare Workers. The database supplies the read-only
-`GET /suggestions` endpoint from a single `suggested_source` table containing `url`,
+`GET /registry/feed` endpoint from a single `suggested_source` table containing `url`,
 `title`, and `category_name` text columns.

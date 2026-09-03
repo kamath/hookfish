@@ -1,4 +1,4 @@
-import type { SuggestedSource } from '@hookfish/api'
+import type { RegistryFeed } from '@hookfish/api'
 import { apiJson, getApi } from './api'
 import type { CatalogEntry } from './catalog'
 import type { CarouselListContract } from './carousel'
@@ -14,7 +14,7 @@ function suggestionDetail(url: string) {
   }
 }
 
-function catalogEntry(suggestion: SuggestedSource): CatalogEntry {
+function catalogEntry(suggestion: RegistryFeed[string][number]): CatalogEntry {
   return {
     id: suggestion.url,
     title: suggestion.title,
@@ -23,16 +23,7 @@ function catalogEntry(suggestion: SuggestedSource): CatalogEntry {
   }
 }
 
-export function suggestionsToCarousel(
-  suggestions: readonly SuggestedSource[],
-): CarouselListContract[] {
-  const categories = new Map<string, CatalogEntry[]>()
-  for (const suggestion of suggestions) {
-    const entries = categories.get(suggestion.category_name) ?? []
-    entries.push(catalogEntry(suggestion))
-    categories.set(suggestion.category_name, entries)
-  }
-
+export function registryFeedToCarousel(feed: RegistryFeed): CarouselListContract[] {
   return [
     {
       id: 'recent',
@@ -40,18 +31,18 @@ export function suggestionsToCarousel(
       source: 'recent',
       items: [],
     },
-    ...Array.from(categories, ([categoryName, items]) => ({
+    ...Object.entries(feed).map(([categoryName, suggestions]) => ({
       id: categoryName,
       title: categoryName,
       source: 'catalog',
-      items,
+      items: suggestions.map(catalogEntry),
     }) satisfies CarouselListContract),
   ]
 }
 
 export async function getCarouselCatalog() {
-  const response = await apiJson<{ suggestions: SuggestedSource[] }>(
-    await getApi().suggestions.$get(),
+  const feed = await apiJson<RegistryFeed>(
+    await getApi().registry.feed.$get(),
   )
-  return suggestionsToCarousel(response.suggestions)
+  return registryFeedToCarousel(feed)
 }

@@ -1,24 +1,25 @@
 import assert from 'node:assert/strict'
-import { suggestionsToCarousel } from './catalog-data'
+import { registryFeedToCarousel } from './catalog-data'
 import { catalogSourceUrl } from './catalog'
 
-const carousel = suggestionsToCarousel([
-  {
-    url: 'https://mcp.example.test/mcp',
-    title: 'Example MCP',
-    category_name: 'MCP Servers',
-  },
-  {
-    url: '/api/openapi.json',
-    title: 'Smithery API',
-    category_name: 'OpenAPI',
-  },
-  {
-    url: 'https://petstore.example.test/openapi.json',
-    title: 'Petstore',
-    category_name: 'OpenAPI',
-  },
-])
+const carousel = registryFeedToCarousel({
+  'MCP Servers': [
+    {
+      url: 'https://mcp.example.test/mcp',
+      title: 'Example MCP',
+    },
+  ],
+  OpenAPI: [
+    {
+      url: '/api/openapi.json',
+      title: 'Smithery API',
+    },
+    {
+      url: 'https://petstore.example.test/openapi.json',
+      title: 'Petstore',
+    },
+  ],
+})
 
 assert.deepEqual(
   carousel.map((row) => [row.id, row.title, row.items.length]),

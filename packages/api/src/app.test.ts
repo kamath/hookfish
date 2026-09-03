@@ -52,14 +52,13 @@ const client = hc<AppType>('http://hookfish.test', {
   fetch: ((input, init) => api.request(input, init as RequestInit)) as typeof fetch,
 })
 
-const suggestions = await client.suggestions.$get()
-assert.equal(suggestions.status, 200)
-assert.deepEqual(await suggestions.json(), {
-  suggestions: [
+const registryFeed = await client.registry.feed.$get()
+assert.equal(registryFeed.status, 200)
+assert.deepEqual(await registryFeed.json(), {
+  'MCP Servers': [
     {
       url: 'https://mcp.example.test',
       title: 'Example MCP',
-      category_name: 'MCP Servers',
     },
   ],
 })
@@ -138,7 +137,7 @@ assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
-assert.ok(document.paths['/suggestions'])
+assert.ok(document.paths['/registry/feed'])
 assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)
@@ -148,7 +147,7 @@ assert.equal((await api.request('/auth/session')).status, 404)
 assert.equal((await api.request('/registry')).status, 404)
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
-assert.equal((await mounted.request('/api/suggestions')).status, 503)
+assert.equal((await mounted.request('/api/registry/feed')).status, 503)
 const mountedSpec = await mounted.request('/api/spec', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },

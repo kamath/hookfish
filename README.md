@@ -59,7 +59,7 @@ The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` t
 `packages/app/src/lib/source-adapters.ts`. The launcher infers whether a pasted URL is MCP or
 OpenAPI. A source parser supplies executable names, badges, accent colors, JSON Schema
 inputs, targets, credentials, and UI labels. Homepage suggestions come from
-`GET /api/suggestions`.
+`GET /api/registry/feed`.
 
 Register execution behavior with `registerExecutableAdapter()` in
 `packages/app/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
@@ -92,7 +92,7 @@ Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally n
 ## Suggested sources database
 
 The `suggested_source` table contains only `url`, `title`, and `category_name` text columns.
-The homepage reads it through `GET /api/suggestions` and groups rows by `category_name`.
+The homepage reads the category-keyed response from `GET /api/registry/feed`.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 
 ```bash

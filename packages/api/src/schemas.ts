@@ -64,20 +64,17 @@ export const mcpProxyQuerySchema = z.object({
   url: z.string().optional(),
 })
 
-export const suggestedSourceSchema = z
+export const registryFeedItemSchema = z
   .object({
     url: z.string(),
     title: z.string(),
-    category_name: z.string(),
   })
-  .openapi('SuggestedSource')
+  .openapi('RegistryFeedItem')
 
-export const suggestedSourcesSchema = z
-  .object({
-    suggestions: z.array(suggestedSourceSchema),
-  })
-  .openapi('SuggestedSources')
+export const registryFeedSchema = z
+  .record(z.string(), z.array(registryFeedItemSchema))
+  .openapi('RegistryFeed')
 
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
-export type SuggestedSource = z.infer<typeof suggestedSourceSchema>
+export type RegistryFeed = z.infer<typeof registryFeedSchema>

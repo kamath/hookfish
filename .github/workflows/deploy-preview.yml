@@ -176,7 +176,7 @@ jobs:
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PREVIEW_URL/api/openapi.json" > /dev/null
           test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
-            "$PREVIEW_URL/api/suggestions" | jq '.suggestions | length')" -gt 0
+            "$PREVIEW_URL/api/registry/feed" | jq 'length')" -gt 0
 
       - name: Publish deployment summary
         env:

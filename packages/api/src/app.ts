@@ -9,8 +9,8 @@ import {
   mcpOAuthClientQuerySchema,
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
+  registryFeedSchema,
   specRequestSchema,
-  suggestedSourcesSchema,
 } from './schemas'
 import { resolveDatabase, type DatabaseInput } from './db/types'
 import {
@@ -33,22 +33,22 @@ export type CreateApiOptions = {
 
 const specDocumentSchema = z.any().openapi('SpecDocument')
 
-const suggestionsRoute = createRoute({
+const registryFeedRoute = createRoute({
   method: 'get',
-  path: '/suggestions',
-  tags: ['Suggestions'],
-  summary: 'List suggested MCP and OpenAPI sources',
+  path: '/registry/feed',
+  tags: ['Registry'],
+  summary: 'List suggested sources grouped by category',
   responses: {
     200: {
-      description: 'Suggested sources',
+      description: 'Suggested sources grouped by category name',
       content: {
         'application/json': {
-          schema: suggestedSourcesSchema,
+          schema: registryFeedSchema,
         },
       },
     },
     503: {
-      description: 'The suggestions database is not configured',
+      description: 'The registry feed database is not configured',
       content: {
         'application/json': {
           schema: errorSchema,
@@ -219,12 +219,18 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
-    .openapi(suggestionsRoute, async (c) => {
+    .openapi(registryFeedRoute, async (c) => {
       if (!options.database) {
-        return c.json({ error: 'The suggestions database is not configured.' }, 503)
+        return c.json({ error: 'The registry feed database is not configured.' }, 503)
       }
       const database = await resolveDatabase(options.database)
-      return c.json({ suggestions: await database.listSuggestedSources() }, 200)
+      const feed: Record<string, Array<{ url: string; title: string }>> = {}
+      for (const suggestion of await database.listSuggestedSources()) {
+        const category = feed[suggestion.category_name] ?? []
+        category.push({ url: suggestion.url, title: suggestion.title })
+        feed[suggestion.category_name] = category
+      }
+      return c.json(feed, 200)
     })
     .openapi(specRoute, async (c) => {
       try {
