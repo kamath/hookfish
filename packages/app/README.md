@@ -1,6 +1,6 @@
 # @hookfish/app
 
-Embeddable Smithery browser client.
+Embeddable Hookfish browser client.
 
 ```ts
 import { mountApp } from '@hookfish/app'

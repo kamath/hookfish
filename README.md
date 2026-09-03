@@ -1,4 +1,4 @@
-# Smithery
+# Hookfish
 
 A fully local client for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
 
@@ -20,7 +20,7 @@ use Cloudflare Hyperdrive or require Postgres. `pnpm dev` and `pnpm cli` both
 default to port 3000; do not run them at the same time. If the page stays up
 after you stop the CLI, Vite from `pnpm dev` is still serving that port.
 `1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
-bar and press `Enter`. Smithery probes the URL to decide whether it is an MCP server or an
+bar and press `Enter`. Hookfish probes the URL to decide whether it is an MCP server or an
 OpenAPI document.
 
 ## Embedding the client
@@ -70,7 +70,7 @@ changes.
 ## MCP inspector
 
 Pick an MCP server from the launcher or enter a Streamable HTTP endpoint.
-Smithery uses the official MCP TypeScript client with automatic protocol negotiation:
+Hookfish uses the official MCP TypeScript client with automatic protocol negotiation:
 
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions
 - legacy Streamable HTTP `2025-03-26` through `2025-11-25`, including initialization,

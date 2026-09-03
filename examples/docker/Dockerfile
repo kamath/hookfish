@@ -1,5 +1,5 @@
 # Build from the repository root so the pnpm workspace and its lockfile are in context:
-#   docker build -f examples/docker/Dockerfile -t smithery-example .
+#   docker build -f examples/docker/Dockerfile -t hookfish-example .
 FROM node:22-alpine AS build
 RUN corepack enable
 WORKDIR /repo

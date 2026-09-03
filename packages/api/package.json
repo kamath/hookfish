@@ -1,7 +1,7 @@
 {
   "name": "@hookfish/api",
   "version": "0.13.0",
-  "description": "Mountable Smithery Hono API",
+  "description": "Mountable Hookfish Hono API",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

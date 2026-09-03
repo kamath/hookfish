@@ -9,8 +9,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite dev --port 3000",
-    "docker:build": "docker build -f Dockerfile -t smithery-example ../..",
-    "docker:run": "docker run --rm -p 3000:3000 smithery-example",
+    "docker:build": "docker build -f Dockerfile -t hookfish-example ../..",
+    "docker:run": "docker run --rm -p 3000:3000 hookfish-example",
     "generate-routes": "tsr generate",
     "start": "node serve.mjs",
     "typecheck": "tsc --noEmit"
