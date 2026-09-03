@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createServer } from 'node:net'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -23,4 +24,22 @@ test('rejects invalid ports', () => {
 
   assert.equal(result.status, 1)
   assert.match(result.stderr, /integer between 1 and 65535/)
+})
+
+test('refuses to start when the port is already taken', async () => {
+  const blocker = createServer()
+  await new Promise((resolve) => {
+    blocker.listen(0, '127.0.0.1', resolve)
+  })
+  const address = blocker.address()
+  assert.ok(address && typeof address === 'object')
+
+  const result = spawnSync(process.execPath, [cliEntry, '--port', String(address.port)], {
+    encoding: 'utf8',
+    timeout: 15_000,
+  })
+  blocker.close()
+
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /already in use/)
 })

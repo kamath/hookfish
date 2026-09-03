@@ -11,6 +11,7 @@ const toolbar = root.slice(root.indexOf('function AppToolbar'), root.indexOf('fu
 assert.match(toolbar, /useSourceToolbarValue/)
 assert.match(toolbar, /Clear auth/)
 assert.match(toolbar, /Mod\+Backspace/)
+assert.match(toolbar, /<CloudToggle \/>/)
 assert.match(toolbar, /className="flex shrink-0 items-center/)
 assert.doesNotMatch(toolbar, /className="oc-bar[\s"]/, 'navbar keeps the paper background')
 
