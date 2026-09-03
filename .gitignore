@@ -19,4 +19,3 @@ todos.json
 /packages/cli/web
 /packages/api/.data
 package-lock.json
-worker-configuration.d.ts
