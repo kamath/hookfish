@@ -236,6 +236,21 @@ export function HomePage() {
     })
   }
 
+  function moveSearchItem(delta: number) {
+    if (searchItems.length === 0) {
+      return
+    }
+    setActiveRow(0)
+    setActiveItems((current) => ({
+      ...current,
+      [SEARCH_ROW_ID]: wrappedCarouselIndex(
+        current[SEARCH_ROW_ID] ?? 0,
+        delta,
+        searchItems.length,
+      ),
+    }))
+  }
+
   function cancelAuthorization() {
     const sourceId = pendingAuth?.sourceId
     setPendingAuth(undefined)
@@ -365,7 +380,9 @@ export function HomePage() {
   }
 
   function renderCarouselRow(row: CarouselRow, rowIndex: number) {
-    const active = carouselActive && rowIndex === activeRow
+    const active =
+      rowIndex === activeRow &&
+      (carouselActive || row.id === SEARCH_ROW_ID)
     return (
       <section
         key={row.id}
@@ -518,6 +535,16 @@ export function HomePage() {
               onFocus={() => {
                 activate('specs', 'edit')
               }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+                  return
+                }
+                if (!hasSearchRow || searchItems.length === 0) {
+                  return
+                }
+                event.preventDefault()
+                moveSearchItem(event.key === 'ArrowDown' ? 1 : -1)
+              }}
             />
             {showKeybindings ? (
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -537,7 +564,7 @@ export function HomePage() {
               </button>
             </div>
           ) : null}
-          {!showSubmitButtons && !url.trim() ? (
+          {!showSubmitButtons ? (
             <p className="mt-2 text-center text-sm text-mute">
               MIT License.{' '}
               <a
