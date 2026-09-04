@@ -421,6 +421,17 @@ export function ExecutableClient({
                 </button>
               </>
             ) : null}
+            <button
+              type="button"
+              data-oc-nav="action"
+              className="oc-view-toggle inline-flex min-h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap px-3 py-1 text-xs font-medium outline-none md:flex-none"
+              onClick={toggleInspect}
+            >
+              {inspecting ? 'View input' : 'View metadata'}
+              <KeyHints>
+                <Kbd hotkey="V" />
+              </KeyHints>
+            </button>
             {result ? (
               <button
                 type="button"
@@ -472,19 +483,6 @@ export function ExecutableClient({
             </button>
             )}
           </div>
-        </div>
-
-        <div className="shrink-0 px-3 pt-3 md:px-4">
-          <button
-            type="button"
-            className="oc-view-toggle inline-flex min-h-8 items-center gap-2 px-3 py-1 text-xs font-medium outline-none"
-            onClick={toggleInspect}
-          >
-            {inspecting ? 'View input' : 'View metadata'}
-            <KeyHints>
-              <Kbd hotkey="V" />
-            </KeyHints>
-          </button>
         </div>
 
         {inspecting ? (
