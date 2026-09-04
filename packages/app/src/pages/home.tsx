@@ -20,6 +20,13 @@ import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../li
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
+import {
+  SEARCH_ROW_ID,
+  isSourceUrl,
+  parseSourceUrl,
+  registryEntries,
+  registrySearchRow,
+} from '../lib/registry-search'
 import { primaryButtonClass, softInputClass } from '../lib/ui'
 
 type PendingAuth = {
@@ -76,7 +83,13 @@ export function HomePage() {
   })
   const chrome = useChrome()
   const apis = apisQuery.data ?? []
-  const carouselRows: CarouselRow[] = (carouselQuery.data ?? [])
+  const query = url.trim()
+  const searchRow = registrySearchRow(
+    registryEntries(carouselQuery.data ?? []),
+    query,
+  )
+  const hasSearchRow = Boolean(searchRow)
+  const catalogRows: CarouselRow[] = (carouselQuery.data ?? [])
     .filter((row) => row.source !== 'recent' || apis.length > 0)
     .map((row) => ({
       id: row.id,
@@ -100,6 +113,25 @@ export function HomePage() {
               entry,
             })),
     }))
+  const searchItems = searchRow
+    ? visibleCarouselItems(searchRow.items).map((entry) => ({
+        type: 'catalog' as const,
+        id: entry.id,
+        title: entry.title,
+        detail: `${entry.kind} · ${entry.detail}`,
+        entry,
+      }))
+    : []
+  const carouselRows: CarouselRow[] = searchRow
+    ? [
+        {
+          id: searchRow.id,
+          title: searchRow.title,
+          items: searchItems,
+        },
+        ...catalogRows,
+      ]
+    : catalogRows
   const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
@@ -142,7 +174,8 @@ export function HomePage() {
     },
   })
   const submittingUrl = openSource.isPending && !openSource.variables?.entryId
-  const showSubmitButtons = urlFocused || submittingUrl
+  const showSubmitButtons =
+    (urlFocused || submittingUrl) && (isSourceUrl(url) || submittingUrl)
   const urlError =
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
@@ -157,6 +190,20 @@ export function HomePage() {
   useEffect(() => {
     setActiveRow((index) => Math.min(index, Math.max(carouselRows.length - 1, 0)))
   }, [carouselRows.length])
+
+  useEffect(() => {
+    if (!hasSearchRow) {
+      return
+    }
+    setActiveRow(0)
+    setActiveItems((current) => ({ ...current, [SEARCH_ROW_ID]: 0 }))
+    requestAnimationFrame(() => {
+      panelRefs.current[SEARCH_ROW_ID]?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+      })
+    })
+  }, [hasSearchRow, query])
 
   function moveList(delta: number) {
     setActiveRow((index) => {
@@ -203,13 +250,24 @@ export function HomePage() {
   }
 
   function submit() {
-    if (openSource.isPending || !formRef.current?.reportValidity()) {
+    if (openSource.isPending) {
       return
     }
     if (pendingAuth) {
       cancelAuthorization()
     }
-    openSource.mutate({ url: url.trim() })
+    const sourceUrl = parseSourceUrl(url)
+    if (sourceUrl) {
+      if (!formRef.current?.reportValidity()) {
+        return
+      }
+      openSource.mutate({ url: sourceUrl })
+      return
+    }
+    const item = searchItems[activeItems[SEARCH_ROW_ID] ?? 0]
+    if (item) {
+      openCarouselItem(item)
+    }
   }
 
   function launch(entry: CatalogEntry) {
@@ -391,7 +449,9 @@ export function HomePage() {
         </ul>
         ) : (
           <p className="flex min-h-55 items-center justify-center bg-paper/70 px-3 text-center text-sm text-mute">
-            Open a source and it will appear here.
+            {row.id === SEARCH_ROW_ID
+              ? 'No matches.'
+              : 'Open a source and it will appear here.'}
           </p>
         )}
       </section>
@@ -440,21 +500,19 @@ export function HomePage() {
             className="w-full"
           >
           <label htmlFor="url" className="sr-only">
-            MCP endpoint or OpenAPI document URL
+            Search MCP or OpenAPI titles, or paste a source URL
           </label>
           <div className="relative min-w-0 w-full">
             <input
               ref={urlRef}
               id="url"
               name="url"
-              type="url"
-              inputMode="url"
+              type="text"
               autoComplete="off"
               spellCheck={false}
-              required
               disabled={openSource.isPending || dialogOpen}
               className={`${softInputClass} ${showKeybindings ? 'pl-10' : ''}`}
-              placeholder="MCP URL or link to OpenAPI JSON/YAML"
+              placeholder="Search MCP or OpenAPI, or paste a URL"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onFocus={() => {
