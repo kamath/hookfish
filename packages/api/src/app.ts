@@ -21,10 +21,12 @@ import {
 } from './self'
 import { assertHttpRequestMatchesSpec } from './spec'
 import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
+import type { RateLimit, RateLimitRoute } from './rate-limit'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
   database?: DatabaseInput
+  rateLimit?: RateLimit
   openapi?: {
     title?: string
     version?: string
@@ -98,6 +100,14 @@ const specRoute = createRoute({
         },
       },
     },
+    429: {
+      description: 'Too many requests',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
   },
 })
 
@@ -127,6 +137,14 @@ const executeRoute = createRoute({
     },
     400: {
       description: 'The request could not be executed',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+    429: {
+      description: 'Too many requests',
       content: {
         'application/json': {
           schema: errorSchema,
@@ -185,12 +203,34 @@ function mcpProxyRoute(method: 'get' | 'post' | 'delete') {
           },
         },
       },
+      429: {
+        description: 'Too many requests',
+        content: {
+          'application/json': {
+            schema: errorSchema,
+          },
+        },
+      },
     },
   })
 }
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+async function rejectIfRateLimited(
+  rateLimit: RateLimit | undefined,
+  request: Request,
+  route: RateLimitRoute,
+) {
+  if (!rateLimit || request.headers.get(INTERNAL_FETCH_HEADER) === '1') {
+    return undefined
+  }
+  if (await rateLimit({ request, route })) {
+    return undefined
+  }
+  return { error: 'Rate limit exceeded.' } as const
 }
 
 export function createApi(options: CreateApiOptions = {}) {
@@ -211,6 +251,14 @@ export function createApi(options: CreateApiOptions = {}) {
       version: options.openapi?.version ?? '1.0.0',
     },
     servers: options.openapi?.servers ?? [{ url: '/' }],
+  }
+
+  const handleMcpProxy = async (request: Request) => {
+    const limited = await rejectIfRateLimited(options.rateLimit, request, 'mcp-proxy')
+    if (limited) {
+      return Response.json(limited, { status: 429 })
+    }
+    return proxyMcpRequest(request, upstreamFetch)
   }
 
   const fetchOwnOrUpstream: (requestUrl: string, nested: boolean) => typeof fetch =
@@ -258,6 +306,10 @@ export function createApi(options: CreateApiOptions = {}) {
       return c.json(feed, 200)
     })
     .openapi(specRoute, async (c) => {
+      const limited = await rejectIfRateLimited(options.rateLimit, c.req.raw, 'spec')
+      if (limited) {
+        return c.json(limited, 429)
+      }
       try {
         const specUrl = c.req.valid('json').url
         if (isOwnOpenApiUrl(specUrl, c.req.url)) {
@@ -270,6 +322,10 @@ export function createApi(options: CreateApiOptions = {}) {
       }
     })
     .openapi(executeRoute, async (c) => {
+      const limited = await rejectIfRateLimited(options.rateLimit, c.req.raw, 'execute')
+      if (limited) {
+        return c.json(limited, 429)
+      }
       try {
         const data = c.req.valid('json')
         const nested = c.req.header(INTERNAL_FETCH_HEADER) === '1'
@@ -307,9 +363,9 @@ export function createApi(options: CreateApiOptions = {}) {
         },
       )
     })
-    .openapi(mcpProxyRoute('get'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
-    .openapi(mcpProxyRoute('post'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
-    .openapi(mcpProxyRoute('delete'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
+    .openapi(mcpProxyRoute('get'), (c) => handleMcpProxy(c.req.raw))
+    .openapi(mcpProxyRoute('post'), (c) => handleMcpProxy(c.req.raw))
+    .openapi(mcpProxyRoute('delete'), (c) => handleMcpProxy(c.req.raw))
 
   return routes.doc31('/openapi.json', openApiConfig)
 }

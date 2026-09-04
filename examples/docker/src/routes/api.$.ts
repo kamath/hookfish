@@ -1,3 +1,4 @@
+import { createMemoryRateLimit } from '@hookfish/api'
 import { mountApi } from '@hookfish/api/app'
 import { createPostgresDb } from '@hookfish/api/postgres'
 import { createFileRoute } from '@tanstack/react-router'
@@ -11,6 +12,7 @@ const api = mountApi('/api', {
     }
     return createPostgresDb(postgresUrl)
   },
+  rateLimit: createMemoryRateLimit(),
 })
 
 const handle = ({ request }: { request: Request }) => api.fetch(request)

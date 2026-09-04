@@ -281,4 +281,21 @@ assert.equal(
   false,
 )
 
+const limited = createApi({
+  fetch: upstreamFetch,
+  rateLimit: () => false,
+})
+const limitedSpec = await limited.request('/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost:8787/openapi.yaml' }),
+})
+assert.equal(limitedSpec.status, 429)
+assert.deepEqual(await limitedSpec.json(), { error: 'Rate limit exceeded.' })
+
+const limitedProxy = await limited.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse', {
+  method: 'GET',
+})
+assert.equal(limitedProxy.status, 429)
+
 console.log('api tests passed')

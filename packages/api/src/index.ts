@@ -1,4 +1,11 @@
 export { createApi, mountApi, type AppType, type CreateApiOptions } from './app'
+export {
+  clientAddress,
+  createMemoryRateLimit,
+  type RateLimit,
+  type RateLimitInput,
+  type RateLimitRoute,
+} from './rate-limit'
 export type { AppDatabase, DatabaseInput } from './db/types'
 export { mcpOAuthClientMetadata } from './oauth'
 export {
