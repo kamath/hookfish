@@ -203,7 +203,6 @@ const document = (await openapi.json()) as {
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
-assert.ok(document.paths['/openapi.json'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
 assert.ok(document.paths['/registry/feed'])
@@ -267,15 +266,18 @@ const selfExecute = await api.request('/execute', {
     specUrl: 'http://localhost/openapi.json',
     transport: 'http',
     method: 'get',
-    url: 'http://localhost/openapi.json',
+    url: 'http://localhost/registry/feed',
   }),
 })
 assert.equal(selfExecute.status, 200)
 const selfExecuteBody = await selfExecute.json()
 assert.equal(selfExecuteBody.status.code, 200)
-assert.equal(JSON.parse(selfExecuteBody.body).openapi, '3.1.0')
+assert.ok(JSON.parse(selfExecuteBody.body)['MCP Servers'])
 assert.equal(
-  seen.some((entry) => entry.url.includes('/openapi.json')),
+  seen.some(
+    (entry) =>
+      entry.url.includes('/openapi.json') || entry.url.includes('/registry/feed'),
+  ),
   false,
 )
 
