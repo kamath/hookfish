@@ -1,4 +1,3 @@
-import { createMemoryRateLimit } from '@hookfish/api'
 import { mountApi } from '@hookfish/api/app'
 import { createPostgresDb } from '@hookfish/api/postgres'
 import { env } from 'cloudflare:workers'
@@ -21,7 +20,6 @@ function databaseConnection() {
 
 const api = mountApi('/api', {
   database: () => createPostgresDb(databaseConnection()),
-  rateLimit: createMemoryRateLimit(),
 })
 
 const handle = ({ request }: { request: Request }) => api.fetch(request)
