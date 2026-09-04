@@ -45,6 +45,8 @@ const registryFeedRoute = createRoute({
   path: '/registry/feed',
   tags: ['Registry'],
   summary: 'List suggested sources grouped by category',
+  description:
+    'Returns homepage suggestions from the registry database, keyed by category name.',
   responses: {
     200: {
       description: 'Suggested sources grouped by category name',
@@ -70,6 +72,8 @@ const specRoute = createRoute({
   path: '/spec',
   tags: ['OpenAPI'],
   summary: 'Fetch and parse an OpenAPI document',
+  description:
+    'Downloads JSON or YAML from the given URL and returns the parsed document. This route is for OpenAPI and Swagger only; MCP servers use /mcp-proxy.',
   request: {
     body: {
       required: true,
@@ -105,6 +109,8 @@ const executeRoute = createRoute({
   path: '/execute',
   tags: ['OpenAPI'],
   summary: 'Execute an HTTP request against an upstream API',
+  description:
+    'Runs one HTTP request for an OpenAPI operation. MCP invocations go through /mcp-proxy.',
   request: {
     body: {
       required: true,
@@ -140,6 +146,8 @@ const oauthRoute = createRoute({
   path: '/mcp-oauth-client',
   tags: ['MCP'],
   summary: 'OAuth client metadata document for an MCP source',
+  description:
+    'Publishes the OAuth 2.1 Client ID Metadata Document used when authorizing an MCP source.',
   request: {
     query: mcpOAuthClientQuerySchema,
   },
@@ -169,6 +177,8 @@ function mcpProxyRoute(method: 'get' | 'post' | 'delete') {
     path: '/mcp-proxy',
     tags: ['MCP'],
     summary: 'Proxy a Streamable HTTP MCP request',
+    description:
+      'Forwards a Streamable HTTP MCP request to the upstream endpoint. OpenAPI documents are loaded through /spec, not this route.',
     request: {
       query: mcpProxyQuerySchema,
     },
@@ -210,6 +220,21 @@ export function createApi(options: CreateApiOptions = {}) {
       version: options.openapi?.version ?? '1.0.0',
     },
     servers: options.openapi?.servers ?? [{ url: '/' }],
+    tags: [
+      {
+        name: 'Registry',
+        description: 'Homepage suggestions from the registry database.',
+      },
+      {
+        name: 'OpenAPI',
+        description:
+          'Load OpenAPI or Swagger documents and execute HTTP operations. MCP is not handled here.',
+      },
+      {
+        name: 'MCP',
+        description: 'Streamable HTTP MCP proxy and OAuth client metadata.',
+      },
+    ],
   }
 
   const fetchOwnOrUpstream: (requestUrl: string, nested: boolean) => typeof fetch =

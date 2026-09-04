@@ -135,8 +135,9 @@ const openapi = await api.request('/openapi.json')
 assert.equal(openapi.status, 200)
 const document = (await openapi.json()) as {
   openapi: string
-  paths: Record<string, unknown>
+  paths: Record<string, Record<string, { tags?: string[]; description?: string }>>
   servers?: Array<{ url: string }>
+  tags?: Array<{ name: string; description?: string }>
 }
 assert.equal(document.openapi, '3.1.0')
 assert.ok(document.paths['/spec'])
@@ -148,6 +149,20 @@ assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)
 assert.equal(document.paths['/registry/{sourceId}'], undefined)
+assert.deepEqual(
+  document.tags?.map((tag) => tag.name),
+  ['Registry', 'OpenAPI', 'MCP'],
+)
+assert.ok(document.tags?.every((tag) => tag.description))
+assert.deepEqual(document.paths['/spec']?.post?.tags, ['OpenAPI'])
+assert.match(document.paths['/spec']?.post?.description ?? '', /OpenAPI/)
+assert.match(document.paths['/spec']?.post?.description ?? '', /mcp-proxy/)
+assert.deepEqual(document.paths['/execute']?.post?.tags, ['OpenAPI'])
+assert.deepEqual(document.paths['/registry/feed']?.get?.tags, ['Registry'])
+assert.deepEqual(document.paths['/mcp-oauth-client']?.get?.tags, ['MCP'])
+assert.deepEqual(document.paths['/mcp-proxy']?.get?.tags, ['MCP'])
+assert.deepEqual(document.paths['/mcp-proxy']?.post?.tags, ['MCP'])
+assert.deepEqual(document.paths['/mcp-proxy']?.delete?.tags, ['MCP'])
 
 assert.equal((await api.request('/auth/session')).status, 404)
 assert.equal((await api.request('/registry')).status, 404)
