@@ -15,7 +15,7 @@ function entry(
   title: string,
   detail = `${id}.example`,
 ): CatalogEntry {
-  return { id, kind, hotkey: '1', title, detail, url: `https://${detail}` }
+  return { id, kind, title, detail, url: `https://${detail}` }
 }
 
 const arcadeOmni = entry('arcade-omni', 'mcp', 'Arcade Omni')

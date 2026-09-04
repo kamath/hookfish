@@ -1,12 +1,17 @@
-export type RegistryFeedRow = {
+export type RegistryEntry = {
   url: string
   title: string
   type: 'MCP' | 'API'
+}
+
+export type RegistryFeedRow = RegistryEntry & {
   tag: string
 }
 
 export type AppDatabase = {
   listRegistryFeedRows(tags: readonly string[]): Promise<RegistryFeedRow[]>
+  getRegistryEntry(url: string): Promise<RegistryEntry | undefined>
+  upsertRegistryEntry(entry: RegistryEntry): Promise<void>
 }
 
 export type DatabaseInput =
