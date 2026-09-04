@@ -29,7 +29,7 @@ import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
 const AUTH_NOTICE = 'This execution requires credentials.'
-const inspectRouteAtom = atom(true)
+const inspectRouteAtom = atom(false)
 
 function withoutAuth(value: unknown) {
   const data = asRecord(value)
