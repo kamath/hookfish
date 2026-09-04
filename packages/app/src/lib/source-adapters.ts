@@ -37,7 +37,7 @@ async function readOpenApiDocument(sourceUrl: string): Promise<unknown> {
   return isOwnOpenApiUrl(sourceUrl)
     ? apiJson(await getApi()['openapi.json'].$get())
     : getCloudProxy()
-      ? apiJson(await getApi().spec.$post({ json: { url: sourceUrl } }))
+      ? apiJson(await getApi().spec.$post({ json: { url: sourceUrl, save: true } }))
       : fetchUpstreamSpec(sourceUrl, localUpstreamFetch)
 }
 

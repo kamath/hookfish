@@ -1,5 +1,5 @@
 export { createApi, mountApi, type AppType, type CreateApiOptions } from './app'
-export type { AppDatabase, DatabaseInput } from './db/types'
+export type { AppDatabase, DatabaseInput, RegistryEntry } from './db/types'
 export { mcpOAuthClientMetadata } from './oauth'
 export {
   executeRequestSchema,

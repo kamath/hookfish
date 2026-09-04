@@ -65,11 +65,28 @@ const registryFeedRoute = createRoute({
   },
 })
 
+function titleFromSpec(document: unknown, specUrl: string) {
+  if (document && typeof document === 'object' && 'info' in document) {
+    const info = document.info
+    if (info && typeof info === 'object' && 'title' in info && typeof info.title === 'string') {
+      const title = info.title.trim()
+      if (title) {
+        return title
+      }
+    }
+  }
+  try {
+    return new URL(specUrl).hostname || specUrl
+  } catch {
+    return specUrl
+  }
+}
+
 const specRoute = createRoute({
   method: 'post',
   path: '/spec',
   tags: ['OpenAPI'],
-  summary: 'Fetch and parse an OpenAPI document',
+  summary: 'Fetch and parse an OpenAPI document, optionally saving its title and URL',
   request: {
     body: {
       required: true,
@@ -258,11 +275,22 @@ export function createApi(options: CreateApiOptions = {}) {
     })
     .openapi(specRoute, async (c) => {
       try {
-        const specUrl = c.req.valid('json').url
-        if (isOwnOpenApiUrl(specUrl, c.req.url)) {
-          return c.json(app.getOpenAPI31Document(openApiConfig), 200)
+        const { url: specUrl, save } = c.req.valid('json')
+        const document = isOwnOpenApiUrl(specUrl, c.req.url)
+          ? app.getOpenAPI31Document(openApiConfig)
+          : await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
+        if (save && options.database) {
+          try {
+            const database = await resolveDatabase(options.database)
+            await database.upsertRegistryEntry({
+              url: specUrl,
+              title: titleFromSpec(document, specUrl),
+              type: 'API',
+            })
+          } catch {
+            // Saving is optional; a registry write failure still returns the spec.
+          }
         }
-        const document = await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
         return c.json(document, 200)
       } catch (error) {
         return c.json({ error: errorMessage(error, 'Could not fetch the spec.') }, 400)

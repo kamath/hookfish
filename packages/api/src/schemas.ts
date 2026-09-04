@@ -9,6 +9,7 @@ export const errorSchema = z
 export const specRequestSchema = z
   .object({
     url: z.string().trim().min(1),
+    save: z.boolean().optional(),
   })
   .openapi('SpecRequest')
 

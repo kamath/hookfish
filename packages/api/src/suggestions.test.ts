@@ -29,6 +29,35 @@ try {
     'MCP',
   ])
   assert.deepEqual(await database.listRegistryFeedRows(['not_in_feed']), [])
+
+  await database.upsertRegistryEntry({
+    url: 'https://petstore3.swagger.io/api/v3/openapi.json',
+    title: 'Updated Petstore',
+    type: 'API',
+  })
+  const updated = await database.listRegistryFeedRows(['trending_api'])
+  assert.equal(
+    updated.find((row) => row.url === 'https://petstore3.swagger.io/api/v3/openapi.json')
+      ?.title,
+    'Updated Petstore',
+  )
+
+  await database.upsertRegistryEntry({
+    url: 'https://new.example.test/openapi.json',
+    title: 'New API',
+    type: 'API',
+  })
+  await database.upsertRegistryEntry({
+    url: 'https://new.example.test/openapi.json',
+    title: 'New API v2',
+    type: 'API',
+  })
+  assert.equal(
+    (await database.listRegistryFeedRows(['trending_api'])).some(
+      (row) => row.url === 'https://new.example.test/openapi.json',
+    ),
+    false,
+  )
 } finally {
   await rm(dataDir, { force: true, recursive: true })
 }

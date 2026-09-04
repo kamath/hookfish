@@ -2,8 +2,8 @@
 
 A browser-first client for browsing, configuring, and running executables from pluggable
 sources. OpenAPI is the built-in source adapter. Connected-source metadata and keys live in
-the browser; the server provides suggested sources, fetches source documents, and runs
-proxied invocations.
+the browser; the server provides suggested sources, fetches source documents, optionally
+records successful OpenAPI URLs, and runs proxied invocations.
 
 This repository is a pnpm/Turborepo workspace:
 
@@ -94,7 +94,9 @@ Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally n
 The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
 `MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
 `GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
-category-keyed response that the homepage renders as panes.
+category-keyed response that the homepage renders as panes. `POST /api/spec`
+accepts optional `save: true` to upsert a successfully fetched OpenAPI title and
+URL into `registry` as type `API`.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 
 ```bash
