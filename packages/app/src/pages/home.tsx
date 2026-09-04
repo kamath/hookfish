@@ -339,7 +339,7 @@ export function HomePage() {
                 item.type === 'catalog' &&
                 apis.some(
                   (api) =>
-                    api.kind === item.entry.kind &&
+                    (!item.entry.kind || api.kind === item.entry.kind) &&
                     sourceUrlKey(api.sourceUrl) ===
                       sourceUrlKey(catalogSourceUrl(item.entry)),
                 )

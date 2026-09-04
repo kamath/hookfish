@@ -1,6 +1,7 @@
 # Vercel
 
 Static client from `dist/client`, SSR and API through a single Node function.
+Set `POSTGRES_URL` for the Neon/Postgres database that serves homepage suggestions.
 
 ```bash
 pnpm install

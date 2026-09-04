@@ -17,5 +17,5 @@ todos.json
 .turbo
 *.tgz
 /packages/cli/web
+/packages/api/.data
 package-lock.json
-worker-configuration.d.ts

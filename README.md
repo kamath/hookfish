@@ -1,6 +1,9 @@
 # Smithery
 
-A fully local client for browsing, configuring, and running executables from pluggable sources. OpenAPI is the built-in source adapter. Source metadata and keys live in the browser; the server fetches source documents and runs invocations.
+A browser-first client for browsing, configuring, and running executables from pluggable
+sources. OpenAPI is the built-in source adapter. Connected-source metadata and keys live in
+the browser; the server provides suggested sources, fetches source documents, and runs
+proxied invocations.
 
 This repository is a pnpm/Turborepo workspace:
 
@@ -15,10 +18,9 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The launcher opens ten curated sources from command mode:
-`1`–`5` connect to MCP servers, `6`–`0` read OpenAPI documents. Paste any other URL in the
-bar and press `Enter`. Smithery probes the URL to decide whether it is an MCP server or an
-OpenAPI document.
+Open `http://localhost:3000`. The launcher groups database-backed suggestions into one pane
+per category. Paste any other URL in the bar and press `Enter`; Smithery probes the URL to
+decide whether it is an MCP server or an OpenAPI document.
 
 ## Embedding the client
 
@@ -37,9 +39,12 @@ mountApp(document.getElementById('app')!, {
 Mount `@hookfish/api` at the matching path in the deployment platform's request handler:
 
 ```ts
-import { mountApi } from '@hookfish/api'
+import { mountApi } from '@hookfish/api/app'
+import { createPostgresDb } from '@hookfish/api/postgres'
 
-export default mountApi('/api')
+export default mountApi('/api', {
+  database: createPostgresDb(process.env.POSTGRES_URL!),
+})
 ```
 
 A deployment owns only its HTML/document shell, static asset delivery, and platform
@@ -52,9 +57,9 @@ breaks one runtime fails there rather than at deploy time.
 The frontend consumes the protocol-neutral `ExecutableSource` and `Executable` types in
 `packages/app/src/lib/client-types.ts`. Register source discovery/loading in
 `packages/app/src/lib/source-adapters.ts`. The launcher infers whether a pasted URL is MCP or
-OpenAPI; curated catalog entries still declare a kind. A source parser supplies executable names, badges, accent colors, JSON
-Schema inputs, targets, credentials, and UI labels. Curated entries and their number keys live
-in `packages/app/src/lib/catalog.ts`; adding a row there also registers its keybinding.
+OpenAPI. A source parser supplies executable names, badges, accent colors, JSON Schema
+inputs, targets, credentials, and UI labels. Homepage suggestions come from
+`GET /api/registry/feed`.
 
 Register execution behavior with `registerExecutableAdapter()` in
 `packages/app/src/lib/executable-adapters.ts`. An adapter builds a serializable invocation,
@@ -83,6 +88,26 @@ connections, OAuth credentials, legacy session identifiers, and cached listings 
 the browser. The UI talks to the `App` component's `apiBaseUrl` through Hono RPC; the web
 shell mounts it at `/api`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
+
+## Registry database
+
+The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
+`MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
+`GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
+category-keyed response that the homepage renders as panes.
+Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
+
+```bash
+pnpm db:migrate
+pnpm db:studio
+```
+
+Production migration commands require `POSTGRES_URL`:
+
+```bash
+pnpm db:migrate:prod
+pnpm db:studio:prod
+```
 
 Build every workspace package:
 

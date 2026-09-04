@@ -1,106 +1,30 @@
-import { API_BASE_URL } from './api'
-import { configuredApiUrl } from '../config'
+import type { RegistryFeed } from '@hookfish/api'
+import { apiJson, getApi } from './api'
 import type { CatalogEntry } from './catalog'
 import type { CarouselListContract } from './carousel'
 
-export const MCP_CATALOG: readonly CatalogEntry[] = [
-  {
-    id: 'arcade-omni',
-    kind: 'mcp',
-    hotkey: '1',
-    title: 'Arcade Omni',
-    detail: 'omni.arcade.dev',
-    url: 'https://omni.arcade.dev/mcp',
-  },
-  {
-    id: 'arcade-full-suite',
-    kind: 'mcp',
-    hotkey: '2',
-    title: 'Arcade Full Suite',
-    detail: 'api.bosslevel.dev',
-    url: 'https://api.bosslevel.dev/mcp/gw_3F3PbNNz9DdEJ6zdHqbegVC7mMo',
-  },
-  {
-    id: 'smithery-gmail',
-    kind: 'mcp',
-    hotkey: '3',
-    title: 'Smithery Gmail',
-    detail: 'server.smithery.ai',
-    url: 'https://server.smithery.ai/gmail',
-  },
-  {
-    id: 'linear',
-    kind: 'mcp',
-    hotkey: '4',
-    title: 'Linear',
-    detail: 'mcp.linear.app',
-    url: 'https://mcp.linear.app/mcp',
-  },
-  {
-    id: 'notion',
-    kind: 'mcp',
-    hotkey: '5',
-    title: 'Notion',
-    detail: 'mcp.notion.com',
-    url: 'https://mcp.notion.com/mcp',
-  },
-]
+function suggestionDetail(url: string) {
+  if (url.startsWith('/')) {
+    return url
+  }
+  try {
+    return new URL(url, 'http://localhost').hostname || url
+  } catch {
+    return url
+  }
+}
 
-export const OPENAPI_CATALOG: readonly CatalogEntry[] = [
-  {
-    id: 'arcade-api',
-    kind: 'openapi',
-    hotkey: '1',
-    title: 'Arcade API',
-    detail: 'api.arcade.dev',
-    url: 'https://api.arcade.dev/v1/swagger',
-  },
-  {
-    id: 'smithery-api',
-    kind: 'openapi',
-    hotkey: '2',
-    title: 'Smithery API',
-    detail: `${API_BASE_URL}/openapi.json`,
-    url: `${API_BASE_URL}/openapi.json`,
-  },
-  {
-    id: 'petstore',
-    kind: 'openapi',
-    hotkey: '3',
-    title: 'Swagger Petstore',
-    detail: 'petstore3.swagger.io',
-    url: 'https://petstore3.swagger.io/api/v3/openapi.json',
-  },
-  {
-    id: 'openai',
-    kind: 'openapi',
-    hotkey: '4',
-    title: 'OpenAI',
-    detail: 'openai/openai-openapi',
-    url: 'https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/main/openapi.json',
-  },
-  {
-    id: 'anthropic',
-    kind: 'openapi',
-    hotkey: '5',
-    title: 'Anthropic',
-    detail: 'api-evangelist/anthropic',
-    url: 'https://raw.githubusercontent.com/api-evangelist/anthropic/refs/heads/main/openapi/anthropic-messages-api-openapi.yml',
-  },
-]
+function catalogEntry(suggestion: RegistryFeed[string][number]): CatalogEntry {
+  return {
+    id: suggestion.url,
+    kind: suggestion.type === 'MCP' ? 'mcp' : 'openapi',
+    title: suggestion.title,
+    detail: suggestionDetail(suggestion.url),
+    url: suggestion.url,
+  }
+}
 
-export function getCarouselCatalog(): CarouselListContract[] {
-  const ownOpenApiUrl = configuredApiUrl('/openapi.json')
-  const openApiCatalog = OPENAPI_CATALOG.map((entry) =>
-    entry.id === 'smithery-api'
-      ? {
-          ...entry,
-          detail: ownOpenApiUrl,
-          url: ownOpenApiUrl,
-        }
-      : entry,
-  )
-
+export function registryFeedToCarousel(feed: RegistryFeed): CarouselListContract[] {
   return [
     {
       id: 'recent',
@@ -108,17 +32,18 @@ export function getCarouselCatalog(): CarouselListContract[] {
       source: 'recent',
       items: [],
     },
-    {
-      id: 'mcp',
-      title: 'MCP servers',
+    ...Object.entries(feed).map(([categoryName, suggestions]) => ({
+      id: categoryName,
+      title: categoryName,
       source: 'catalog',
-      items: MCP_CATALOG,
-    },
-    {
-      id: 'openapi',
-      title: 'OpenAPI specs',
-      source: 'catalog',
-      items: openApiCatalog,
-    },
+      items: suggestions.map(catalogEntry),
+    }) satisfies CarouselListContract),
   ]
+}
+
+export async function getCarouselCatalog() {
+  const feed = await apiJson<RegistryFeed>(
+    await getApi().registry.feed.$get(),
+  )
+  return registryFeedToCarousel(feed)
 }

@@ -9,8 +9,10 @@ import {
   mcpOAuthClientQuerySchema,
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
+  registryFeedSchema,
   specRequestSchema,
 } from './schemas'
+import { resolveDatabase, type DatabaseInput } from './db/types'
 import {
   INTERNAL_FETCH_HEADER,
   isOwnOpenApiUrl,
@@ -21,6 +23,7 @@ import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
+  database?: DatabaseInput
   openapi?: {
     title?: string
     version?: string
@@ -29,6 +32,38 @@ export type CreateApiOptions = {
 }
 
 const specDocumentSchema = z.any().openapi('SpecDocument')
+const registryFeedCategories: ReadonlyArray<{
+  tag: string
+  categoryName: string
+}> = [
+  { tag: 'trending_mcp', categoryName: 'MCP Servers' },
+  { tag: 'trending_api', categoryName: 'APIs' },
+]
+
+const registryFeedRoute = createRoute({
+  method: 'get',
+  path: '/registry/feed',
+  tags: ['Registry'],
+  summary: 'List suggested sources grouped by category',
+  responses: {
+    200: {
+      description: 'Suggested sources grouped by category name',
+      content: {
+        'application/json': {
+          schema: registryFeedSchema,
+        },
+      },
+    },
+    503: {
+      description: 'The registry feed database is not configured',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
 
 const specRoute = createRoute({
   method: 'post',
@@ -191,6 +226,36 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
+    .openapi(registryFeedRoute, async (c) => {
+      if (!options.database) {
+        return c.json({ error: 'The registry feed database is not configured.' }, 503)
+      }
+      const database = await resolveDatabase(options.database)
+      const feed: Record<string, Array<{ url: string; title: string; type: 'MCP' | 'API' }>> =
+        Object.fromEntries(
+          registryFeedCategories.map(({ categoryName }) => [categoryName, []]),
+        )
+      const categoryNames = new Map(
+        registryFeedCategories.map(({ tag, categoryName }) => [tag, categoryName]),
+      )
+      const rows = await database.listRegistryFeedRows(
+        registryFeedCategories.map(({ tag }) => tag),
+      )
+      for (const row of rows) {
+        const categoryName = categoryNames.get(row.tag)
+        if (!categoryName) {
+          continue
+        }
+        const category = feed[categoryName] ?? []
+        category.push({
+          url: row.url,
+          title: row.title,
+          type: row.type,
+        })
+        feed[categoryName] = category
+      }
+      return c.json(feed, 200)
+    })
     .openapi(specRoute, async (c) => {
       try {
         const specUrl = c.req.valid('json').url

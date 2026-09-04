@@ -34,10 +34,40 @@ const upstreamFetch: typeof fetch = async (input, init) => {
   })
 }
 
-const api = createApi({ fetch: upstreamFetch })
+let requestedFeedTags: readonly string[] = []
+const api = createApi({
+  fetch: upstreamFetch,
+  database: {
+    async listRegistryFeedRows(tags) {
+      requestedFeedTags = tags
+      return [
+        {
+          url: 'https://mcp.example.test',
+          title: 'Example MCP',
+          type: 'MCP',
+          tag: 'trending_mcp',
+        },
+      ]
+    },
+  },
+})
 const client = hc<AppType>('http://hookfish.test', {
   fetch: ((input, init) => api.request(input, init as RequestInit)) as typeof fetch,
 })
+
+const registryFeed = await client.registry.feed.$get()
+assert.equal(registryFeed.status, 200)
+assert.deepEqual(await registryFeed.json(), {
+  'MCP Servers': [
+    {
+      url: 'https://mcp.example.test',
+      title: 'Example MCP',
+      type: 'MCP',
+    },
+  ],
+  APIs: [],
+})
+assert.deepEqual(requestedFeedTags, ['trending_mcp', 'trending_api'])
 
 const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
 assert.equal(spec.status, 200)
@@ -113,6 +143,7 @@ assert.ok(document.paths['/spec'])
 assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
+assert.ok(document.paths['/registry/feed'])
 assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)
@@ -122,6 +153,7 @@ assert.equal((await api.request('/auth/session')).status, 404)
 assert.equal((await api.request('/registry')).status, 404)
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
+assert.equal((await mounted.request('/api/registry/feed')).status, 503)
 const mountedSpec = await mounted.request('/api/spec', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
