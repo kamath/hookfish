@@ -10,6 +10,7 @@ export type RegistryFeedRow = RegistryEntry & {
 
 export type AppDatabase = {
   listRegistryFeedRows(tags: readonly string[]): Promise<RegistryFeedRow[]>
+  getRegistryEntry(url: string): Promise<RegistryEntry | undefined>
   upsertRegistryEntry(entry: RegistryEntry): Promise<void>
 }
 

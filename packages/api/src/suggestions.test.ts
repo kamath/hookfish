@@ -58,6 +58,12 @@ try {
     ),
     false,
   )
+  assert.deepEqual(await database.getRegistryEntry('https://new.example.test/openapi.json'), {
+    url: 'https://new.example.test/openapi.json',
+    title: 'New API v2',
+    type: 'API',
+  })
+  assert.equal(await database.getRegistryEntry('https://missing.example.test'), undefined)
 } finally {
   await rm(dataDir, { force: true, recursive: true })
 }

@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { listRegistryFeedRows, upsertRegistryEntry } from './queries'
+import { getRegistryEntry, listRegistryFeedRows, upsertRegistryEntry } from './queries'
 import { schema } from './schema'
 import type { AppDatabase } from './types'
 
@@ -23,6 +23,7 @@ export function createPostgresDb(connection: PostgresConnection): AppDatabase {
   const database = drizzle({ client, schema })
   return {
     listRegistryFeedRows: (feedTags) => listRegistryFeedRows(database, feedTags),
+    getRegistryEntry: (url) => getRegistryEntry(database, url),
     upsertRegistryEntry: (entry) => upsertRegistryEntry(database, entry),
   }
 }

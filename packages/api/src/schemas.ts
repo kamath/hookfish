@@ -10,6 +10,8 @@ export const specRequestSchema = z
   .object({
     url: z.string().trim().min(1),
     save: z.boolean().optional(),
+    title: z.string().trim().min(1).optional(),
+    type: z.enum(['MCP', 'API']).optional(),
   })
   .openapi('SpecRequest')
 
@@ -77,6 +79,20 @@ export const registryFeedSchema = z
   .record(z.string(), z.array(registryFeedItemSchema))
   .openapi('RegistryFeed')
 
+export const registryEntryQuerySchema = z.object({
+  url: z.string().trim().min(1),
+})
+
+export const registryEntrySchema = z
+  .object({
+    registered: z.boolean(),
+    url: z.string().optional(),
+    title: z.string().optional(),
+    type: z.enum(['MCP', 'API']).optional(),
+  })
+  .openapi('RegistryEntry')
+
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
 export type RegistryFeed = z.infer<typeof registryFeedSchema>
+export type RegistryEntryStatus = z.infer<typeof registryEntrySchema>

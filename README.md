@@ -94,9 +94,10 @@ Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally n
 The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
 `MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
 `GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
-category-keyed response that the homepage renders as panes. `POST /api/spec`
-accepts optional `save: true` to upsert a successfully fetched OpenAPI title and
-URL into `registry` as type `API`.
+category-keyed response that the homepage renders as panes. `GET /api/registry/entry?url=` reports whether a URL is already stored.
+`POST /api/spec` accepts optional `save: true` to upsert a successfully fetched
+OpenAPI title and URL into `registry` as type `API`. The workbench Register
+button appears for unregistered sources and calls that save path.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 
 ```bash

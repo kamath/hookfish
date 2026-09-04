@@ -25,6 +25,40 @@ export async function listRegistryFeedRows(
     .orderBy(asc(tags.tag), asc(registry.title))
 }
 
+function registryUrlCandidates(url: string) {
+  const candidates = [url]
+  try {
+    const parsed = new URL(url)
+    const path = `${parsed.pathname}${parsed.search}`
+    if (path && path !== url) {
+      candidates.push(path)
+    }
+    const href = parsed.toString()
+    if (href !== url) {
+      candidates.push(href)
+    }
+  } catch {
+    // Keep the original string when it is not an absolute URL.
+  }
+  return [...new Set(candidates)]
+}
+
+export async function getRegistryEntry(
+  database: SchemaDatabase,
+  url: string,
+): Promise<RegistryEntry | undefined> {
+  const rows = await database
+    .select({
+      url: registry.url,
+      title: registry.title,
+      type: registry.type,
+    })
+    .from(registry)
+    .where(inArray(registry.url, registryUrlCandidates(url)))
+    .limit(1)
+  return rows[0]
+}
+
 export async function upsertRegistryEntry(
   database: SchemaDatabase,
   entry: RegistryEntry,

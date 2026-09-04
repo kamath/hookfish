@@ -4,10 +4,12 @@ export { mcpOAuthClientMetadata } from './oauth'
 export {
   executeRequestSchema,
   executeResultSchema,
+  registryEntrySchema,
   registryFeedItemSchema,
   registryFeedSchema,
   type ExecuteRequest,
   type ExecuteResult,
+  type RegistryEntryStatus,
   type RegistryFeed,
 } from './schemas'
 export { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'

@@ -24,7 +24,7 @@ import type {
   ExecutableSource,
   JsonSchema,
 } from '../lib/client-types'
-import { apiQueryOptions } from '../lib/queries'
+import { apiQueryOptions, registerSource, registryEntryQueryOptions } from '../lib/queries'
 import { blurActive, isEditing } from '../lib/focus'
 import { useFormPaneNavigation } from '../lib/form-nav'
 import { fuzzyScore } from '../lib/fuzzy'
@@ -711,11 +711,32 @@ function ApiWorkbench({
 
   const parentTitle = previousPaneTitle(activePane, api.labels)
   const backLabel = routePane === 'trace' ? 'Close traces' : parentTitle
+  const registryQuery = useQuery(registryEntryQueryOptions(api.sourceUrl))
+  const register = useMutation({
+    mutationFn: () =>
+      registerSource({
+        sourceUrl: api.sourceUrl,
+        title: api.title,
+        kind: api.kind,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: registryEntryQueryOptions(api.sourceUrl).queryKey,
+      })
+    },
+  })
 
   useSourceToolbar({
     title: api.title,
     onClearAuth,
     authPending,
+    onRegister:
+      registryQuery.data?.registered === false
+        ? async () => {
+            await register.mutateAsync()
+          }
+        : undefined,
+    registerPending: register.isPending,
     backLabel,
     onBack: stepBack,
   })

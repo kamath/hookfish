@@ -9,6 +9,8 @@ import {
   mcpOAuthClientQuerySchema,
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
+  registryEntryQuerySchema,
+  registryEntrySchema,
   registryFeedSchema,
   specRequestSchema,
 } from './schemas'
@@ -65,6 +67,34 @@ const registryFeedRoute = createRoute({
   },
 })
 
+const registryEntryRoute = createRoute({
+  method: 'get',
+  path: '/registry/entry',
+  tags: ['Registry'],
+  summary: 'Look up whether a source URL is in the registry',
+  request: {
+    query: registryEntryQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Whether the URL is registered',
+      content: {
+        'application/json': {
+          schema: registryEntrySchema,
+        },
+      },
+    },
+    503: {
+      description: 'The registry database is not configured',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+})
+
 function titleFromSpec(document: unknown, specUrl: string) {
   if (document && typeof document === 'object' && 'info' in document) {
     const info = document.info
@@ -108,6 +138,14 @@ const specRoute = createRoute({
     },
     400: {
       description: 'The spec could not be fetched or parsed',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+    503: {
+      description: 'The registry could not be updated',
       content: {
         'application/json': {
           schema: errorSchema,
@@ -209,6 +247,33 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
+class RegistryUnavailableError extends Error {
+  constructor(message = 'The registry database is not configured.') {
+    super(message)
+    this.name = 'RegistryUnavailableError'
+  }
+}
+
+async function saveRegistryEntry(
+  database: DatabaseInput | undefined,
+  entry: { url: string; title: string; type: 'MCP' | 'API' },
+) {
+  if (!database) {
+    throw new RegistryUnavailableError()
+  }
+  try {
+    const resolved = await resolveDatabase(database)
+    await resolved.upsertRegistryEntry(entry)
+  } catch (error) {
+    if (error instanceof RegistryUnavailableError) {
+      throw error
+    }
+    throw new RegistryUnavailableError(
+      errorMessage(error, 'Could not save the source to the registry.'),
+    )
+  }
+}
+
 export function createApi(options: CreateApiOptions = {}) {
   const upstreamFetch = options.fetch ?? fetch
   const app = new OpenAPIHono({
@@ -273,26 +338,44 @@ export function createApi(options: CreateApiOptions = {}) {
       }
       return c.json(feed, 200)
     })
+    .openapi(registryEntryRoute, async (c) => {
+      if (!options.database) {
+        return c.json({ error: 'The registry database is not configured.' }, 503)
+      }
+      const database = await resolveDatabase(options.database)
+      const row = await database.getRegistryEntry(c.req.valid('query').url)
+      if (!row) {
+        return c.json({ registered: false }, 200)
+      }
+      return c.json({ registered: true, ...row }, 200)
+    })
     .openapi(specRoute, async (c) => {
       try {
-        const { url: specUrl, save } = c.req.valid('json')
+        const { url: specUrl, save, title, type } = c.req.valid('json')
+        if (save && type === 'MCP') {
+          const entry = {
+            url: specUrl,
+            title: title ?? titleFromSpec(undefined, specUrl),
+            type: 'MCP' as const,
+          }
+          await saveRegistryEntry(options.database, entry)
+          return c.json(entry, 200)
+        }
         const document = isOwnOpenApiUrl(specUrl, c.req.url)
           ? app.getOpenAPI31Document(openApiConfig)
           : await fetchUpstreamSpec(specUrl, fetchOwnOrUpstream(c.req.url, true))
-        if (save && options.database) {
-          try {
-            const database = await resolveDatabase(options.database)
-            await database.upsertRegistryEntry({
-              url: specUrl,
-              title: titleFromSpec(document, specUrl),
-              type: 'API',
-            })
-          } catch {
-            // Saving is optional; a registry write failure still returns the spec.
-          }
+        if (save) {
+          await saveRegistryEntry(options.database, {
+            url: specUrl,
+            title: titleFromSpec(document, specUrl),
+            type: 'API',
+          })
         }
         return c.json(document, 200)
       } catch (error) {
+        if (error instanceof RegistryUnavailableError) {
+          return c.json({ error: error.message }, 503)
+        }
         return c.json({ error: errorMessage(error, 'Could not fetch the spec.') }, 400)
       }
     })

@@ -1,7 +1,9 @@
 import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
 import { queryOptions } from '@tanstack/react-query'
 import { isNotFound } from '@tanstack/react-router'
-import { getApi, listApis } from './apis'
+import type { RegistryEntryStatus } from '@hookfish/api'
+import { apiJson, getApi } from './api'
+import { getApi as getStoredApi, listApis } from './apis'
 import { getCarouselCatalog } from './catalog-data'
 
 export const carouselQueryOptions = queryOptions({
@@ -19,7 +21,7 @@ export const apisQueryOptions = queryOptions({
 export function apiQueryOptions(id: string) {
   return queryOptions({
     queryKey: ['api', id],
-    queryFn: () => getApi(id),
+    queryFn: () => getStoredApi(id),
     retry: (count, error) => {
       if (isNotFound(error) || UnauthorizedError.isInstance(error)) {
         return false
@@ -27,6 +29,43 @@ export function apiQueryOptions(id: string) {
       return count < 1
     },
   })
+}
+
+export function registryEntryQueryOptions(url: string) {
+  return queryOptions({
+    queryKey: ['registry-entry', url],
+    queryFn: async (): Promise<RegistryEntryStatus> => {
+      const response = await getApi().registry.entry.$get({ query: { url } })
+      return apiJson(response)
+    },
+    staleTime: 60_000,
+    retry: (count, error) => {
+      if (error instanceof Error && /not configured/i.test(error.message)) {
+        return false
+      }
+      return count < 1
+    },
+  })
+}
+
+export async function registerSource(source: {
+  sourceUrl: string
+  title: string
+  kind: string
+}) {
+  return apiJson(
+    await getApi().spec.$post({
+      json:
+        source.kind === 'mcp'
+          ? {
+              url: source.sourceUrl,
+              save: true,
+              title: source.title,
+              type: 'MCP',
+            }
+          : { url: source.sourceUrl, save: true },
+    }),
+  )
 }
 
 export function queryErrorMessage(error: unknown, fallback: string) {

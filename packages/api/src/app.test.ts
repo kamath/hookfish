@@ -53,6 +53,9 @@ const api = createApi({
         },
       ]
     },
+    async getRegistryEntry(url) {
+      return savedEntries.find((entry) => entry.url === url)
+    },
     async upsertRegistryEntry(entry) {
       savedEntries.push(entry)
     },
@@ -142,6 +145,9 @@ const failingSave = createApi({
     async listRegistryFeedRows() {
       return []
     },
+    async getRegistryEntry() {
+      return undefined
+    },
     async upsertRegistryEntry() {
       throw new Error('registry unavailable')
     },
@@ -152,18 +158,52 @@ const failedSave = await failingSave.request('/spec', {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ url: 'http://localhost:8787/openapi.yaml', save: true }),
 })
-assert.equal(failedSave.status, 200)
-assert.deepEqual(await failedSave.json(), {
-  openapi: '3.1.0',
-  info: { title: 'Local API' },
-})
+assert.equal(failedSave.status, 503)
+assert.deepEqual(await failedSave.json(), { error: 'registry unavailable' })
 
 const noDatabaseSave = await createApi({ fetch: upstreamFetch }).request('/spec', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ url: 'http://localhost:8787/openapi.yaml', save: true }),
 })
-assert.equal(noDatabaseSave.status, 200)
+assert.equal(noDatabaseSave.status, 503)
+
+const mcpSave = await client.spec.$post({
+  json: {
+    url: 'https://mcp.example.test/mcp',
+    save: true,
+    title: 'Example MCP',
+    type: 'MCP',
+  },
+})
+assert.equal(mcpSave.status, 200)
+assert.deepEqual(await mcpSave.json(), {
+  url: 'https://mcp.example.test/mcp',
+  title: 'Example MCP',
+  type: 'MCP',
+})
+
+const missingEntry = await client.registry.entry.$get({
+  query: { url: 'https://missing.example.test/openapi.json' },
+})
+assert.equal(missingEntry.status, 200)
+assert.deepEqual(await missingEntry.json(), { registered: false })
+
+const foundEntry = await client.registry.entry.$get({
+  query: { url: 'http://localhost:8787/openapi.yaml' },
+})
+assert.equal(foundEntry.status, 200)
+assert.deepEqual(await foundEntry.json(), {
+  registered: true,
+  url: 'http://localhost:8787/openapi.yaml',
+  title: 'Local API',
+  type: 'API',
+})
+
+const noDatabaseEntry = await createApi({ fetch: upstreamFetch }).request(
+  '/registry/entry?url=http://localhost:8787/openapi.yaml',
+)
+assert.equal(noDatabaseEntry.status, 503)
 
 const oauth = await client['mcp-oauth-client'].$get({ query: { sourceId: 'oauth-source' } })
 assert.equal(oauth.status, 200)
@@ -214,6 +254,7 @@ assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
 assert.ok(document.paths['/registry/feed'])
+assert.ok(document.paths['/registry/entry'])
 assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)

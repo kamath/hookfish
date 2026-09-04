@@ -5,6 +5,8 @@ export type SourceToolbar = {
   title: string
   onClearAuth?: () => void | Promise<void>
   authPending?: boolean
+  onRegister?: () => void | Promise<void>
+  registerPending?: boolean
   backLabel?: string
   onBack?: () => void
 }
@@ -19,6 +21,8 @@ export function useSourceToolbar(toolbar: SourceToolbar) {
   const title = toolbar.title
   const canClear = Boolean(toolbar.onClearAuth)
   const authPending = Boolean(toolbar.authPending)
+  const canRegister = Boolean(toolbar.onRegister)
+  const registerPending = Boolean(toolbar.registerPending)
   const backLabel = toolbar.backLabel
   const hasBack = Boolean(toolbar.onBack)
 
@@ -26,10 +30,16 @@ export function useSourceToolbar(toolbar: SourceToolbar) {
     setToolbar({
       title,
       authPending,
+      registerPending,
       backLabel,
       onClearAuth: canClear
         ? () => {
             void latest.current.onClearAuth?.()
+          }
+        : undefined,
+      onRegister: canRegister
+        ? () => {
+            void latest.current.onRegister?.()
           }
         : undefined,
       onBack: hasBack
@@ -39,7 +49,7 @@ export function useSourceToolbar(toolbar: SourceToolbar) {
         : undefined,
     })
     return () => setToolbar(null)
-  }, [title, canClear, authPending, backLabel, hasBack, setToolbar])
+  }, [title, canClear, authPending, canRegister, registerPending, backLabel, hasBack, setToolbar])
 }
 
 export function useSourceToolbarValue() {
