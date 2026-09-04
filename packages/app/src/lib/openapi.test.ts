@@ -56,4 +56,58 @@ assert.throws(
   /OpenAPI or Swagger document/,
 )
 
+const grouped = specToClient(
+  {
+    openapi: '3.1.0',
+    info: { title: 'Smithery API', version: '1' },
+    tags: [
+      {
+        name: 'OpenAPI',
+        description: 'Load OpenAPI documents and execute HTTP operations.',
+      },
+      { name: 'MCP', description: 'Streamable HTTP MCP proxy.' },
+    ],
+    paths: {
+      '/spec': {
+        post: {
+          tags: ['OpenAPI'],
+          summary: 'Fetch and parse an OpenAPI document',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+      '/execute': {
+        post: {
+          tags: ['OpenAPI'],
+          summary: 'Execute an HTTP request',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+      '/mcp-proxy': {
+        post: {
+          tags: ['MCP'],
+          summary: 'Proxy a Streamable HTTP MCP request',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    },
+  },
+  'https://example.test/openapi.json',
+  'self',
+)
+assert.deepEqual(grouped.groups, [
+  {
+    name: 'OpenAPI',
+    description: 'Load OpenAPI documents and execute HTTP operations.',
+  },
+  { name: 'MCP', description: 'Streamable HTTP MCP proxy.' },
+])
+assert.deepEqual(
+  grouped.executables.map((executable) => [executable.name, executable.groups]),
+  [
+    ['/spec', ['OpenAPI']],
+    ['/execute', ['OpenAPI']],
+    ['/mcp-proxy', ['MCP']],
+  ],
+)
+
 console.log('openapi output schema ok')
