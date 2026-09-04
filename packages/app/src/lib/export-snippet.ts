@@ -2,16 +2,16 @@ import { jsonSchemaToZod } from 'json-schema-to-zod'
 import type { AuthScheme, Executable, JsonSchema } from './client-types'
 import { asRecord } from './build-request'
 import type { InvocationContext } from './executable-adapters'
-import type { ExecuteRequest } from './invoke'
+import type { HttpRequest } from '@hookfish/api'
 
-function headerList(request: ExecuteRequest): Array<[string, string]> {
+function headerList(request: HttpRequest): Array<[string, string]> {
   return Object.entries(request.headers ?? {}).filter(
     (entry): entry is [string, string] =>
       typeof entry[1] === 'string' && entry[0].toLowerCase() !== 'content-length',
   )
 }
 
-function contentType(request: ExecuteRequest): string {
+function contentType(request: HttpRequest): string {
   for (const [name, value] of headerList(request)) {
     if (name.toLowerCase() === 'content-type') {
       return value
@@ -20,7 +20,7 @@ function contentType(request: ExecuteRequest): string {
   return ''
 }
 
-function jsonBody(request: ExecuteRequest): unknown {
+function jsonBody(request: HttpRequest): unknown {
   if (!request.body || !contentType(request).includes('json')) {
     return undefined
   }
@@ -59,7 +59,7 @@ export function withAuthPlaceholders(
   return next
 }
 
-export function toFetch(request: ExecuteRequest): string {
+export function toFetch(request: HttpRequest): string {
   const options: string[] = []
   if (request.method !== 'GET') {
     options.push(`  method: ${JSON.stringify(request.method)},`)
@@ -252,7 +252,7 @@ function authParameterNames(context: InvocationContext) {
   return locations
 }
 
-function staticQuery(request: ExecuteRequest, context: InvocationContext) {
+function staticQuery(request: HttpRequest, context: InvocationContext) {
   const url = new URL(request.url)
   const protectedNames = authParameterNames(context).query
   const dynamicNames = new Set(
@@ -265,7 +265,7 @@ function staticQuery(request: ExecuteRequest, context: InvocationContext) {
   )
 }
 
-function staticHeaders(request: ExecuteRequest, context: InvocationContext) {
+function staticHeaders(request: HttpRequest, context: InvocationContext) {
   const protectedNames = authParameterNames(context).header
   const dynamicNames = new Set(
     Object.keys(asRecord(asRecord(context.formData).header))
@@ -278,7 +278,7 @@ function staticHeaders(request: ExecuteRequest, context: InvocationContext) {
   )
 }
 
-function staticCookies(request: ExecuteRequest, context: InvocationContext) {
+function staticCookies(request: HttpRequest, context: InvocationContext) {
   const protectedNames = authParameterNames(context).cookie
   const dynamicNames = new Set(
     Object.keys(asRecord(asRecord(context.formData).cookie)).filter(
@@ -302,7 +302,7 @@ function staticCookies(request: ExecuteRequest, context: InvocationContext) {
 }
 
 function httpSetup(
-  request: ExecuteRequest,
+  request: HttpRequest,
   context: InvocationContext,
 ): string {
   const binding = context.executable.binding
@@ -360,7 +360,7 @@ if (cookies.size > 0) {
 }
 
 function httpFetchExpression(
-  request: ExecuteRequest,
+  request: HttpRequest,
 ): string {
   const options = [`method: ${JSON.stringify(request.method)}`, 'headers']
   if (request.body !== undefined) {
@@ -376,7 +376,7 @@ function httpFetchExpression(
 }
 
 export function toHttpExportSnippet(
-  request: ExecuteRequest,
+  request: HttpRequest,
   context: InvocationContext,
 ): string {
   const outputSchema = httpBodyOutputSchema(context.executable.outputSchema)

@@ -34,6 +34,7 @@ export function httpBindingFor(operation: ClientOperation): HttpBinding {
 }
 
 export function buildOperationRequest(input: {
+  specUrl: string
   serverUrl: string
   operation: ClientOperation
   formData: unknown
@@ -89,6 +90,7 @@ export function buildOperationRequest(input: {
   }
 
   return {
+    specUrl: input.specUrl,
     transport: 'http',
     method: binding.method.toUpperCase(),
     url: url.toString(),

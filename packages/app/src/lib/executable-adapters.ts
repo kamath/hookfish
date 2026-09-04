@@ -62,6 +62,7 @@ function asHttpInvocation(value: unknown): ExecuteRequest {
 
 function buildOpenApiInvocation(context: InvocationContext): ExecuteRequest {
   return buildOperationRequest({
+    specUrl: context.source.sourceUrl,
     serverUrl: context.target,
     operation: context.executable,
     formData: context.formData,

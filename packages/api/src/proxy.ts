@@ -1,19 +1,13 @@
 import { isHttpUrl } from './http'
+import { assertMcpProxyRequest } from './mcp'
 
 export const MCP_PROXY_AUTHORIZATION_HEADER = 'x-hookfish-mcp-authorization'
 
-const REQUEST_HEADER_BLOCKLIST = new Set([
-  'connection',
-  'content-length',
-  'host',
-  'origin',
-  'referer',
-  'cookie',
-  'transfer-encoding',
-  'x-forwarded-for',
-  'x-forwarded-host',
-  'x-forwarded-proto',
-  MCP_PROXY_AUTHORIZATION_HEADER,
+const REQUEST_HEADER_ALLOWLIST = new Set([
+  'accept',
+  'content-type',
+  'authorization',
+  'last-event-id',
 ])
 
 const RESPONSE_HEADER_BLOCKLIST = new Set([
@@ -23,13 +17,30 @@ const RESPONSE_HEADER_BLOCKLIST = new Set([
   'transfer-encoding',
 ])
 
-function filteredHeaders(source: Headers, blocked: Set<string>) {
+const MAX_PROXY_BODY_CHARS = 2_000_000
+
+function requestHeaders(source: Headers) {
+  const headers = new Headers()
+  source.forEach((value, name) => {
+    const lower = name.toLowerCase()
+    if (REQUEST_HEADER_ALLOWLIST.has(lower) || lower.startsWith('mcp-')) {
+      headers.set(name, value)
+    }
+  })
+  headers.delete(MCP_PROXY_AUTHORIZATION_HEADER)
+  const upstreamAuthorization = source.get(MCP_PROXY_AUTHORIZATION_HEADER)
+  if (upstreamAuthorization) {
+    headers.set('authorization', upstreamAuthorization)
+  }
+  return headers
+}
+
+function filteredResponseHeaders(source: Headers) {
   const headers = new Headers()
   source.forEach((value, name) => {
     if (
-      !blocked.has(name.toLowerCase()) &&
-      !name.toLowerCase().startsWith('cf-') &&
-      !name.toLowerCase().startsWith('sec-')
+      !RESPONSE_HEADER_BLOCKLIST.has(name.toLowerCase()) &&
+      !name.toLowerCase().startsWith('cf-')
     ) {
       headers.set(name, value)
     }
@@ -46,24 +57,38 @@ export async function proxyMcpRequest(
     return Response.json({ error: 'Choose an http or https MCP endpoint.' }, { status: 400 })
   }
 
-  const headers = filteredHeaders(request.headers, REQUEST_HEADER_BLOCKLIST)
-  const upstreamAuthorization = request.headers.get(MCP_PROXY_AUTHORIZATION_HEADER)
-  if (upstreamAuthorization) {
-    headers.set('authorization', upstreamAuthorization)
+  const method = request.method.toUpperCase()
+  let body: string | undefined
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+    body = await request.text()
+    if (body.length > MAX_PROXY_BODY_CHARS) {
+      return Response.json({ error: 'The MCP request is too large.' }, { status: 400 })
+    }
   }
-  const body =
-    request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body
+
+  try {
+    assertMcpProxyRequest({
+      method,
+      contentType: request.headers.get('content-type') ?? '',
+      body,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'The request does not match the MCP protocol.'
+    return Response.json({ error: message }, { status: 400 })
+  }
+
+  const headers = requestHeaders(request.headers)
   const response = await upstreamFetch(target, {
-    method: request.method,
+    method,
     headers,
     body,
-    // Node streams a request body only when told the request is half-duplex; without this it
-    // throws before the request leaves the process. Workers accepts and ignores the option.
-    ...(body ? { duplex: 'half' } : {}),
-    redirect: 'manual',
     signal: request.signal,
-  } as RequestInit)
-  const responseHeaders = filteredHeaders(response.headers, RESPONSE_HEADER_BLOCKLIST)
+    redirect: 'manual',
+  })
+  const responseHeaders = filteredResponseHeaders(response.headers)
   if (responseHeaders.get('content-type')?.includes('text/event-stream')) {
     responseHeaders.set('Cache-Control', 'no-cache, no-transform')
     responseHeaders.set('X-Accel-Buffering', 'no')

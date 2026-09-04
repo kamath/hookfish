@@ -19,6 +19,7 @@ import {
   ownApiRequest,
   withInternalFetchHeader,
 } from './self'
+import { assertHttpRequestMatchesSpec } from './spec'
 import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
@@ -104,7 +105,7 @@ const executeRoute = createRoute({
   method: 'post',
   path: '/execute',
   tags: ['OpenAPI'],
-  summary: 'Execute an HTTP request against an upstream API',
+  summary: 'Execute an HTTP request that matches an operation in an OpenAPI document',
   request: {
     body: {
       required: true,
@@ -168,7 +169,7 @@ function mcpProxyRoute(method: 'get' | 'post' | 'delete') {
     method,
     path: '/mcp-proxy',
     tags: ['MCP'],
-    summary: 'Proxy a Streamable HTTP MCP request',
+    summary: 'Proxy a Streamable HTTP MCP or MCP OAuth request',
     request: {
       query: mcpProxyQuerySchema,
     },
@@ -272,12 +273,20 @@ export function createApi(options: CreateApiOptions = {}) {
       try {
         const data = c.req.valid('json')
         const nested = c.req.header(INTERNAL_FETCH_HEADER) === '1'
+        const fetchImpl = fetchOwnOrUpstream(c.req.url, nested)
+        const document = isOwnOpenApiUrl(data.specUrl, c.req.url)
+          ? app.getOpenAPI31Document(openApiConfig)
+          : await fetchUpstreamSpec(data.specUrl, fetchImpl)
+        assertHttpRequestMatchesSpec(document, data.specUrl, data, c.req.url)
         const result = await executeUpstreamRequest(
           {
-            ...data,
+            transport: data.transport,
+            method: data.method,
+            url: data.url,
             headers: data.headers ?? {},
+            body: data.body,
           },
-          fetchOwnOrUpstream(c.req.url, nested),
+          fetchImpl,
         )
         return c.json(result, 200)
       } catch (error) {
@@ -301,10 +310,6 @@ export function createApi(options: CreateApiOptions = {}) {
     .openapi(mcpProxyRoute('get'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
     .openapi(mcpProxyRoute('post'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
     .openapi(mcpProxyRoute('delete'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
-
-  routes.on(['PUT', 'PATCH', 'OPTIONS', 'HEAD'], '/mcp-proxy', (c) =>
-    proxyMcpRequest(c.req.raw, upstreamFetch),
-  )
 
   return routes.doc31('/openapi.json', openApiConfig)
 }

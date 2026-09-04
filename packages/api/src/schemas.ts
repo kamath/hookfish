@@ -12,13 +12,19 @@ export const specRequestSchema = z
   })
   .openapi('SpecRequest')
 
-export const executeRequestSchema = z
+export const httpRequestSchema = z
   .object({
     transport: z.literal('http'),
     method: z.string().trim().min(1),
     url: z.string().trim().min(1),
     headers: z.record(z.string(), z.string()).optional(),
     body: z.string().optional(),
+  })
+  .openapi('HttpRequest')
+
+export const executeRequestSchema = httpRequestSchema
+  .extend({
+    specUrl: z.string().trim().min(1),
   })
   .openapi('ExecuteRequest')
 
@@ -76,6 +82,7 @@ export const registryFeedSchema = z
   .record(z.string(), z.array(registryFeedItemSchema))
   .openapi('RegistryFeed')
 
+export type HttpRequest = z.infer<typeof httpRequestSchema>
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
 export type RegistryFeed = z.infer<typeof registryFeedSchema>
