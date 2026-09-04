@@ -89,11 +89,12 @@ the browser. The UI talks to the `App` component's `apiBaseUrl` through Hono RPC
 shell mounts it at `/api`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
-## Suggested sources database
+## Registry database
 
-The `suggested_source` table contains `url`, `title`, `category_name`, and `type` text columns.
-`type` is constrained to `MCP` or `API`.
-The homepage reads the category-keyed response from `GET /api/registry/feed`.
+The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
+`MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
+`GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
+category-keyed response that the homepage renders as panes.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 
 ```bash

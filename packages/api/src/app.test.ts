@@ -34,16 +34,18 @@ const upstreamFetch: typeof fetch = async (input, init) => {
   })
 }
 
+let requestedFeedTags: readonly string[] = []
 const api = createApi({
   fetch: upstreamFetch,
   database: {
-    async listSuggestedSources() {
+    async listRegistryFeedRows(tags) {
+      requestedFeedTags = tags
       return [
         {
           url: 'https://mcp.example.test',
           title: 'Example MCP',
-          category_name: 'MCP Servers',
           type: 'MCP',
+          tag: 'trending_mcp',
         },
       ]
     },
@@ -63,7 +65,9 @@ assert.deepEqual(await registryFeed.json(), {
       type: 'MCP',
     },
   ],
+  APIs: [],
 })
+assert.deepEqual(requestedFeedTags, ['trending_mcp', 'trending_api'])
 
 const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
 assert.equal(spec.status, 200)

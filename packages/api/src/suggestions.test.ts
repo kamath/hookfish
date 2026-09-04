@@ -8,25 +8,29 @@ const dataDir = await mkdtemp(join(tmpdir(), 'hookfish-suggestions-'))
 
 try {
   const database = await createPgliteDb(dataDir)
-  const suggestions = await database.listSuggestedSources()
+  const rows = await database.listRegistryFeedRows([
+    'trending_mcp',
+    'trending_api',
+  ])
 
-  assert.equal(suggestions.length, 10)
+  assert.equal(rows.length, 10)
   assert.deepEqual(
-    [...new Set(suggestions.map((suggestion) => suggestion.category_name))],
-    ['MCP Servers', 'OpenAPI'],
+    [...new Set(rows.map((row) => row.tag))],
+    ['trending_api', 'trending_mcp'],
   )
-  assert.deepEqual(Object.keys(suggestions[0] ?? {}).sort(), [
-    'category_name',
+  assert.deepEqual(Object.keys(rows[0] ?? {}).sort(), [
+    'tag',
     'title',
     'type',
     'url',
   ])
-  assert.deepEqual([...new Set(suggestions.map((suggestion) => suggestion.type))].sort(), [
+  assert.deepEqual([...new Set(rows.map((row) => row.type))].sort(), [
     'API',
     'MCP',
   ])
+  assert.deepEqual(await database.listRegistryFeedRows(['not_in_feed']), [])
 } finally {
   await rm(dataDir, { force: true, recursive: true })
 }
 
-console.log('suggestions migration and seed data ok')
+console.log('registry and tags migration data ok')

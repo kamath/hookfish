@@ -32,6 +32,13 @@ export type CreateApiOptions = {
 }
 
 const specDocumentSchema = z.any().openapi('SpecDocument')
+const registryFeedCategories: ReadonlyArray<{
+  tag: string
+  categoryName: string
+}> = [
+  { tag: 'trending_mcp', categoryName: 'MCP Servers' },
+  { tag: 'trending_api', categoryName: 'APIs' },
+]
 
 const registryFeedRoute = createRoute({
   method: 'get',
@@ -224,18 +231,28 @@ export function createApi(options: CreateApiOptions = {}) {
         return c.json({ error: 'The registry feed database is not configured.' }, 503)
       }
       const database = await resolveDatabase(options.database)
-      const feed: Record<
-        string,
-        Array<{ url: string; title: string; type: 'MCP' | 'API' }>
-      > = {}
-      for (const suggestion of await database.listSuggestedSources()) {
-        const category = feed[suggestion.category_name] ?? []
+      const feed: Record<string, Array<{ url: string; title: string; type: 'MCP' | 'API' }>> =
+        Object.fromEntries(
+          registryFeedCategories.map(({ categoryName }) => [categoryName, []]),
+        )
+      const categoryNames = new Map(
+        registryFeedCategories.map(({ tag, categoryName }) => [tag, categoryName]),
+      )
+      const rows = await database.listRegistryFeedRows(
+        registryFeedCategories.map(({ tag }) => tag),
+      )
+      for (const row of rows) {
+        const categoryName = categoryNames.get(row.tag)
+        if (!categoryName) {
+          continue
+        }
+        const category = feed[categoryName] ?? []
         category.push({
-          url: suggestion.url,
-          title: suggestion.title,
-          type: suggestion.type,
+          url: row.url,
+          title: row.title,
+          type: row.type,
         })
-        feed[suggestion.category_name] = category
+        feed[categoryName] = category
       }
       return c.json(feed, 200)
     })

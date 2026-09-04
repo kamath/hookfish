@@ -1,12 +1,12 @@
-export type SuggestedSource = {
+export type RegistryFeedRow = {
   url: string
   title: string
-  category_name: string
   type: 'MCP' | 'API'
+  tag: string
 }
 
 export type AppDatabase = {
-  listSuggestedSources(): Promise<SuggestedSource[]>
+  listRegistryFeedRows(tags: readonly string[]): Promise<RegistryFeedRow[]>
 }
 
 export type DatabaseInput =

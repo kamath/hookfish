@@ -14,5 +14,6 @@ const response = await api.fetch(request)
 
 The returned application uses Web-standard `Request` and `Response` objects and can be
 adapted to Node, Vercel, or Cloudflare Workers. The database supplies the read-only
-`GET /registry/feed` endpoint from a single `suggested_source` table containing `url`,
-`title`, `category_name`, and `type` text columns. `type` is `MCP` or `API`.
+`GET /registry/feed` endpoint from `registry` rows (`row_id`, `url`, `title`, and
+`type`) joined to `tags` rows (`registry_row_id`, `tag`). The feed includes entries tagged
+`trending_mcp` or `trending_api`; `type` is `MCP` or `API`.

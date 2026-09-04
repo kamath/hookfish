@@ -1,0 +1,124 @@
+{
+  "id": "5ac07cfd-37e9-4670-8cc3-694b7c5d69d2",
+  "prevId": "0c2e2fa2-0a45-44bb-a3ab-80296063516b",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.registry": {
+      "name": "registry",
+      "schema": "",
+      "columns": {
+        "row_id": {
+          "name": "row_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "registry_url_uidx": {
+          "name": "registry_url_uidx",
+          "columns": [
+            {
+              "expression": "url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "registry_type_check": {
+          "name": "registry_type_check",
+          "value": "\"registry\".\"type\" IN ('MCP', 'API')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.tags": {
+      "name": "tags",
+      "schema": "",
+      "columns": {
+        "registry_row_id": {
+          "name": "registry_row_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tags_registry_row_id_registry_row_id_fk": {
+          "name": "tags_registry_row_id_registry_row_id_fk",
+          "tableFrom": "tags",
+          "tableTo": "registry",
+          "columnsFrom": [
+            "registry_row_id"
+          ],
+          "columnsTo": [
+            "row_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tags_registry_row_id_tag_pk": {
+          "name": "tags_registry_row_id_tag_pk",
+          "columns": [
+            "registry_row_id",
+            "tag"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
