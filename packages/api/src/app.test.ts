@@ -10,7 +10,18 @@ const upstreamFetch: typeof fetch = async (input, init) => {
   seen.push({ url: String(input), init })
   const url = String(input)
   if (url.endsWith('.yaml')) {
-    return new Response('openapi: 3.1.0\ninfo:\n  title: Local API')
+    return new Response(`openapi: 3.1.0
+info:
+  title: Local API
+servers:
+  - url: http://localhost:8787
+paths:
+  /widgets:
+    post:
+      responses:
+        '201':
+          description: Created
+`)
   }
   if (url.endsWith('/untitled.json')) {
     return new Response('{"openapi":"3.1.0","info":{"version":"1.0.0"}}')
@@ -79,22 +90,31 @@ assert.deepEqual(await registryFeed.json(), {
 })
 assert.deepEqual(requestedFeedTags, ['trending_mcp', 'trending_api'])
 
-const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
-assert.equal(spec.status, 200)
-assert.deepEqual(await spec.json(), {
+const localSpec = {
   openapi: '3.1.0',
   info: { title: 'Local API' },
-})
+  servers: [{ url: 'http://localhost:8787' }],
+  paths: {
+    '/widgets': {
+      post: {
+        responses: {
+          '201': { description: 'Created' },
+        },
+      },
+    },
+  },
+}
+
+const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
+assert.equal(spec.status, 200)
+assert.deepEqual(await spec.json(), localSpec)
 assert.deepEqual(savedEntries, [])
 
 const savedSpec = await client.spec.$post({
   json: { url: 'http://localhost:8787/openapi.yaml', save: true },
 })
 assert.equal(savedSpec.status, 200)
-assert.deepEqual(await savedSpec.json(), {
-  openapi: '3.1.0',
-  info: { title: 'Local API' },
-})
+assert.deepEqual(await savedSpec.json(), localSpec)
 assert.deepEqual(savedEntries, [
   {
     url: 'http://localhost:8787/openapi.yaml',
@@ -105,6 +125,7 @@ assert.deepEqual(savedEntries, [
 
 const executed = await client.execute.$post({
   json: {
+    specUrl: 'http://localhost:8787/openapi.yaml',
     transport: 'http',
     method: 'post',
     url: 'http://localhost:8787/widgets',
@@ -117,6 +138,17 @@ const executeBody = await executed.json()
 assert.equal(executeBody.status.code, 201)
 assert.equal(executeBody.body, '{"ok":true}')
 assert.equal(executeBody.action, 'POST')
+
+const missingSpecUrl = await api.request('/execute', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    transport: 'http',
+    method: 'post',
+    url: 'http://localhost:8787/widgets',
+  }),
+})
+assert.equal(missingSpecUrl.status, 400)
 
 const invalidSpec = await client.spec.$post({ json: { url: 'file:///tmp/openapi.yaml' } })
 assert.equal(invalidSpec.status, 400)
@@ -219,18 +251,31 @@ assert.equal(missingSource.status, 400)
 const proxyUrl = client['mcp-proxy'].$url({ query: { url: 'https://mcp.test/sse' } })
 assert.equal(proxyUrl.toString(), 'http://hookfish.test/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse')
 
-const proxied = await client['mcp-proxy'].$post({ query: { url: 'https://mcp.test/sse' } })
+const initializeBody = JSON.stringify({
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'initialize',
+  params: {},
+})
+const proxied = await api.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: initializeBody,
+})
 assert.equal(proxied.status, 200)
 assert.equal(proxied.headers.get('mcp-session-id'), 'session-1')
 assert.equal(seen.at(-1)?.url, 'https://mcp.test/sse')
+assert.equal(seen.at(-1)?.init?.body, initializeBody)
 
 const authorizedProxy = await api.request(
   '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fauthorized',
   {
     method: 'POST',
     headers: {
+      'content-type': 'application/json',
       [MCP_PROXY_AUTHORIZATION_HEADER]: 'Bearer upstream-token',
     },
+    body: initializeBody,
   },
 )
 assert.equal(authorizedProxy.status, 200)
@@ -240,6 +285,22 @@ assert.equal(authorizedHeaders.get(MCP_PROXY_AUTHORIZATION_HEADER), null)
 
 const rejectedProxy = await client['mcp-proxy'].$get({ query: { url: 'file:///tmp/mcp' } })
 assert.equal(rejectedProxy.status, 400)
+
+const rejectedGenericProxy = await api.request(
+  '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse',
+  {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://evil.test', name: 'local' }),
+  },
+)
+assert.equal(rejectedGenericProxy.status, 400)
+
+const rejectedProxyMethod = await api.request(
+  '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse',
+  { method: 'PUT' },
+)
+assert.equal(rejectedProxyMethod.status, 404)
 
 const openapi = await api.request('/openapi.json')
 assert.equal(openapi.status, 200)
@@ -308,21 +369,37 @@ const mountedSelfSpec = await mounted.request('/api/spec', {
 assert.equal(mountedSelfSpec.status, 200)
 assert.equal((await mountedSelfSpec.json() as { openapi?: string }).openapi, '3.1.0')
 
+const rejectedExecute = await client.execute.$post({
+  json: {
+    specUrl: 'http://localhost:8787/openapi.yaml',
+    transport: 'http',
+    method: 'post',
+    url: 'https://evil.test/widgets',
+    headers: { 'content-type': 'application/json' },
+    body: '{"name":"local"}',
+  },
+})
+assert.equal(rejectedExecute.status, 400)
+
 const selfExecute = await api.request('/execute', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
+    specUrl: 'http://localhost/openapi.json',
     transport: 'http',
     method: 'get',
-    url: 'http://localhost/openapi.json',
+    url: 'http://localhost/registry/feed',
   }),
 })
 assert.equal(selfExecute.status, 200)
 const selfExecuteBody = await selfExecute.json()
 assert.equal(selfExecuteBody.status.code, 200)
-assert.equal(JSON.parse(selfExecuteBody.body).openapi, '3.1.0')
+assert.ok(JSON.parse(selfExecuteBody.body)['MCP Servers'])
 assert.equal(
-  seen.some((entry) => entry.url.includes('/openapi.json')),
+  seen.some(
+    (entry) =>
+      entry.url.includes('/openapi.json') || entry.url.includes('/registry/feed'),
+  ),
   false,
 )
 

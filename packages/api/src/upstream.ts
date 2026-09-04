@@ -1,6 +1,6 @@
 import { parse as parseYaml } from 'yaml'
 import { isHttpUrl } from './http'
-import type { ExecuteRequest, ExecuteResult } from './schemas'
+import type { ExecuteResult, HttpRequest } from './schemas'
 
 const MAX_RESPONSE_CHARS = 200_000
 const MAX_SPEC_BYTES = 16_000_000
@@ -115,7 +115,7 @@ export async function fetchUpstreamSpec(
 }
 
 export async function executeUpstreamRequest(
-  request: ExecuteRequest,
+  request: HttpRequest,
   upstreamFetch: UpstreamFetch = fetch,
 ): Promise<ExecuteResult> {
   if (!isHttpUrl(request.url)) {

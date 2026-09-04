@@ -79,6 +79,7 @@ assert.equal(routesNext?.label, routesNextTab?.label, 'routes J and Tab share a 
 
 const inspect = paneConfig.input.bindings.find((binding) => binding.id === 'inspect')
 assert.equal(inspect?.hotkey, 'V', 'input inspect toggle is V')
+assert.equal(inspect?.label, 'view metadata', 'input inspect toggle labels the metadata view')
 const description = paneConfig.input.bindings.find((binding) => binding.id === 'description')
 assert.equal(description?.hotkey, 'E', 'input description toggle is E')
 assert.equal(description?.flag, 'hasDescription', 'description toggle requires clipped text')
