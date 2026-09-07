@@ -23,6 +23,11 @@ export function isThemePreference(value: unknown): value is ThemePreference {
   )
 }
 
+export function nextThemePreference(preference: ThemePreference): ThemePreference {
+  const index = THEME_PREFERENCES.indexOf(preference)
+  return THEME_PREFERENCES[(index + 1) % THEME_PREFERENCES.length]
+}
+
 export function readThemePreference(raw: string | null | undefined): ThemePreference {
   return isThemePreference(raw) ? raw : 'system'
 }
