@@ -113,6 +113,21 @@ assert.equal(executeBody.status.code, 201)
 assert.equal(executeBody.body, '{"ok":true}')
 assert.equal(executeBody.action, 'POST')
 
+const binaryExecuted = await client.execute.$post({
+  json: {
+    specUrl: 'http://localhost:8787/openapi.yaml',
+    transport: 'http',
+    method: 'post',
+    url: 'http://localhost:8787/widgets',
+    headers: { 'content-type': 'application/octet-stream' },
+    body: { kind: 'binary', data: 'AAEC' },
+  },
+})
+assert.equal(binaryExecuted.status, 200)
+const proxiedBinary = seen.at(-1)?.init?.body
+assert.ok(proxiedBinary instanceof ArrayBuffer)
+assert.deepEqual([...new Uint8Array(proxiedBinary)], [0, 1, 2])
+
 const missingSpecUrl = await api.request('/execute', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },

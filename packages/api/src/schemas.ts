@@ -12,13 +12,38 @@ export const specRequestSchema = z
   })
   .openapi('SpecRequest')
 
+const binaryBodySchema = z.object({
+  kind: z.literal('binary'),
+  data: z.string(),
+})
+
+const multipartPartSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('text'),
+    name: z.string(),
+    value: z.string(),
+  }),
+  z.object({
+    kind: z.literal('file'),
+    name: z.string(),
+    data: z.string(),
+    filename: z.string(),
+    mediaType: z.string(),
+  }),
+])
+
+const multipartBodySchema = z.object({
+  kind: z.literal('multipart'),
+  parts: z.array(multipartPartSchema),
+})
+
 export const httpRequestSchema = z
   .object({
     transport: z.literal('http'),
     method: z.string().trim().min(1),
     url: z.string().trim().min(1),
     headers: z.record(z.string(), z.string()).optional(),
-    body: z.string().optional(),
+    body: z.union([z.string(), binaryBodySchema, multipartBodySchema]).optional(),
   })
   .openapi('HttpRequest')
 

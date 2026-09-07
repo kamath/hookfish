@@ -3,6 +3,7 @@ import type {
   ClientApi,
   ClientOperation,
   FormUiSchema,
+  HttpBinding,
   HttpMethod,
   JsonSchema,
   TagGroup,
@@ -105,6 +106,11 @@ function oasToJsonSchema(schema: unknown): JsonSchema {
   }
 
   const next: Json = { ...schema }
+
+  if (next.type === 'file') {
+    next.type = 'string'
+    next.format = 'binary'
+  }
 
   if (next.nullable === true) {
     delete next.nullable
@@ -214,7 +220,12 @@ function mergeParameters(
 function requestBodySchema(
   operation: Json,
   root: unknown,
-): { schema: JsonSchema; contentType: string; required?: boolean } | undefined {
+): {
+  schema: JsonSchema
+  contentType: string
+  encoding: NonNullable<HttpBinding['bodyEncoding']>
+  required?: boolean
+} | undefined {
   if (isObject(operation.requestBody)) {
     const body = deref(operation.requestBody, root)
     if (!isObject(body) || !isObject(body.content)) {
@@ -222,8 +233,16 @@ function requestBodySchema(
     }
 
     const content = body.content
+    const entries = Object.entries(content).filter((entry): entry is [string, Json] =>
+      isObject(entry[1]),
+    )
+    const binaryEntry = entries.find(([, media]) =>
+      schemaContainsBinary(deref(media.schema, root)),
+    )
     const preferred =
+      binaryEntry?.[0] ||
       (isObject(content['application/json']) && 'application/json') ||
+      (isObject(content['multipart/form-data']) && 'multipart/form-data') ||
       (isObject(content['application/x-www-form-urlencoded']) &&
         'application/x-www-form-urlencoded') ||
       Object.keys(content)[0]
@@ -237,16 +256,43 @@ function requestBodySchema(
       return {
         schema: { type: 'object', title: 'Body' },
         contentType: preferred,
+        encoding: bodyEncoding(preferred, undefined),
         required: body.required === true,
       }
     }
 
+    const schema = oasToJsonSchema(deref(media.schema, root))
+    if (
+      schemaContainsBinary(schema) &&
+      schema.format === 'binary' &&
+      preferred !== 'application/octet-stream' &&
+      !schema.contentMediaType
+    ) {
+      schema.contentMediaType = preferred
+    }
+    if (
+      preferred === 'multipart/form-data' &&
+      isObject(schema.properties) &&
+      isObject(media.encoding)
+    ) {
+      for (const [name, rawEncoding] of Object.entries(media.encoding)) {
+        const property = schema.properties[name]
+        if (
+          isObject(property) &&
+          isObject(rawEncoding) &&
+          typeof rawEncoding.contentType === 'string'
+        ) {
+          property.contentMediaType = rawEncoding.contentType
+        }
+      }
+    }
     return {
       schema: {
-        ...oasToJsonSchema(deref(media.schema, root)),
+        ...schema,
         title: 'Body',
       },
       contentType: preferred,
+      encoding: bodyEncoding(preferred, schema),
       required: body.required === true,
     }
   }
@@ -256,12 +302,15 @@ function requestBodySchema(
     .find((param) => param.in === 'body')
 
   if (bodyParam) {
+    const contentType = consumes(operation, root)[0] ?? 'application/json'
+    const schema = parameterSchema(bodyParam, root)
     return {
       schema: {
-        ...parameterSchema(bodyParam, root),
+        ...schema,
         title: 'Body',
       },
-      contentType: 'application/json',
+      contentType,
+      encoding: bodyEncoding(contentType, schema),
       required: Boolean(bodyParam.required),
     }
   }
@@ -287,12 +336,87 @@ function requestBodySchema(
         properties,
         required,
       },
-      contentType: 'application/x-www-form-urlencoded',
+      contentType:
+        consumes(operation, root).find((value) => value.includes('multipart/form-data')) ??
+        (Object.values(properties).some(schemaContainsBinary)
+          ? 'multipart/form-data'
+          : 'application/x-www-form-urlencoded'),
+      encoding:
+        consumes(operation, root).some((value) => value.includes('multipart/form-data')) ||
+        Object.values(properties).some(schemaContainsBinary)
+          ? 'multipart'
+          : 'urlencoded',
       required: required.length > 0,
     }
   }
 
   return undefined
+}
+
+function consumes(operation: Json, root: unknown): string[] {
+  const values = Array.isArray(operation.consumes)
+    ? operation.consumes
+    : isObject(root) && Array.isArray(root.consumes)
+      ? root.consumes
+      : []
+  return values.map(String)
+}
+
+function schemaContainsBinary(schema: unknown): boolean {
+  if (!isObject(schema)) {
+    return false
+  }
+  if (schema.format === 'binary' || schema.type === 'file') {
+    return true
+  }
+  if (isObject(schema.properties) && Object.values(schema.properties).some(schemaContainsBinary)) {
+    return true
+  }
+  if (schema.items && schemaContainsBinary(schema.items)) {
+    return true
+  }
+  return ['allOf', 'anyOf', 'oneOf'].some((key) => {
+    const variants = schema[key]
+    return Array.isArray(variants) && variants.some(schemaContainsBinary)
+  })
+}
+
+function bodyEncoding(
+  contentType: string,
+  schema: unknown,
+): 'json' | 'urlencoded' | 'binary' | 'multipart' {
+  if (contentType.includes('multipart/form-data')) {
+    return 'multipart'
+  }
+  if (contentType.includes('application/x-www-form-urlencoded')) {
+    return 'urlencoded'
+  }
+  return schemaContainsBinary(schema) ? 'binary' : 'json'
+}
+
+function binaryUiSchema(schema: unknown): FormUiSchema {
+  if (!isObject(schema)) {
+    return {}
+  }
+  if (schema.format === 'binary' || schema.type === 'file') {
+    return { 'ui:widget': 'file' }
+  }
+  const ui: FormUiSchema = {}
+  if (isObject(schema.properties)) {
+    for (const [name, property] of Object.entries(schema.properties)) {
+      const child = binaryUiSchema(property)
+      if (Object.keys(child).length > 0) {
+        ui[name] = child
+      }
+    }
+  }
+  if (schema.items) {
+    const items = binaryUiSchema(schema.items)
+    if (Object.keys(items).length > 0) {
+      ui.items = items
+    }
+  }
+  return ui
 }
 
 function collectSecurityNames(root: Json): Set<string> {
@@ -442,7 +566,12 @@ function operationToForm(
   operation: Json,
   root: Json,
   defs: Record<string, JsonSchema>,
-): { schema: JsonSchema; uiSchema: FormUiSchema; contentType?: string } {
+): {
+  schema: JsonSchema
+  uiSchema: FormUiSchema
+  contentType?: string
+  bodyEncoding?: 'json' | 'urlencoded' | 'binary' | 'multipart'
+} {
   const properties: Record<string, JsonSchema> = {}
   const requiredGroups: string[] = []
   const uiSchema: FormUiSchema = {
@@ -495,6 +624,10 @@ function operationToForm(
   const body = requestBodySchema(operation, root)
   if (body) {
     properties.body = body.schema
+    const bodyUi = binaryUiSchema(body.schema)
+    if (Object.keys(bodyUi).length > 0) {
+      uiSchema.body = bodyUi
+    }
     if (body.required) {
       requiredGroups.push('body')
     }
@@ -509,6 +642,7 @@ function operationToForm(
     },
     uiSchema,
     contentType: body?.contentType,
+    bodyEncoding: body?.encoding,
   }
 }
 
@@ -656,6 +790,7 @@ export function specToClient(spec: unknown, specUrl: string, id: string): Client
           method,
           path,
           contentType: form.contentType,
+          bodyEncoding: form.bodyEncoding,
         },
         inputSchema: form.schema,
         inputUiSchema: form.uiSchema,
@@ -774,7 +909,11 @@ export function applyAuth(
       continue
     }
 
-    if (type === 'http' && scheme.scheme === 'bearer') {
+    if (
+      (type === 'http' && scheme.scheme?.toLowerCase() === 'bearer') ||
+      type === 'oauth2' ||
+      type === 'openIdConnect'
+    ) {
       headers.set('Authorization', `Bearer ${token}`)
       continue
     }

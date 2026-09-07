@@ -3,6 +3,7 @@ import type { AuthScheme, Executable, JsonSchema } from './client-types'
 import { asRecord } from './build-request'
 import type { InvocationContext } from './executable-adapters'
 import type { HttpRequest } from '@hookfish/api'
+import { parseFileDataUrl } from './file-data'
 
 function headerList(request: HttpRequest): Array<[string, string]> {
   return Object.entries(request.headers ?? {}).filter(
@@ -21,7 +22,7 @@ function contentType(request: HttpRequest): string {
 }
 
 function jsonBody(request: HttpRequest): unknown {
-  if (!request.body || !contentType(request).includes('json')) {
+  if (typeof request.body !== 'string' || !contentType(request).includes('json')) {
     return undefined
   }
   try {
@@ -74,7 +75,7 @@ export function toFetch(request: HttpRequest): string {
     options.push('  },')
   }
 
-  if (request.body) {
+  if (typeof request.body === 'string' && request.body) {
     const json = jsonBody(request)
     if (json === undefined) {
       options.push(`  body: ${JSON.stringify(request.body)},`)
@@ -82,6 +83,12 @@ export function toFetch(request: HttpRequest): string {
       const pretty = JSON.stringify(json, null, 2).replace(/\n/g, '\n  ')
       options.push(`  body: JSON.stringify(${pretty}),`)
     }
+  } else if (request.body && typeof request.body === 'object') {
+    options.push(
+      request.body.kind === 'binary'
+        ? '  body: new Blob([/* file bytes */]),'
+        : '  body: new FormData(), // append multipart fields before sending',
+    )
   }
 
   if (options.length === 0) {
@@ -356,6 +363,34 @@ for (const [name, value] of Object.entries(input.cookie ?? {})) {
 if (cookies.size > 0) {
   headers.set('Cookie', Array.from(cookies, ([name, value]) => \`\${name}=\${value}\`).join('; '))
 }`)
+  if (request.body && typeof request.body === 'object') {
+    setup.push(`function fileFromDataUrl(value) {
+  const match = value.match(/^data:([^;,]*)(?:;name=([^;]*))?;base64,(.*)$/)
+  if (!match) throw new Error('Choose a file.')
+  const bytes = Uint8Array.from(atob(match[3]), (character) => character.charCodeAt(0))
+  return new File(
+    [bytes],
+    match[2] ? decodeURIComponent(match[2]) : 'upload',
+    { type: match[1] || 'application/octet-stream' },
+  )
+}`)
+  }
+  if (request.body && typeof request.body === 'object' && request.body.kind === 'multipart') {
+    setup.push(`const body = new FormData()
+for (const [name, rawValue] of Object.entries(input.body ?? {})) {
+  for (const value of Array.isArray(rawValue) ? rawValue : [rawValue]) {
+    if (value === undefined || value === null) continue
+    body.append(
+      name,
+      typeof value === 'string' && value.startsWith('data:')
+        ? fileFromDataUrl(value)
+        : typeof value === 'object'
+          ? JSON.stringify(value)
+          : String(value),
+    )
+  }
+}`)
+  }
   return setup.join('\n\n')
 }
 
@@ -364,15 +399,40 @@ function httpFetchExpression(
 ): string {
   const options = [`method: ${JSON.stringify(request.method)}`, 'headers']
   if (request.body !== undefined) {
-    options.push(
-      contentType(request).includes('application/x-www-form-urlencoded')
-        ? `body: new URLSearchParams(
+    if (typeof request.body === 'object') {
+      options.push(
+        request.body.kind === 'binary' ? 'body: fileFromDataUrl(input.body)' : 'body',
+      )
+    } else {
+      options.push(
+        contentType(request).includes('application/x-www-form-urlencoded')
+          ? `body: new URLSearchParams(
     Object.entries(input.body ?? {}).map(([name, value]) => [name, String(value)]),
   )`
-        : 'body: JSON.stringify(input.body)',
-    )
+          : 'body: JSON.stringify(input.body)',
+      )
+    }
   }
   return `fetch(url, {\n  ${options.join(',\n  ')},\n})`
+}
+
+function withoutSelectedFiles(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(withoutSelectedFiles)
+  }
+  const file = parseFileDataUrl(value)
+  if (file) {
+    return `data:${file.mediaType};name=${encodeURIComponent(file.filename)};base64,`
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, child]) => [
+        key,
+        withoutSelectedFiles(child),
+      ]),
+    )
+  }
+  return value
 }
 
 export function toHttpExportSnippet(
@@ -386,7 +446,10 @@ export function toHttpExportSnippet(
     inputSchema: context.executable.inputSchema,
     outputSchema,
     setup: httpSetup(request, context),
-    input: context.formData,
+    input:
+      request.body && typeof request.body === 'object'
+        ? withoutSelectedFiles(context.formData)
+        : context.formData,
     result: (outputSchemaName) =>
       outputSchemaName
         ? `const response = await ${fetchCall}

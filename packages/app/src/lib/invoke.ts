@@ -1,6 +1,7 @@
 import type { ExecuteRequest } from '@hookfish/api'
 import type { AuthScheme, ClientOperation, HttpBinding } from './client-types'
 import { asRecord, buildRequestUrl, isHttpUrl, omitEmpty } from './build-request'
+import { parseFileDataUrl } from './file-data'
 import { applyAuth } from './openapi'
 
 export type { ExecuteRequest }
@@ -26,11 +27,66 @@ export function httpBindingFor(operation: ClientOperation): HttpBinding {
     typeof binding.method !== 'string' ||
     !HTTP_METHODS.has(binding.method) ||
     typeof binding.path !== 'string' ||
-    (binding.contentType !== undefined && typeof binding.contentType !== 'string')
+    (binding.contentType !== undefined && typeof binding.contentType !== 'string') ||
+    (binding.bodyEncoding !== undefined &&
+      !['json', 'urlencoded', 'binary', 'multipart'].includes(binding.bodyEncoding))
   ) {
     throw new Error('The executable does not have a valid HTTP binding.')
   }
   return binding as HttpBinding
+}
+
+function multipartBody(
+  value: unknown,
+  operation: ClientOperation,
+): NonNullable<ExecuteRequest['body']> {
+  const parts: Array<
+    | { kind: 'text'; name: string; value: string }
+    | {
+        kind: 'file'
+        name: string
+        data: string
+        filename: string
+        mediaType: string
+      }
+  > = []
+
+  function append(name: string, item: unknown) {
+    if (Array.isArray(item)) {
+      for (const child of item) {
+        append(name, child)
+      }
+      return
+    }
+    if (item === undefined || item === null) {
+      return
+    }
+    const file = parseFileDataUrl(item)
+    if (file) {
+      const property = asRecord(
+        asRecord(asRecord(operation.inputSchema.properties).body).properties,
+      )[name]
+      const declaredMediaType = asRecord(property).contentMediaType
+      const mediaType =
+        typeof declaredMediaType === 'string' &&
+        !declaredMediaType.includes(',') &&
+        !declaredMediaType.includes('*')
+          ? declaredMediaType
+          : file.mediaType
+      parts.push({ kind: 'file', name, ...file, mediaType })
+      return
+    }
+    parts.push({
+      kind: 'text',
+      name,
+      value: typeof item === 'object' ? JSON.stringify(item) : String(item),
+    })
+  }
+
+  for (const [name, value] of Object.entries(asRecord(value))) {
+    append(name, value)
+  }
+  return { kind: 'multipart', parts }
 }
 
 export function buildOperationRequest(input: {
@@ -69,14 +125,17 @@ export function buildOperationRequest(input: {
 
   applyAuth(headers, url, input.authSchemes, input.auth)
 
-  let body: string | undefined
+  let body: ExecuteRequest['body']
   if (BODY_METHODS.has(binding.method) && form.body !== undefined) {
     const contentType = binding.contentType ?? 'application/json'
-    if (!headers.has('Content-Type')) {
+    const encoding = binding.bodyEncoding ?? 'json'
+    if (encoding === 'multipart') {
+      headers.delete('Content-Type')
+    } else if (!headers.has('Content-Type')) {
       headers.set('Content-Type', contentType)
     }
 
-    if (contentType.includes('application/x-www-form-urlencoded')) {
+    if (encoding === 'urlencoded') {
       const params = new URLSearchParams()
       for (const [key, value] of Object.entries(asRecord(form.body))) {
         if (value !== undefined && value !== null) {
@@ -84,6 +143,14 @@ export function buildOperationRequest(input: {
         }
       }
       body = params.toString()
+    } else if (encoding === 'binary') {
+      const file = parseFileDataUrl(form.body)
+      if (!file) {
+        throw new Error('Choose a file to upload.')
+      }
+      body = { kind: 'binary', data: file.data }
+    } else if (encoding === 'multipart') {
+      body = multipartBody(form.body, input.operation)
     } else {
       body = JSON.stringify(form.body)
     }
