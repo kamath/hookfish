@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
@@ -27,7 +30,18 @@ function parsePort(value: string): number {
   return port
 }
 
+function ensureLocalPgliteDataDir() {
+  if (process.env.POSTGRES_URL) {
+    return
+  }
+
+  const dataDir = process.env.PGLITE_DATA_DIR ?? join(homedir(), '.hookfish', 'pglite')
+  mkdirSync(dataDir, { recursive: true })
+}
+
 async function startServer(options: { host: string; port: number }) {
+  ensureLocalPgliteDataDir()
+
   const serverEntryUrl = pathToFileURL(
     fileURLToPath(new URL('../web/server/server.js', import.meta.url)),
   )
