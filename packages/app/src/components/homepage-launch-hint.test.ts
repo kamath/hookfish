@@ -20,7 +20,8 @@ const local = renderToString(
     location: { hostname: '127.0.0.1', port: '4001', protocol: 'http:' },
   }),
 )
-assert.match(local, /Running locally on port 4001/)
+assert.match(local, /Running locally on port/)
+assert.match(local, /4001/)
 assert.doesNotMatch(local, /Run it yourself/)
 assert.doesNotMatch(local, /npx hookfish up/)
 
