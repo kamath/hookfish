@@ -14,7 +14,7 @@ const commandName = Object.keys(packageJson.bin ?? {})[0]
 function assertHelpText(stdout) {
   assert.match(stdout, new RegExp(`Usage: ${commandName} \\[options\\] \\[command\\]`))
   assert.match(stdout, /Commands:/)
-  assert.match(stdout, /up +Start the local server/)
+  assert.match(stdout, /up \[options\]\s+Start the local server/)
 }
 
 test('prints CLI help with no arguments', () => {

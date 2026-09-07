@@ -94,7 +94,7 @@ try {
   })
   assert.match(help, new RegExp(`Usage: ${commandName} \\[options\\] \\[command\\]`))
   assert.match(help, /Commands:/)
-  assert.match(help, /up +Start the local server/)
+  assert.match(help, /up \[options\]\s+Start the local server/)
 
   const upHelp = execFileSync(process.execPath, [installedCli, 'up', '--help'], {
     encoding: 'utf8',
