@@ -214,6 +214,96 @@ assert.equal(
   JSON.stringify({ name: 'doggie', photoUrls: ['https://example.com/a'] }),
 )
 
+const uploadFile: Executable = {
+  ...addPet,
+  id: 'uploadFile',
+  name: '/files',
+  binding: {
+    type: 'http',
+    method: 'post',
+    path: '/files',
+    contentType: 'application/octet-stream',
+    bodyEncoding: 'binary',
+  },
+  inputSchema: {
+    type: 'object',
+    properties: {
+      body: { type: 'string', format: 'binary' },
+    },
+    required: ['body'],
+  },
+}
+const uploadExport = toHttpExportSnippet(
+  {
+    transport: 'http',
+    method: 'POST',
+    url: 'https://example.com/files',
+    headers: { 'content-type': 'application/octet-stream' },
+    body: { kind: 'binary', data: 'c2VsZWN0ZWQtZmlsZQ==' },
+  },
+  httpContext(uploadFile, 'https://example.com', {
+    body: 'data:text/plain;name=private.txt;base64,c2VsZWN0ZWQtZmlsZQ==',
+  }),
+)
+assert.match(uploadExport, /function fileFromDataUrl/)
+assert.match(uploadExport, /body: fileFromDataUrl\(input\.body\)/)
+assert.doesNotMatch(uploadExport, /c2VsZWN0ZWQtZmlsZQ==/)
+
+const multipartExport = toHttpExportSnippet(
+  {
+    transport: 'http',
+    method: 'POST',
+    url: 'https://example.com/files',
+    headers: {},
+    body: {
+      kind: 'multipart',
+      parts: [
+        {
+          kind: 'file',
+          name: 'file',
+          data: 'c2VsZWN0ZWQtZmlsZQ==',
+          filename: 'private.txt',
+          mediaType: 'text/plain',
+        },
+      ],
+    },
+  },
+  httpContext(
+    {
+      ...uploadFile,
+      binding: {
+        type: 'http',
+        method: 'post',
+        path: '/files',
+        contentType: 'multipart/form-data',
+        bodyEncoding: 'multipart',
+      },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          body: {
+            type: 'object',
+            properties: {
+              note: { type: 'string' },
+              file: { type: 'string', format: 'binary' },
+            },
+          },
+        },
+      },
+    },
+    'https://example.com',
+    {
+      body: {
+        note: 'hello',
+        file: 'data:text/plain;name=private.txt;base64,c2VsZWN0ZWQtZmlsZQ==',
+      },
+    },
+  ),
+)
+assert.match(multipartExport, /const body = new FormData\(\)/)
+assert.match(multipartExport, /body,\n\}\)/)
+assert.doesNotMatch(multipartExport, /c2VsZWN0ZWQtZmlsZQ==/)
+
 const getItems: Executable = {
   ...addPet,
   id: 'get:/items',

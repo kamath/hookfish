@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 import { SchemaExamples, withTheme } from '@rjsf/core'
 import type { ThemeProps } from '@rjsf/core'
@@ -37,6 +37,7 @@ import type {
   WidgetProps,
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils'
+import { MAX_UPLOAD_BYTES, parseFileDataUrl, withFileName } from '../lib/file-data'
 import { formGhostButtonClass, formInputClass, labelClass, typeClass } from '../lib/ui'
 import { Kbd } from './hints'
 
@@ -198,6 +199,10 @@ function schemaTypeLabel(schema: RJSFSchema | undefined): string {
     return ''
   }
 
+  if (schema.format === 'binary') {
+    return 'file'
+  }
+
   if (Array.isArray(schema.enum) && schema.enum.length > 0) {
     return schema.enum
       .slice(0, 4)
@@ -342,6 +347,103 @@ function TextareaWidget(props: WidgetProps) {
       onFocus={(event) => onFocus(id, event.target.value)}
       aria-describedby={ariaDescribedByIds(id)}
     />
+  )
+}
+
+function FileWidget(props: WidgetProps) {
+  const {
+    id,
+    htmlName,
+    value,
+    required,
+    disabled,
+    readonly,
+    autofocus = false,
+    onChange,
+    onBlur,
+    onFocus,
+    schema,
+    options,
+  } = props
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string>()
+  const file = parseFileDataUrl(value)
+  const accept =
+    typeof options.accept === 'string'
+      ? options.accept
+      : typeof schema.contentMediaType === 'string'
+        ? schema.contentMediaType
+        : undefined
+
+  function selectFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0]
+    if (!selected) {
+      return
+    }
+    if (selected.size > MAX_UPLOAD_BYTES) {
+      setError('Choose a file smaller than 2 MB.')
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onerror = () => setError('The selected file could not be read.')
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        setError('The selected file could not be read.')
+        return
+      }
+      setError(undefined)
+      onChange(withFileName(reader.result, selected.name))
+    }
+    reader.readAsDataURL(selected)
+  }
+
+  function clearFile() {
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
+    setError(undefined)
+    onChange(undefined)
+  }
+
+  return (
+    <div className="flex max-w-md flex-col gap-1">
+      <input
+        ref={inputRef}
+        id={id}
+        name={htmlName || id}
+        type="file"
+        required={file ? false : required}
+        disabled={disabled || readonly}
+        autoFocus={autofocus}
+        accept={accept}
+        className="min-h-8 w-full bg-ink/5 px-2.5 py-1.5 text-xs text-ink file:mr-3 file:border-0 file:bg-ink/10 file:px-2 file:py-1 file:text-xs file:text-ink hover:bg-ink/10"
+        onChange={selectFile}
+        onBlur={() => onBlur(id, value)}
+        onFocus={() => onFocus(id, value)}
+        aria-describedby={ariaDescribedByIds(id)}
+      />
+      {file ? (
+        <span className="flex items-center gap-2 text-xs text-faint">
+          <span className="min-w-0 truncate">
+            {file.filename} · {file.mediaType}
+          </span>
+          <button
+            type="button"
+            className="shrink-0 bg-ink/10 px-2 py-1 text-ink hover:bg-ink/15"
+            onClick={clearFile}
+          >
+            Clear
+          </button>
+        </span>
+      ) : null}
+      {error ? (
+        <span className="text-xs text-error" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
@@ -1046,6 +1148,8 @@ const theme: ThemeProps = {
     SelectWidget,
     CheckboxWidget,
     TextareaWidget,
+    FileWidget,
+    file: FileWidget,
     PasswordWidget: (props: WidgetProps) => <BaseInputTemplate {...props} type="password" />,
   },
 }

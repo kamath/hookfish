@@ -24,6 +24,7 @@ export type HttpBinding = {
   method: HttpMethod
   path: string
   contentType?: string
+  bodyEncoding?: 'json' | 'urlencoded' | 'binary' | 'multipart'
 }
 
 export type McpBinding = {

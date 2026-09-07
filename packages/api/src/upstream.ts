@@ -4,8 +4,65 @@ import type { ExecuteResult, HttpRequest } from './schemas'
 
 const MAX_RESPONSE_CHARS = 200_000
 const MAX_SPEC_BYTES = 16_000_000
+const MAX_UPLOAD_BYTES = 2_000_000
 
 type UpstreamFetch = typeof fetch
+
+function decodeBase64(data: string): ArrayBuffer {
+  if (
+    data.length > Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 4 ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)
+  ) {
+    throw new Error('The uploaded file is invalid or larger than 2 MB.')
+  }
+
+  let decoded: string
+  try {
+    decoded = atob(data)
+  } catch {
+    throw new Error('The uploaded file is not valid base64 data.')
+  }
+  if (decoded.length > MAX_UPLOAD_BYTES) {
+    throw new Error('The uploaded file is larger than 2 MB.')
+  }
+
+  const buffer = new ArrayBuffer(decoded.length)
+  const bytes = new Uint8Array(buffer)
+  for (let index = 0; index < decoded.length; index += 1) {
+    bytes[index] = decoded.charCodeAt(index)
+  }
+  return buffer
+}
+
+function upstreamBody(request: HttpRequest, headers: Headers): BodyInit | undefined {
+  if (request.body === undefined || typeof request.body === 'string') {
+    return request.body
+  }
+  if (request.body.kind === 'binary') {
+    return decodeBase64(request.body.data)
+  }
+
+  headers.delete('content-type')
+  const form = new FormData()
+  let totalBytes = 0
+  for (const part of request.body.parts) {
+    if (part.kind === 'text') {
+      form.append(part.name, part.value)
+      continue
+    }
+    const buffer = decodeBase64(part.data)
+    totalBytes += buffer.byteLength
+    if (totalBytes > MAX_UPLOAD_BYTES) {
+      throw new Error('The uploaded files are larger than 2 MB in total.')
+    }
+    form.append(
+      part.name,
+      new Blob([buffer], { type: part.mediaType }),
+      part.filename,
+    )
+  }
+  return form
+}
 
 async function readSpecLimited(response: Response): Promise<Uint8Array> {
   const contentLength = Number(response.headers.get('content-length') ?? '0')
@@ -126,12 +183,13 @@ export async function executeUpstreamRequest(
   for (const [name, value] of Object.entries(request.headers ?? {})) {
     headers.set(name, value)
   }
+  const body = upstreamBody(request, headers)
 
   const started = Date.now()
   const response = await upstreamFetch(request.url, {
     method: request.method.toUpperCase(),
     headers,
-    body: request.body,
+    body,
     signal: AbortSignal.timeout(20_000),
   })
   const elapsedMs = Date.now() - started

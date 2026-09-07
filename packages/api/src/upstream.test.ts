@@ -117,6 +117,67 @@ assert.deepEqual(
   { name: 'x-upstream', value: 'direct' },
 )
 
+await executeUpstreamRequest(
+  {
+    transport: 'http',
+    method: 'post',
+    url: 'http://localhost:8787/upload',
+    headers: { 'content-type': 'application/octet-stream' },
+    body: { kind: 'binary', data: 'AAEC' },
+  },
+  upstreamFetch,
+)
+const binaryBody = seen.at(-1)?.init?.body
+assert.ok(binaryBody instanceof ArrayBuffer)
+assert.deepEqual([...new Uint8Array(binaryBody)], [0, 1, 2])
+
+await executeUpstreamRequest(
+  {
+    transport: 'http',
+    method: 'post',
+    url: 'http://localhost:8787/upload-form',
+    headers: { 'content-type': 'multipart/form-data' },
+    body: {
+      kind: 'multipart',
+      parts: [
+        { kind: 'text', name: 'note', value: 'hello' },
+        {
+          kind: 'file',
+          name: 'file',
+          data: 'aGk=',
+          filename: 'hello.txt',
+          mediaType: 'text/plain',
+        },
+      ],
+    },
+  },
+  upstreamFetch,
+)
+const multipartHeaders = new Headers(seen.at(-1)?.init?.headers)
+assert.equal(multipartHeaders.has('content-type'), false)
+const multipartBody = seen.at(-1)?.init?.body
+assert.ok(multipartBody instanceof FormData)
+assert.equal(multipartBody.get('note'), 'hello')
+const uploadedFile = multipartBody.get('file')
+assert.ok(uploadedFile instanceof File)
+assert.equal(uploadedFile.name, 'hello.txt')
+assert.equal(uploadedFile.type, 'text/plain')
+assert.equal(await uploadedFile.text(), 'hi')
+
+await assert.rejects(
+  () =>
+    executeUpstreamRequest(
+      {
+        transport: 'http',
+        method: 'post',
+        url: 'http://localhost:8787/upload',
+        body: { kind: 'binary', data: 'not base64' },
+      },
+      upstreamFetch,
+    ),
+  /invalid|base64/,
+)
+
 await assert.rejects(
   () => fetchUpstreamSpec('file:///tmp/openapi.yaml', upstreamFetch),
   /http or https OpenAPI URL/,

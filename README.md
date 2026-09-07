@@ -69,6 +69,13 @@ directly, execute JSON-RPC through the MCP client and Hono RPC API, and export c
 The list, form, keyboard navigation, theming, and result viewer do not need protocol-specific
 changes.
 
+OpenAPI operations can upload files described as OpenAPI 3 `string` values with
+`format: binary` or Swagger 2 `formData` parameters with `type: file`. Hookfish sends
+single-file bodies using the declared media type and reconstructs `multipart/form-data`
+without setting its boundary manually. Files are limited to 2 MB because proxied
+invocations carry base64 inside JSON and must fit common serverless request limits.
+`multipart/related` and resumable uploads are not supported.
+
 ## MCP inspector
 
 Pick an MCP server from the launcher or enter a Streamable HTTP endpoint.
