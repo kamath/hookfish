@@ -106,13 +106,16 @@ jobs:
       - name: Smoke test production
         env:
           PRODUCTION_URL: ${{ steps.production.outputs.url }}
+          PUBLIC_URL: https://hookfish.dev
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/" > /dev/null
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/api/openapi.json" > /dev/null
-          test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
-            "$PRODUCTION_URL/api/registry/feed" | jq 'length')" -gt 0
+          for URL in "$PRODUCTION_URL" "$PUBLIC_URL"; do
+            test "$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
+              "$URL/api/registry/feed" | jq 'length')" -gt 0
+          done
 
       - name: Publish deployment summary
         env:
