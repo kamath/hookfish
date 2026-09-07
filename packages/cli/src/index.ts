@@ -39,6 +39,23 @@ function ensureLocalPgliteDataDir() {
   mkdirSync(dataDir, { recursive: true })
 }
 
+function warmupOrigin(host: string, port: number, serverUrl?: string | URL) {
+  if (host === '0.0.0.0' || host === '::' || host === '[::]') {
+    return `http://127.0.0.1:${port}/`
+  }
+  return String(serverUrl ?? `http://${host}:${port}/`)
+}
+
+async function warmupLocalApp(listenUrl: string) {
+  try {
+    await fetch(new URL('/api/registry/feed', listenUrl), {
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch {
+    // First browser request can still finish database setup.
+  }
+}
+
 async function startServer(options: { host: string; port: number }) {
   ensureLocalPgliteDataDir()
 
@@ -67,9 +84,9 @@ async function startServer(options: { host: string; port: number }) {
       })
 
       await server.ready()
-      console.log(
-        `${pkg.name} ${version} listening on ${server.url ?? `http://${options.host}:${port}/`}`,
-      )
+      const listenUrl = warmupOrigin(options.host, port, server.url)
+      await warmupLocalApp(listenUrl)
+      console.log(`${pkg.name} ${version} listening on ${listenUrl}`)
 
       const shutdown = async () => {
         await server.close(true)
