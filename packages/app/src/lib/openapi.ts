@@ -125,6 +125,19 @@ function oasToJsonSchema(schema: unknown): JsonSchema {
     delete next.maximum
   }
 
+  // OpenAPI 2 formData uses type: file, which is not valid JSON Schema.
+  if (next.type === 'file') {
+    next.type = 'string'
+    if (!next.format) {
+      next.format = 'binary'
+    }
+  } else if (Array.isArray(next.type) && next.type.includes('file')) {
+    next.type = next.type.map((value) => (value === 'file' ? 'string' : value))
+    if (!next.format) {
+      next.format = 'binary'
+    }
+  }
+
   if (isObject(next.properties)) {
     next.properties = Object.fromEntries(
       Object.entries(next.properties).map(([key, value]) => [

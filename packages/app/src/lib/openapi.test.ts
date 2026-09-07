@@ -56,4 +56,46 @@ assert.throws(
   /OpenAPI or Swagger document/,
 )
 
+const swaggerUpload = specToClient(
+  {
+    swagger: '2.0',
+    info: { title: 'Pets', version: '1' },
+    paths: {
+      '/pet/{petId}/uploadImage': {
+        post: {
+          operationId: 'uploadFile',
+          parameters: [
+            { name: 'petId', in: 'path', required: true, type: 'integer' },
+            {
+              name: 'additionalMetadata',
+              in: 'formData',
+              type: 'string',
+              description: 'Additional data to pass to server.',
+            },
+            {
+              name: 'file',
+              in: 'formData',
+              type: 'file',
+              description: 'file to upload',
+            },
+          ],
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    },
+  },
+  'https://example.test/swagger.json',
+  'pets',
+)
+
+const body = swaggerUpload.executables[0]?.inputSchema.properties?.body as
+  | { properties?: Record<string, unknown> }
+  | undefined
+assert.deepEqual(body?.properties?.file, {
+  type: 'string',
+  format: 'binary',
+  title: 'file',
+  description: 'file to upload',
+})
+
 console.log('openapi output schema ok')
