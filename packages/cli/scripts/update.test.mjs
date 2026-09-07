@@ -47,6 +47,31 @@ test('builds the update warning and install command', () => {
   )
 })
 
+test('warns on up help when npm has a newer version', async () => {
+  const registry = await serveRegistry({ version: '99.0.0' })
+  try {
+    const result = spawnSync(process.execPath, [cliEntry, 'up', '--help'], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HOOKFISH_NPM_REGISTRY: registry.url,
+        HOOKFISH_SKIP_UPDATE_CHECK: '',
+      },
+    })
+
+    assert.equal(result.status, 0)
+    assert.match(result.stdout, new RegExp(`Usage: ${commandName} up \\[options\\]`))
+    assert.match(
+      result.stderr,
+      new RegExp(
+        `A newer ${commandName} is available \\(99\\.0\\.0; current ${packageJson.version}\\)\\. Run \`${commandName} update\`\\.`,
+      ),
+    )
+  } finally {
+    await registry.close()
+  }
+})
+
 test('warns on help when npm has a newer version', async () => {
   const registry = await serveRegistry({ version: '99.0.0' })
   try {
