@@ -13,7 +13,7 @@ const carousel = registryFeedToCarousel({
   OpenAPI: [
     {
       url: '/api/openapi.json',
-      title: 'Smithery API',
+      title: 'Hookfish API',
       type: 'API',
     },
     {

@@ -1,6 +1,6 @@
 # @hookfish/api
 
-Mountable Hono API for the Smithery client.
+Mountable Hono API for the Hookfish client.
 
 ```ts
 import { mountApi } from '@hookfish/api/app'

@@ -1,4 +1,4 @@
-# Smithery
+# Hookfish
 
 A browser-first client for browsing, configuring, and running executables from pluggable
 sources. OpenAPI is the built-in source adapter. Connected-source metadata and keys live in
@@ -19,7 +19,7 @@ pnpm dev
 ```
 
 Open `http://localhost:3000`. The launcher groups database-backed suggestions into one pane
-per category. Paste any other URL in the bar and press `Enter`; Smithery probes the URL to
+per category. Paste any other URL in the bar and press `Enter`; Hookfish probes the URL to
 decide whether it is an MCP server or an OpenAPI document.
 
 ## Embedding the client
@@ -72,7 +72,7 @@ changes.
 ## MCP inspector
 
 Pick an MCP server from the launcher or enter a Streamable HTTP endpoint.
-Smithery uses the official MCP TypeScript client with automatic protocol negotiation:
+Hookfish uses the official MCP TypeScript client with automatic protocol negotiation:
 
 - MCP `2026-07-28` discovery, request metadata, MRTR, pagination, and subscriptions
 - legacy Streamable HTTP `2025-03-26` through `2025-11-25`, including initialization,

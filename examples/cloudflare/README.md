@@ -27,13 +27,13 @@ PGlite.
 The repository workflows use Neon and Cloudflare together:
 
 - `deploy-preview.yml` creates `preview/pr-<number>` in Neon, migrates it, and deploys
-  `smithery-pr-<number>` to Workers. The Neon URL is uploaded with the Worker version as
+  `hookfish-pr-<number>` to Workers. The Neon URL is uploaded with the Worker version as
   an encrypted secret. A single pull request comment is updated with the
   latest deployment URL or failure status; failed rebuilds retain a link to the last
   available deployment and include the current workflow logs.
 - `cleanup-preview.yml` deletes both resources when the pull request closes or merges.
   It runs from the trusted base branch and never checks out pull request code.
-- `deploy-production.yml` migrates Neon's primary branch and updates the stable `smithery`
+- `deploy-production.yml` migrates Neon's primary branch and updates the stable `hookfish`
   Worker on every push to `main`.
 
 The workflows require these GitHub Actions secrets:

@@ -18,7 +18,7 @@ export const Route = createRootRoute({
       },
       { name: 'color-scheme', content: 'light dark' },
       { name: 'theme-color', content: THEME_COLORS.light },
-      { title: 'Smithery' },
+      { title: 'Hookfish' },
       {
         name: 'description',
         content: 'Browse, configure, and run executables from pluggable sources.',
