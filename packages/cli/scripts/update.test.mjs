@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createServer as createHttpServer } from 'node:http'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -50,13 +50,9 @@ test('builds the update warning and install command', () => {
 test('warns on up help when npm has a newer version', async () => {
   const registry = await serveRegistry({ version: '99.0.0' })
   try {
-    const result = spawnSync(process.execPath, [cliEntry, 'up', '--help'], {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        HOOKFISH_NPM_REGISTRY: registry.url,
-        HOOKFISH_SKIP_UPDATE_CHECK: '',
-      },
+    const result = await runCli(['up', '--help'], {
+      HOOKFISH_NPM_REGISTRY: registry.url,
+      HOOKFISH_SKIP_UPDATE_CHECK: '',
     })
 
     assert.equal(result.status, 0)
@@ -75,13 +71,9 @@ test('warns on up help when npm has a newer version', async () => {
 test('warns on help when npm has a newer version', async () => {
   const registry = await serveRegistry({ version: '99.0.0' })
   try {
-    const result = spawnSync(process.execPath, [cliEntry], {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        HOOKFISH_NPM_REGISTRY: registry.url,
-        HOOKFISH_SKIP_UPDATE_CHECK: '',
-      },
+    const result = await runCli([], {
+      HOOKFISH_NPM_REGISTRY: registry.url,
+      HOOKFISH_SKIP_UPDATE_CHECK: '',
     })
 
     assert.equal(result.status, 0)
@@ -100,13 +92,9 @@ test('warns on help when npm has a newer version', async () => {
 test('does not warn when already on the latest version', async () => {
   const registry = await serveRegistry({ version: packageJson.version })
   try {
-    const result = spawnSync(process.execPath, [cliEntry], {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        HOOKFISH_NPM_REGISTRY: registry.url,
-        HOOKFISH_SKIP_UPDATE_CHECK: '',
-      },
+    const result = await runCli([], {
+      HOOKFISH_NPM_REGISTRY: registry.url,
+      HOOKFISH_SKIP_UPDATE_CHECK: '',
     })
 
     assert.equal(result.status, 0)
@@ -119,14 +107,10 @@ test('does not warn when already on the latest version', async () => {
 test('update dry-run prints the install command when outdated', async () => {
   const registry = await serveRegistry({ version: '99.0.0' })
   try {
-    const result = spawnSync(process.execPath, [cliEntry, 'update', '--dry-run'], {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        HOOKFISH_NPM_REGISTRY: registry.url,
-        HOOKFISH_SKIP_UPDATE_CHECK: '',
-        npm_config_user_agent: 'npm/10.0.0 node/22',
-      },
+    const result = await runCli(['update', '--dry-run'], {
+      HOOKFISH_NPM_REGISTRY: registry.url,
+      HOOKFISH_SKIP_UPDATE_CHECK: '',
+      npm_config_user_agent: 'npm/10.0.0 node/22',
     })
 
     assert.equal(result.status, 0)
@@ -141,13 +125,9 @@ test('update dry-run prints the install command when outdated', async () => {
 test('update reports already latest', async () => {
   const registry = await serveRegistry({ version: packageJson.version })
   try {
-    const result = spawnSync(process.execPath, [cliEntry, 'update'], {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        HOOKFISH_NPM_REGISTRY: registry.url,
-        HOOKFISH_SKIP_UPDATE_CHECK: '',
-      },
+    const result = await runCli(['update'], {
+      HOOKFISH_NPM_REGISTRY: registry.url,
+      HOOKFISH_SKIP_UPDATE_CHECK: '',
     })
 
     assert.equal(result.status, 0)
@@ -170,6 +150,31 @@ test('update fails when npm is unreachable', async () => {
   assert.equal(result.status, 1)
   assert.match(result.stderr, /Could not look up hookfish on npm/)
 })
+
+function runCli(args, extraEnv = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [cliEntry, ...args], {
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk
+    })
+    child.on('error', reject)
+    child.on('close', (status) => {
+      resolve({ status, stdout, stderr })
+    })
+  })
+}
 
 function serveRegistry(body) {
   return new Promise((resolve, reject) => {
