@@ -88,14 +88,25 @@ const swaggerUpload = specToClient(
   'pets',
 )
 
-const body = swaggerUpload.executables[0]?.inputSchema.properties?.body as
-  | { properties?: Record<string, unknown> }
-  | undefined
-assert.deepEqual(body?.properties?.file, {
-  type: 'string',
-  format: 'binary',
-  title: 'file',
-  description: 'file to upload',
-})
+const file = (
+  swaggerUpload.executables[0]?.inputSchema as {
+    properties?: {
+      body?: {
+        properties?: {
+          file?: {
+            type?: unknown
+            format?: unknown
+            title?: unknown
+            description?: unknown
+          }
+        }
+      }
+    }
+  }
+).properties?.body?.properties?.file
+assert.equal(file?.type, 'string')
+assert.equal(file?.format, 'binary')
+assert.equal(file?.title, 'file')
+assert.equal(file?.description, 'file to upload')
 
 console.log('openapi output schema ok')

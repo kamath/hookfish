@@ -196,12 +196,15 @@ function NavGroup({
 
 export const FILE_UPLOAD_NOTICE = 'File uploads are not supported yet.'
 
-export function isFileUploadSchema(schema: RJSFSchema | undefined): boolean {
+export function isFileUploadSchema(schema: {
+  type?: unknown
+  format?: unknown
+} | undefined): boolean {
   if (!schema) {
     return false
   }
   const types = Array.isArray(schema.type) ? schema.type : [schema.type]
-  if (types.includes('file')) {
+  if (types.some((value) => String(value) === 'file')) {
     return true
   }
   return schema.format === 'binary' || schema.format === 'byte'
