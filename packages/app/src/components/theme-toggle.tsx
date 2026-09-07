@@ -1,4 +1,4 @@
-import { THEME_PREFERENCES, useTheme, type ThemePreference } from '../lib/theme'
+import { nextThemePreference, useTheme, type ThemePreference } from '../lib/theme'
 
 const LABELS: Record<ThemePreference, string> = {
   system: 'System',
@@ -67,31 +67,18 @@ const ICONS: Record<ThemePreference, typeof SystemIcon> = {
 
 export function ThemeToggle() {
   const [theme, setTheme] = useTheme()
+  const next = nextThemePreference(theme)
+  const Icon = ICONS[theme]
 
   return (
-    <div role="radiogroup" aria-label="Color theme" className="flex shrink-0">
-      {THEME_PREFERENCES.map((preference) => {
-        const selected = theme === preference
-        const Icon = ICONS[preference]
-        return (
-          <button
-            key={preference}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={LABELS[preference]}
-            title={LABELS[preference]}
-            className={`inline-flex size-8 items-center justify-center outline-none ${
-              selected
-                ? 'bg-ink/10 text-ink'
-                : 'text-mute hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink'
-            }`}
-            onClick={() => setTheme(preference)}
-          >
-            <Icon />
-          </button>
-        )
-      })}
-    </div>
+    <button
+      type="button"
+      className="inline-flex size-8 shrink-0 items-center justify-center text-mute outline-none hover:bg-ink/10 hover:text-ink focus-visible:bg-ink/10 focus-visible:text-ink"
+      aria-label={`Color theme: ${LABELS[theme]}. Switch to ${LABELS[next]}`}
+      title={`${LABELS[theme]} theme. Click to switch to ${LABELS[next]}.`}
+      onClick={() => setTheme(next)}
+    >
+      <Icon />
+    </button>
   )
 }
