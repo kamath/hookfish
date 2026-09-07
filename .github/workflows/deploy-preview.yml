@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy:
     name: Neon branch and Cloudflare Worker
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
