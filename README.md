@@ -123,16 +123,11 @@ npm install --global hookfish
 hookfish up --port 3000
 ```
 
-`hookfish` with no command prints help. Run the workspace build directly during development:
+`hookfish` with no command prints help. `pnpm cli` builds the workspace and runs that same bare command:
 
 ```bash
 pnpm cli
-```
-
-CLI options are forwarded to `up`:
-
-```bash
-pnpm cli --host 127.0.0.1 --port 4000
+pnpm cli -- up --host 127.0.0.1 --port 4000
 ```
 
 `name` and `version` in `packages/cli/package.json` are the npm identity. `pnpm pack`

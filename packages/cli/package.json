@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/bundle-web.mjs",
+    "cli": "node dist/index.js",
     "prepack": "node scripts/prepack.mjs",
     "start": "node dist/index.js up",
     "test": "node --test scripts/cli.test.mjs && node scripts/pack-smoke.mjs",

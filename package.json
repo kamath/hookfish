@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo run build",
-    "cli": "pnpm build && pnpm --filter hookfish start",
+    "cli": "pnpm build && pnpm --filter hookfish cli",
     "db:migrate": "pnpm --filter @hookfish/api db:migrate",
     "db:studio": "pnpm --filter @hookfish/api db:studio",
     "db:migrate:prod": "pnpm --filter @hookfish/api db:migrate:prod",
