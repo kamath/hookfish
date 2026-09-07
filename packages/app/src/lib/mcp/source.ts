@@ -303,8 +303,8 @@ export async function loadMcpSource(
         execute: 'Call',
         executing: 'Calling…',
         executed: 'Call again',
-        export: 'Copy MCP client code',
-        exported: 'Copied MCP client code',
+        export: 'Copy code',
+        exported: 'Copied code',
       },
       adapterData: {
         era,
