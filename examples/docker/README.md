@@ -4,8 +4,8 @@ The [`node`](../node) example in a container. Build from the repository root so 
 workspace and lockfile are in context:
 
 ```bash
-docker build -f examples/docker/Dockerfile -t smithery-example .
-docker run --rm -p 3000:3000 -e POSTGRES_URL smithery-example
+docker build -f examples/docker/Dockerfile -t hookfish-example .
+docker run --rm -p 3000:3000 -e POSTGRES_URL hookfish-example
 ```
 
 [`Dockerfile`](./Dockerfile) is two stages. The build stage installs the workspace and runs

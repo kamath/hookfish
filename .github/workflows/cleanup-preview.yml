@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      WORKER_NAME: smithery-pr-${{ github.event.pull_request.number }}
+      WORKER_NAME: hookfish-pr-${{ github.event.pull_request.number }}
       NEON_BRANCH: preview/pr-${{ github.event.pull_request.number }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
       NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
@@ -86,7 +86,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
-            const marker = '<!-- smithery-preview-deployment -->'
+            const marker = '<!-- hookfish-preview-deployment -->'
             const succeeded = process.env.CLEANUP_STATUS === 'success'
             const body = [
               marker,

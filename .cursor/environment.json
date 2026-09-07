@@ -1,5 +1,5 @@
 {
-  "name": "Smithery (hookfish workspace)",
+  "name": "Hookfish",
   "install": "corepack enable && pnpm install --frozen-lockfile",
   "terminals": [
     {

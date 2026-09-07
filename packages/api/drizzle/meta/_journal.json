@@ -43,6 +43,13 @@
       "when": 1788498483895,
       "tag": "0005_charming_ulik",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788753600000,
+      "tag": "0006_hookfish_brand",
+      "breakpoints": true
     }
   ]
 }

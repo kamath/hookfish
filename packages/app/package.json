@@ -1,7 +1,7 @@
 {
   "name": "@hookfish/app",
   "version": "0.13.0",
-  "description": "Embeddable Smithery client application",
+  "description": "Embeddable Hookfish client application",
   "license": "MIT",
   "type": "module",
   "files": [

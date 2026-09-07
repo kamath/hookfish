@@ -1,12 +1,12 @@
 databases:
-  - name: smithery-db
+  - name: hookfish-db
     plan: 0.5c-1g
     region: oregon
     postgresMajorVersion: "17"
 
 services:
   - type: web
-    name: smithery
+    name: hookfish
     runtime: node
     plan: 0.5c-512mb
     region: oregon
@@ -19,5 +19,5 @@ services:
         value: 22.12.0
       - key: POSTGRES_URL
         fromDatabase:
-          name: smithery-db
+          name: hookfish-db
           property: connectionString

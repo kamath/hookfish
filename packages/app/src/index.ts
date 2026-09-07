@@ -15,3 +15,4 @@ export {
   type WorkbenchRouteProps,
 } from './pages/workbench'
 export { THEME_COLORS, THEME_INIT_SCRIPT } from './lib/theme'
+export { BRAND_NAME, BRAND_ICON } from './components/brand'
