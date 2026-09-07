@@ -120,16 +120,16 @@ Cloudflare runtime is required:
 
 ```bash
 npm install --global hookfish
-hookfish --port 3000
+hookfish up --port 3000
 ```
 
-Run the workspace build directly during development:
+`hookfish` with no command prints help. Run the workspace build directly during development:
 
 ```bash
 pnpm cli
 ```
 
-CLI options are forwarded directly:
+CLI options are forwarded to `up`:
 
 ```bash
 pnpm cli --host 127.0.0.1 --port 4000

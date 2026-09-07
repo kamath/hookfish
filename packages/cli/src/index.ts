@@ -91,7 +91,10 @@ const program = new Command()
   .name(commandName)
   .description('Run the Hookfish OpenAPI client locally')
   .version(version)
-  .allowExcessArguments()
+
+program
+  .command('up')
+  .description('Start the local server')
   .option('-p, --port <number>', 'port to listen on', parsePort, 3000)
   .option('--host <host>', 'host to listen on', '127.0.0.1')
   .action(async (options) => {
@@ -102,5 +105,9 @@ const program = new Command()
       process.exitCode = 1
     }
   })
+
+program.action(() => {
+  program.outputHelp()
+})
 
 await program.parseAsync()

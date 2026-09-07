@@ -89,17 +89,24 @@ try {
     'dist',
     'index.js',
   )
-  const help = execFileSync(process.execPath, [installedCli, '--help'], {
+  const help = execFileSync(process.execPath, [installedCli], {
     encoding: 'utf8',
   })
-  assert.match(help, new RegExp(`Usage: ${commandName} \\[options\\]`))
-  assert.match(help, /--port <number>/)
-  assert.match(help, /--host <host>/)
+  assert.match(help, new RegExp(`Usage: ${commandName} \\[options\\] \\[command\\]`))
+  assert.match(help, /Commands:/)
+  assert.match(help, /up +Start the local server/)
+
+  const upHelp = execFileSync(process.execPath, [installedCli, 'up', '--help'], {
+    encoding: 'utf8',
+  })
+  assert.match(upHelp, new RegExp(`Usage: ${commandName} up \\[options\\]`))
+  assert.match(upHelp, /--port <number>/)
+  assert.match(upHelp, /--host <host>/)
 
   const port = await freePort()
   const child = spawn(
     process.execPath,
-    [installedCli, '--host', '127.0.0.1', '--port', String(port)],
+    [installedCli, 'up', '--host', '127.0.0.1', '--port', String(port)],
     {
       cwd: consumerDirectory,
       env: {
