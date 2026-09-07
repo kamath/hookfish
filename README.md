@@ -120,25 +120,26 @@ Cloudflare runtime is required:
 
 ```bash
 npm install --global hookfish
-hookfish --port 3000
+hookfish up --port 3000
 ```
 
-Run the workspace build directly during development:
+`hookfish` with no command prints help. `pnpm cli` builds the workspace and runs that same bare command:
 
 ```bash
 pnpm cli
+pnpm cli up --host 127.0.0.1 --port 4000
+pnpm cli update
 ```
 
-CLI options are forwarded directly:
+If a newer version is on npm, commands print a warning to run `hookfish update`.
 
-```bash
-pnpm cli --host 127.0.0.1 --port 4000
-```
-
-To inspect the independently publishable npm tarball:
+`name` and `version` in `packages/cli/package.json` are the npm identity. `pnpm pack`
+and `pnpm publish` run `prepack`, which builds the Node example into `web/` so the
+tarball is self-contained:
 
 ```bash
 pnpm --filter hookfish pack
+pnpm --filter hookfish publish --access public
 ```
 
 ## License

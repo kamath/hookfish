@@ -8,13 +8,16 @@
   },
   "files": [
     "LICENSE",
+    "README.md",
     "dist",
     "web"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/bundle-web.mjs",
-    "start": "node dist/index.js",
-    "test": "node --test scripts/cli.test.mjs",
+    "cli": "node dist/index.js",
+    "prepack": "node scripts/prepack.mjs",
+    "start": "node dist/index.js up",
+    "test": "node --test scripts/cli.test.mjs scripts/update.test.mjs && node scripts/pack-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

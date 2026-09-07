@@ -6,9 +6,16 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
+import { runUpdate, warnIfOutdated } from './update.js'
 
 const require = createRequire(import.meta.url)
-const { version } = require('../package.json') as { version: string }
+const pkg = require('../package.json') as {
+  bin?: Record<string, string>
+  name: string
+  version: string
+}
+const { version } = pkg
+const commandName = Object.keys(pkg.bin ?? {})[0] ?? pkg.name.replace(/^@[^/]+\//, '')
 
 function parsePort(value: string): number {
   const port = Number(value)
@@ -70,7 +77,7 @@ async function startServer(options: { host: string; port: number }) {
 
   await server.ready()
   console.log(
-    `Hookfish CLI ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
+    `${pkg.name} ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
   )
 
   const shutdown = async () => {
@@ -82,10 +89,13 @@ async function startServer(options: { host: string; port: number }) {
 }
 
 const program = new Command()
-  .name('hookfish')
+  .name(commandName)
   .description('Run the Hookfish OpenAPI client locally')
   .version(version)
-  .allowExcessArguments()
+
+program
+  .command('up')
+  .description('Start the local server')
   .option('-p, --port <number>', 'port to listen on', parsePort, 3000)
   .option('--host <host>', 'host to listen on', '127.0.0.1')
   .action(async (options) => {
@@ -96,5 +106,30 @@ const program = new Command()
       process.exitCode = 1
     }
   })
+
+program
+  .command('update')
+  .description('Install the latest version from npm')
+  .option('--dry-run', 'print the install command without running it')
+  .action(async (options: { dryRun?: boolean }) => {
+    process.exitCode = await runUpdate({
+      dryRun: options.dryRun,
+      name: pkg.name,
+      version,
+    })
+  })
+
+program.action(() => {
+  program.outputHelp()
+})
+
+const [command] = process.argv.slice(2)
+if (command !== 'update') {
+  await warnIfOutdated({
+    commandName,
+    name: pkg.name,
+    version,
+  })
+}
 
 await program.parseAsync()
