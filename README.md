@@ -127,7 +127,7 @@ hookfish up --port 3000
 
 ```bash
 pnpm cli
-pnpm cli -- up --host 127.0.0.1 --port 4000
+pnpm cli up --host 127.0.0.1 --port 4000
 ```
 
 `name` and `version` in `packages/cli/package.json` are the npm identity. `pnpm pack`
