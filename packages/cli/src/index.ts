@@ -8,7 +8,13 @@ import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
 
 const require = createRequire(import.meta.url)
-const { version } = require('../package.json') as { version: string }
+const pkg = require('../package.json') as {
+  bin?: Record<string, string>
+  name: string
+  version: string
+}
+const { version } = pkg
+const commandName = Object.keys(pkg.bin ?? {})[0] ?? pkg.name.replace(/^@[^/]+\//, '')
 
 function parsePort(value: string): number {
   const port = Number(value)
@@ -70,7 +76,7 @@ async function startServer(options: { host: string; port: number }) {
 
   await server.ready()
   console.log(
-    `Hookfish CLI ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
+    `${pkg.name} ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
   )
 
   const shutdown = async () => {
@@ -82,7 +88,7 @@ async function startServer(options: { host: string; port: number }) {
 }
 
 const program = new Command()
-  .name('hookfish')
+  .name(commandName)
   .description('Run the Hookfish OpenAPI client locally')
   .version(version)
   .allowExcessArguments()

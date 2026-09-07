@@ -135,10 +135,13 @@ CLI options are forwarded directly:
 pnpm cli --host 127.0.0.1 --port 4000
 ```
 
-To inspect the independently publishable npm tarball:
+`name` and `version` in `packages/cli/package.json` are the npm identity. `pnpm pack`
+and `pnpm publish` run `prepack`, which builds the Node example into `web/` so the
+tarball is self-contained:
 
 ```bash
 pnpm --filter hookfish pack
+pnpm --filter hookfish publish --access public
 ```
 
 ## License

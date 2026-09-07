@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url))
+const packageJson = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+)
+const commandName = Object.keys(packageJson.bin ?? {})[0]
 
 test('prints CLI help', () => {
   const result = spawnSync(process.execPath, [cliEntry, '--help'], {
@@ -12,7 +17,7 @@ test('prints CLI help', () => {
   })
 
   assert.equal(result.status, 0)
-  assert.match(result.stdout, /Usage: hookfish \[options\]/)
+  assert.match(result.stdout, new RegExp(`Usage: ${commandName} \\[options\\]`))
   assert.match(result.stdout, /--port <number>/)
   assert.match(result.stdout, /--host <host>/)
 })

@@ -1,0 +1,6 @@
+# Keep this file so npm does not reuse the repo .gitignore, which excludes
+# `dist` and `web`. The package.json `files` list is the publish allowlist.
+src
+scripts
+tsconfig.json
+*.tgz
