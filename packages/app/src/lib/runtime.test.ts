@@ -30,5 +30,12 @@ assert.deepEqual(
   homepageLaunchHint({ hostname: 'localhost', port: '3000', protocol: 'http:' }),
   { kind: 'local', port: '3000' },
 )
+assert.deepEqual(
+  homepageLaunchHint(
+    { hostname: 'hookfish.dev', port: '443', protocol: 'https:' },
+    { local: true, port: 4001 },
+  ),
+  { kind: 'local', port: '4001' },
+)
 
 console.log('runtime homepage hint distinguishes hosted and loopback')

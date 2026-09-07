@@ -1,16 +1,19 @@
 import { GITHUB_REPO_URL } from './github-link'
-import { homepageLaunchHint } from '../lib/runtime'
+import { homepageLaunchHint, type LocalRuntime } from '../lib/runtime'
 
 export function HomepageLaunchHint({
   location,
+  runtime,
 }: {
   location?: { hostname: string; port: string; protocol: string }
+  runtime?: LocalRuntime | null
 }) {
   const hint = homepageLaunchHint(
     location ??
       (typeof window === 'undefined'
         ? { hostname: '', port: '', protocol: 'http:' }
         : window.location),
+    runtime,
   )
 
   if (hint.kind === 'local') {

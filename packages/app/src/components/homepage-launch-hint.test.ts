@@ -25,4 +25,14 @@ assert.match(local, /4001/)
 assert.doesNotMatch(local, /Run it yourself/)
 assert.doesNotMatch(local, /npx hookfish up/)
 
+const injected = renderToString(
+  createElement(HomepageLaunchHint, {
+    location: { hostname: 'hookfish.dev', port: '443', protocol: 'https:' },
+    runtime: { local: true, port: 3200 },
+  }),
+)
+assert.match(injected, /Running locally on port/)
+assert.match(injected, /3200/)
+assert.doesNotMatch(injected, /Run it yourself/)
+
 console.log('homepage launch hint renders hosted and local copy')

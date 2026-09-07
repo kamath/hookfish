@@ -9,6 +9,7 @@ import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
 import { isAddressInUse, resolveListenPort } from './listen.js'
+import { attachLocalRuntime, localRuntimeResponse } from './local-runtime.js'
 import { runUpdate, warnIfOutdated } from './update.js'
 
 const require = createRequire(import.meta.url)
@@ -76,7 +77,14 @@ async function startServer(options: { host: string; port: number }) {
     port = await resolveListenPort(options.host, port)
     try {
       const server = serve({
-        fetch: (request) => serverEntry.default.fetch(request),
+        fetch: async (request) => {
+          const url = new URL(request.url)
+          if (url.pathname === '/__hookfish.json') {
+            return localRuntimeResponse(port)
+          }
+          const response = await serverEntry.default.fetch(request)
+          return attachLocalRuntime(response, port)
+        },
         hostname: options.host,
         middleware: [staticMiddleware({ dir: clientDirectory })],
         port,
