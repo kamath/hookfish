@@ -93,18 +93,6 @@ const program = new Command()
   .description('Run the Hookfish OpenAPI client locally')
   .version(version)
 
-program.hook('preAction', async (_thisCommand, actionCommand) => {
-  if (actionCommand.name() === 'update') {
-    return
-  }
-
-  await warnIfOutdated({
-    commandName,
-    name: pkg.name,
-    version,
-  })
-})
-
 program
   .command('up')
   .description('Start the local server')
@@ -134,5 +122,14 @@ program
 program.action(() => {
   program.outputHelp()
 })
+
+const [command] = process.argv.slice(2)
+if (command !== 'update') {
+  await warnIfOutdated({
+    commandName,
+    name: pkg.name,
+    version,
+  })
+}
 
 await program.parseAsync()
