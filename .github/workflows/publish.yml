@@ -23,11 +23,16 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
+      # Do not set registry-url. setup-node would write an empty
+      # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} line, and npm
+      # then skips OIDC trusted publishing and 404s the PUT.
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+
+      - name: Enable npm trusted publishing
+        run: npm install --global npm@^11.5.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -40,4 +45,3 @@ jobs:
           publish: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

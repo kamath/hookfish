@@ -55,7 +55,12 @@ test('publish workflow versions on main and publishes hookfish', () => {
   assert.match(workflow, /publish: pnpm release/)
   assert.equal(rootPackage.scripts['version-packages'], 'changeset version && pnpm install --lockfile-only')
   assert.equal(rootPackage.scripts.release, 'node scripts/publish-cli.mjs')
-  assert.match(publishScript, /--filter['\s,]+hookfish/)
+  assert.match(workflow, /id-token: write/)
+  assert.match(workflow, /npm@\^11\.5\.1/)
+  assert.equal(/^\s+registry-url:/m.test(workflow), false)
+  assert.equal(/^\s+NPM_TOKEN:/m.test(workflow), false)
+  assert.match(publishScript, /spawnSync\('npm', \['publish'/)
+  assert.match(publishScript, /packages\/cli/)
   assert.match(publishScript, /New tag: \$\{pkg\.name\}@\$\{pkg\.version\}/)
 })
 
