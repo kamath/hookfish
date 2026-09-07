@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
+import { runUpdate, warnIfOutdated } from './update.js'
 
 const require = createRequire(import.meta.url)
 const pkg = require('../package.json') as {
@@ -92,6 +93,18 @@ const program = new Command()
   .description('Run the Hookfish OpenAPI client locally')
   .version(version)
 
+program.hook('preAction', async (_thisCommand, actionCommand) => {
+  if (actionCommand.name() === 'update') {
+    return
+  }
+
+  await warnIfOutdated({
+    commandName,
+    name: pkg.name,
+    version,
+  })
+})
+
 program
   .command('up')
   .description('Start the local server')
@@ -104,6 +117,18 @@ program
       console.error(error instanceof Error ? error.message : error)
       process.exitCode = 1
     }
+  })
+
+program
+  .command('update')
+  .description('Install the latest version from npm')
+  .option('--dry-run', 'print the install command without running it')
+  .action(async (options: { dryRun?: boolean }) => {
+    process.exitCode = await runUpdate({
+      dryRun: options.dryRun,
+      name: pkg.name,
+      version,
+    })
   })
 
 program.action(() => {

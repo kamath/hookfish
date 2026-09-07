@@ -11,7 +11,10 @@ hookfish up --port 3000
 
 ```bash
 hookfish up --host 0.0.0.0 --port 4000
+hookfish update
 ```
+
+If a newer version is on npm, commands print a warning to run `hookfish update`.
 
 Requires Node.js 22.12 or later.
 

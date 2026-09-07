@@ -128,7 +128,10 @@ hookfish up --port 3000
 ```bash
 pnpm cli
 pnpm cli up --host 127.0.0.1 --port 4000
+pnpm cli update
 ```
+
+If a newer version is on npm, commands print a warning to run `hookfish update`.
 
 `name` and `version` in `packages/cli/package.json` are the npm identity. `pnpm pack`
 and `pnpm publish` run `prepack`, which builds the Node example into `web/` so the

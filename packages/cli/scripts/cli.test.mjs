@@ -11,15 +11,25 @@ const packageJson = JSON.parse(
 )
 const commandName = Object.keys(packageJson.bin ?? {})[0]
 
+function cliEnv(extra = {}) {
+  return {
+    ...process.env,
+    HOOKFISH_SKIP_UPDATE_CHECK: '1',
+    ...extra,
+  }
+}
+
 function assertHelpText(stdout) {
   assert.match(stdout, new RegExp(`Usage: ${commandName} \\[options\\] \\[command\\]`))
   assert.match(stdout, /Commands:/)
   assert.match(stdout, /up \[options\]\s+Start the local server/)
+  assert.match(stdout, /update \[options\]\s+Install the latest version from npm/)
 }
 
 test('prints CLI help with no arguments', () => {
   const result = spawnSync(process.execPath, [cliEntry], {
     encoding: 'utf8',
+    env: cliEnv(),
   })
 
   assert.equal(result.status, 0)
@@ -29,6 +39,7 @@ test('prints CLI help with no arguments', () => {
 test('prints CLI help for --help', () => {
   const result = spawnSync(process.execPath, [cliEntry, '--help'], {
     encoding: 'utf8',
+    env: cliEnv(),
   })
 
   assert.equal(result.status, 0)
@@ -38,6 +49,7 @@ test('prints CLI help for --help', () => {
 test('prints up help', () => {
   const result = spawnSync(process.execPath, [cliEntry, 'up', '--help'], {
     encoding: 'utf8',
+    env: cliEnv(),
   })
 
   assert.equal(result.status, 0)
@@ -49,6 +61,7 @@ test('prints up help', () => {
 test('rejects invalid ports', () => {
   const result = spawnSync(process.execPath, [cliEntry, 'up', '--port', '70000'], {
     encoding: 'utf8',
+    env: cliEnv(),
   })
 
   assert.equal(result.status, 1)
@@ -65,6 +78,7 @@ test('refuses to start when the port is already taken', async () => {
 
   const result = spawnSync(process.execPath, [cliEntry, 'up', '--port', String(address.port)], {
     encoding: 'utf8',
+    env: cliEnv(),
     timeout: 15_000,
   })
   blocker.close()

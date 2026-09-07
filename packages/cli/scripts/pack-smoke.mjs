@@ -91,13 +91,16 @@ try {
   )
   const help = execFileSync(process.execPath, [installedCli], {
     encoding: 'utf8',
+    env: { ...process.env, HOOKFISH_SKIP_UPDATE_CHECK: '1' },
   })
   assert.match(help, new RegExp(`Usage: ${commandName} \\[options\\] \\[command\\]`))
   assert.match(help, /Commands:/)
   assert.match(help, /up \[options\]\s+Start the local server/)
+  assert.match(help, /update \[options\]\s+Install the latest version from npm/)
 
   const upHelp = execFileSync(process.execPath, [installedCli, 'up', '--help'], {
     encoding: 'utf8',
+    env: { ...process.env, HOOKFISH_SKIP_UPDATE_CHECK: '1' },
   })
   assert.match(upHelp, new RegExp(`Usage: ${commandName} up \\[options\\]`))
   assert.match(upHelp, /--port <number>/)
@@ -111,6 +114,7 @@ try {
       cwd: consumerDirectory,
       env: {
         ...process.env,
+        HOOKFISH_SKIP_UPDATE_CHECK: '1',
         PGLITE_DATA_DIR: pgliteDirectory,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
