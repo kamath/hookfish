@@ -29,7 +29,8 @@ export function httpBindingFor(operation: ClientOperation): HttpBinding {
     typeof binding.path !== 'string' ||
     (binding.contentType !== undefined && typeof binding.contentType !== 'string') ||
     (binding.bodyEncoding !== undefined &&
-      !['json', 'urlencoded', 'binary', 'multipart'].includes(binding.bodyEncoding))
+      (typeof binding.bodyEncoding !== 'string' ||
+        !['json', 'urlencoded', 'binary', 'multipart'].includes(binding.bodyEncoding)))
   ) {
     throw new Error('The executable does not have a valid HTTP binding.')
   }
@@ -37,7 +38,7 @@ export function httpBindingFor(operation: ClientOperation): HttpBinding {
 }
 
 function multipartBody(
-  value: unknown,
+  formBody: unknown,
   operation: ClientOperation,
 ): NonNullable<ExecuteRequest['body']> {
   const parts: Array<
@@ -83,7 +84,7 @@ function multipartBody(
     })
   }
 
-  for (const [name, value] of Object.entries(asRecord(value))) {
+  for (const [name, value] of Object.entries(asRecord(formBody))) {
     append(name, value)
   }
   return { kind: 'multipart', parts }
