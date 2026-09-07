@@ -4,16 +4,20 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo run build",
+    "changeset": "changeset",
     "cli": "pnpm build && pnpm --filter hookfish cli",
     "db:migrate": "pnpm --filter @hookfish/api db:migrate",
     "db:studio": "pnpm --filter @hookfish/api db:studio",
     "db:migrate:prod": "pnpm --filter @hookfish/api db:migrate:prod",
     "db:studio:prod": "pnpm --filter @hookfish/api db:studio:prod",
     "dev": "turbo run dev --filter=@hookfish/app --filter=@hookfish/example-node",
+    "release": "node scripts/publish-cli.mjs",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "version-packages": "changeset version && pnpm install --lockfile-only"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "turbo": "^2.10.12"
   },
   "packageManager": "pnpm@10.33.3",
