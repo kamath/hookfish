@@ -63,6 +63,18 @@ function AppToolbar() {
       {source ? (
         <>
           <Brand compact />
+          {source.onRegister ? (
+            <button
+              type="button"
+              className="inline-flex shrink-0 items-center justify-center bg-ink/10 px-2.5 py-1 text-sm leading-4 text-ink hover:bg-ink/15 disabled:opacity-40"
+              disabled={source.registerPending}
+              onClick={() => {
+                void source.onRegister?.()
+              }}
+            >
+              {source.registerPending ? 'Registering…' : 'Register'}
+            </button>
+          ) : null}
           <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
           {source.onClearAuth ? (
             <button

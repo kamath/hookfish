@@ -23,6 +23,9 @@ paths:
           description: Created
 `)
   }
+  if (url.endsWith('/untitled.json')) {
+    return new Response('{"openapi":"3.1.0","info":{"version":"1.0.0"}}')
+  }
   if (url.includes('/openapi.json')) {
     return new Response('error code: 1042', { status: 404, statusText: 'Not Found' })
   }
@@ -46,6 +49,7 @@ paths:
 }
 
 let requestedFeedTags: readonly string[] = []
+const savedEntries: Array<{ url: string; title: string; type: 'MCP' | 'API' }> = []
 const api = createApi({
   fetch: upstreamFetch,
   database: {
@@ -59,6 +63,12 @@ const api = createApi({
           tag: 'trending_mcp',
         },
       ]
+    },
+    async getRegistryEntry(url) {
+      return savedEntries.find((entry) => entry.url === url)
+    },
+    async upsertRegistryEntry(entry) {
+      savedEntries.push(entry)
     },
   },
 })
@@ -80,9 +90,7 @@ assert.deepEqual(await registryFeed.json(), {
 })
 assert.deepEqual(requestedFeedTags, ['trending_mcp', 'trending_api'])
 
-const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
-assert.equal(spec.status, 200)
-assert.deepEqual(await spec.json(), {
+const localSpec = {
   openapi: '3.1.0',
   info: { title: 'Local API' },
   servers: [{ url: 'http://localhost:8787' }],
@@ -95,7 +103,25 @@ assert.deepEqual(await spec.json(), {
       },
     },
   },
+}
+
+const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
+assert.equal(spec.status, 200)
+assert.deepEqual(await spec.json(), localSpec)
+assert.deepEqual(savedEntries, [])
+
+const savedSpec = await client.spec.$post({
+  json: { url: 'http://localhost:8787/openapi.yaml', save: true },
 })
+assert.equal(savedSpec.status, 200)
+assert.deepEqual(await savedSpec.json(), localSpec)
+assert.deepEqual(savedEntries, [
+  {
+    url: 'http://localhost:8787/openapi.yaml',
+    title: 'Local API',
+    type: 'API',
+  },
+])
 
 const executed = await client.execute.$post({
   json: {
@@ -127,6 +153,89 @@ assert.equal(missingSpecUrl.status, 400)
 const invalidSpec = await client.spec.$post({ json: { url: 'file:///tmp/openapi.yaml' } })
 assert.equal(invalidSpec.status, 400)
 assert.deepEqual(await invalidSpec.json(), { error: 'Enter an http or https OpenAPI URL.' })
+assert.equal(savedEntries.length, 1)
+
+const invalidSavedSpec = await client.spec.$post({
+  json: { url: 'file:///tmp/openapi.yaml', save: true },
+})
+assert.equal(invalidSavedSpec.status, 400)
+assert.equal(savedEntries.length, 1)
+
+const untitledSpec = await client.spec.$post({
+  json: { url: 'http://localhost:8787/untitled.json', save: true },
+})
+assert.equal(untitledSpec.status, 200)
+assert.deepEqual(savedEntries.at(-1), {
+  url: 'http://localhost:8787/untitled.json',
+  title: 'localhost',
+  type: 'API',
+})
+
+const failingSave = createApi({
+  fetch: upstreamFetch,
+  database: {
+    async listRegistryFeedRows() {
+      return []
+    },
+    async getRegistryEntry() {
+      return undefined
+    },
+    async upsertRegistryEntry() {
+      throw new Error('registry unavailable')
+    },
+  },
+})
+const failedSave = await failingSave.request('/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost:8787/openapi.yaml', save: true }),
+})
+assert.equal(failedSave.status, 503)
+assert.deepEqual(await failedSave.json(), { error: 'registry unavailable' })
+
+const noDatabaseSave = await createApi({ fetch: upstreamFetch }).request('/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost:8787/openapi.yaml', save: true }),
+})
+assert.equal(noDatabaseSave.status, 503)
+
+const mcpSave = await client.spec.$post({
+  json: {
+    url: 'https://mcp.example.test/mcp',
+    save: true,
+    title: 'Example MCP',
+    type: 'MCP',
+  },
+})
+assert.equal(mcpSave.status, 200)
+assert.deepEqual(await mcpSave.json(), {
+  url: 'https://mcp.example.test/mcp',
+  title: 'Example MCP',
+  type: 'MCP',
+})
+
+const missingEntry = await client.registry.entry.$get({
+  query: { url: 'https://missing.example.test/openapi.json' },
+})
+assert.equal(missingEntry.status, 200)
+assert.deepEqual(await missingEntry.json(), { registered: false })
+
+const foundEntry = await client.registry.entry.$get({
+  query: { url: 'http://localhost:8787/openapi.yaml' },
+})
+assert.equal(foundEntry.status, 200)
+assert.deepEqual(await foundEntry.json(), {
+  registered: true,
+  url: 'http://localhost:8787/openapi.yaml',
+  title: 'Local API',
+  type: 'API',
+})
+
+const noDatabaseEntry = await createApi({ fetch: upstreamFetch }).request(
+  '/registry/entry?url=http://localhost:8787/openapi.yaml',
+)
+assert.equal(noDatabaseEntry.status, 503)
 
 const oauth = await client['mcp-oauth-client'].$get({ query: { sourceId: 'oauth-source' } })
 assert.equal(oauth.status, 200)
@@ -206,6 +315,7 @@ assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
 assert.ok(document.paths['/registry/feed'])
+assert.ok(document.paths['/registry/entry'])
 assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)
@@ -238,6 +348,18 @@ assert.equal(
   seen.some((entry) => entry.url.includes('/openapi.json')),
   false,
 )
+
+const savedSelfSpec = await api.request('/spec', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ url: 'http://localhost/openapi.json', save: true }),
+})
+assert.equal(savedSelfSpec.status, 200)
+assert.deepEqual(savedEntries.at(-1), {
+  url: 'http://localhost/openapi.json',
+  title: 'Smithery API',
+  type: 'API',
+})
 
 const mountedSelfSpec = await mounted.request('/api/spec', {
   method: 'POST',
