@@ -6,6 +6,7 @@ import {
   appearanceFor,
   applyTheme,
   isThemePreference,
+  nextThemePreference,
   readThemePreference,
 } from './theme.ts'
 
@@ -21,6 +22,10 @@ assert.equal(isThemePreference('system'), true)
 assert.equal(isThemePreference('light'), true)
 assert.equal(isThemePreference('dark'), true)
 assert.equal(isThemePreference('auto'), false)
+
+assert.equal(nextThemePreference('system'), 'light')
+assert.equal(nextThemePreference('light'), 'dark')
+assert.equal(nextThemePreference('dark'), 'system')
 
 assert.equal(appearanceFor('light', true), 'light')
 assert.equal(appearanceFor('light', false), 'light')

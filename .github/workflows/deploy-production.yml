@@ -106,7 +106,7 @@ jobs:
       - name: Smoke test production
         env:
           PRODUCTION_URL: ${{ steps.production.outputs.url }}
-          PUBLIC_URL: https://smithery.app
+          PUBLIC_URL: https://hookfish.dev
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
             "$PRODUCTION_URL/" > /dev/null

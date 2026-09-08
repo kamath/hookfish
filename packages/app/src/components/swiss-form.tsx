@@ -34,6 +34,7 @@ import type {
   RJSFSchema,
   SubmitButtonProps,
   TitleFieldProps,
+  UnsupportedFieldProps,
   WidgetProps,
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils'
@@ -193,9 +194,37 @@ function NavGroup({
   )
 }
 
+export const FILE_UPLOAD_NOTICE = 'File uploads are not supported yet.'
+
+export function isFileUploadSchema(schema: {
+  type?: unknown
+  format?: unknown
+} | undefined): boolean {
+  if (!schema) {
+    return false
+  }
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type]
+  if (types.some((value) => String(value) === 'file')) {
+    return true
+  }
+  return schema.format === 'binary' || schema.format === 'byte'
+}
+
+function FileUploadNotice() {
+  return (
+    <p className="m-0 bg-ink/5 px-2 py-1.5 text-xs text-ink" role="status">
+      {FILE_UPLOAD_NOTICE}
+    </p>
+  )
+}
+
 function schemaTypeLabel(schema: RJSFSchema | undefined): string {
   if (!schema) {
     return ''
+  }
+
+  if (isFileUploadSchema(schema)) {
+    return 'file'
   }
 
   if (Array.isArray(schema.enum) && schema.enum.length > 0) {
@@ -525,6 +554,7 @@ function FieldTemplate(props: FieldTemplateProps) {
 
   const isCheckbox = uiOptions.widget === 'checkbox'
   const nest = isNestSchema(schema)
+  const fileUpload = isFileUploadSchema(schema)
 
   return (
     <WrapIfAdditionalTemplate {...props}>
@@ -535,7 +565,7 @@ function FieldTemplate(props: FieldTemplateProps) {
       >
         {displayLabel && !isCheckbox ? (
           <label
-            htmlFor={id}
+            htmlFor={fileUpload ? undefined : id}
             className={`${labelClass} flex min-w-0 flex-wrap items-baseline gap-2 overflow-hidden`}
           >
             <span className="shrink-0">
@@ -551,10 +581,10 @@ function FieldTemplate(props: FieldTemplateProps) {
           </label>
         ) : null}
         {displayLabel && isCheckbox ? description : null}
-        {children}
-        {errors}
+        {fileUpload ? <FileUploadNotice /> : children}
+        {fileUpload ? null : errors}
         {help}
-        {!nest ? (
+        {!nest && !fileUpload ? (
           <>
             <span data-oc-hint="insert" className="items-center gap-1.5 text-xs text-faint">
               <Kbd hotkey="I" />
@@ -633,6 +663,28 @@ function FieldHelpTemplate(props: FieldHelpProps) {
       className="text-xs text-faint"
     >
       {help}
+    </div>
+  )
+}
+
+function UnsupportedFieldTemplate(props: UnsupportedFieldProps) {
+  const { schema, fieldPathId, reason } = props
+  if (isFileUploadSchema(schema) || /unknown field type file/i.test(reason)) {
+    return <FileUploadNotice />
+  }
+
+  return (
+    <div>
+      <p className="m-0 text-xs text-error">
+        {reason
+          ? `This field is not supported${fieldPathId?.$id ? ` (${fieldPathId.$id})` : ''}: ${reason}`
+          : 'This field is not supported.'}
+      </p>
+      {schema ? (
+        <pre className="m-0 overflow-x-auto text-[11px] text-faint">
+          {JSON.stringify(schema, null, 2)}
+        </pre>
+      ) : null}
     </div>
   )
 }
@@ -1032,6 +1084,7 @@ const theme: ThemeProps = {
     DescriptionFieldTemplate,
     FieldErrorTemplate,
     FieldHelpTemplate,
+    UnsupportedFieldTemplate,
     WrapIfAdditionalTemplate,
     ButtonTemplates: {
       AddButton,
