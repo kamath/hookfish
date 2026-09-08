@@ -24,10 +24,14 @@ function LaunchCommandCopy() {
       aria-live="polite"
       className="inline-flex items-center bg-ink/5 px-1.5 py-0.5 font-mono outline-none hover:bg-ink/10 focus-visible:bg-ink/10"
       onFocus={(event) => event.stopPropagation()}
-      onClick={() => {
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setCopied(true)
         void copyText(LOCAL_LAUNCH_COMMAND).then((ok) => {
-          if (ok) {
-            setCopied(true)
+          if (!ok) {
+            setCopied(false)
           }
         })
       }}
