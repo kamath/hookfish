@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PGlite } from '@electric-sql/pglite'
@@ -36,6 +36,7 @@ export async function createPgliteDb(
     PGLITE_DATA_DIR: process.env.PGLITE_DATA_DIR,
   }),
 ): Promise<AppDatabase> {
+  mkdirSync(dataDir, { recursive: true })
   const client = new PGlite(dataDir)
   const database = drizzle({ client, schema })
   await migrate(database, { migrationsFolder: findDrizzleMigrationsDir() })

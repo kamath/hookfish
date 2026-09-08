@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
-import { GITHUB_REPO_URL } from '../components/github-link'
+import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
@@ -564,20 +564,7 @@ export function HomePage() {
               </button>
             </div>
           ) : null}
-          {!showSubmitButtons ? (
-            <p className="mt-2 text-center text-sm text-mute">
-              MIT License.{' '}
-              <a
-                href={GITHUB_REPO_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-signal underline underline-offset-2"
-                onFocus={(event) => event.stopPropagation()}
-              >
-                Run it yourself
-              </a>
-            </p>
-          ) : null}
+          {!showSubmitButtons ? <HomepageLaunchHint /> : null}
           {urlError ? (
             <p className="mt-2 line-clamp-3 break-words text-sm text-error" role="alert">
               {urlError}

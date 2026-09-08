@@ -17,7 +17,7 @@
     "cli": "node dist/index.js",
     "prepack": "node scripts/prepack.mjs",
     "start": "node dist/index.js up",
-    "test": "node --test scripts/cli.test.mjs scripts/update.test.mjs && node scripts/pack-smoke.mjs",
+    "test": "node --test scripts/cli.test.mjs scripts/listen.test.mjs scripts/local-runtime.test.mjs scripts/update.test.mjs && node scripts/pack-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

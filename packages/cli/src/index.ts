@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
-import { createConnection } from 'node:net'
+import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
+import { isAddressInUse, resolveListenPort } from './listen.js'
+import { attachLocalRuntime, localRuntimeResponse } from './local-runtime.js'
 import { runUpdate, warnIfOutdated } from './update.js'
 
 const require = createRequire(import.meta.url)
@@ -27,34 +31,34 @@ function parsePort(value: string): number {
   return port
 }
 
-function canConnect(host: string, port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = createConnection({ host, port })
-    socket.setTimeout(250)
-    const done = (open: boolean) => {
-      socket.destroy()
-      resolve(open)
-    }
-    socket.once('connect', () => done(true))
-    socket.once('timeout', () => done(false))
-    socket.once('error', () => done(false))
-  })
+function ensureLocalPgliteDataDir() {
+  if (process.env.POSTGRES_URL) {
+    return
+  }
+
+  const dataDir = process.env.PGLITE_DATA_DIR ?? join(homedir(), '.hookfish', 'pglite')
+  mkdirSync(dataDir, { recursive: true })
 }
 
-async function assertListenTargetAvailable(host: string, port: number) {
-  const hosts = new Set([host, '127.0.0.1', '::1'])
+function warmupOrigin(host: string, port: number, serverUrl?: string | URL) {
+  if (host === '0.0.0.0' || host === '::' || host === '[::]') {
+    return `http://127.0.0.1:${port}/`
+  }
+  return String(serverUrl ?? `http://${host}:${port}/`)
+}
 
-  for (const candidate of hosts) {
-    if (await canConnect(candidate, port)) {
-      throw new Error(
-        `Port ${port} is already in use on ${candidate}. Stop \`pnpm dev\` or that other listener, or pass --port.`,
-      )
-    }
+async function warmupLocalApp(listenUrl: string) {
+  try {
+    await fetch(new URL('/api/registry/feed', listenUrl), {
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch {
+    // First browser request can still finish database setup.
   }
 }
 
 async function startServer(options: { host: string; port: number }) {
-  await assertListenTargetAvailable(options.host, options.port)
+  ensureLocalPgliteDataDir()
 
   const serverEntryUrl = pathToFileURL(
     fileURLToPath(new URL('../web/server/server.js', import.meta.url)),
@@ -67,25 +71,48 @@ async function startServer(options: { host: string; port: number }) {
       fetch(request: Request): Response | Promise<Response>
     }
   }
-  const server = serve({
-    fetch: (request) => serverEntry.default.fetch(request),
-    hostname: options.host,
-    middleware: [staticMiddleware({ dir: clientDirectory })],
-    port: options.port,
-    silent: true,
-  })
 
-  await server.ready()
-  console.log(
-    `${pkg.name} ${version} listening on ${server.url ?? `http://${options.host}:${options.port}/`}`,
-  )
+  let port = options.port
+  while (port <= 65_535) {
+    port = await resolveListenPort(options.host, port)
+    try {
+      const server = serve({
+        fetch: async (request) => {
+          const url = new URL(request.url)
+          if (url.pathname === '/__hookfish.json') {
+            return localRuntimeResponse(port)
+          }
+          const response = await serverEntry.default.fetch(request)
+          return attachLocalRuntime(response, port)
+        },
+        hostname: options.host,
+        middleware: [staticMiddleware({ dir: clientDirectory })],
+        port,
+        silent: true,
+      })
 
-  const shutdown = async () => {
-    await server.close(true)
+      await server.ready()
+      const listenUrl = warmupOrigin(options.host, port, server.url)
+      await warmupLocalApp(listenUrl)
+      console.log(`${pkg.name} ${version} listening on ${listenUrl}`)
+
+      const shutdown = async () => {
+        await server.close(true)
+      }
+
+      process.once('SIGINT', shutdown)
+      process.once('SIGTERM', shutdown)
+      return
+    } catch (error) {
+      if (isAddressInUse(error) && port < 65_535) {
+        port += 1
+        continue
+      }
+      throw error
+    }
   }
 
-  process.once('SIGINT', shutdown)
-  process.once('SIGTERM', shutdown)
+  throw new Error(`No free port found from ${options.port} to 65535`)
 }
 
 const program = new Command()
