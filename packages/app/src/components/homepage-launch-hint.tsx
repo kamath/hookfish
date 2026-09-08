@@ -1,5 +1,41 @@
+import { useEffect, useState } from 'react'
+import { copyText } from '../lib/clipboard'
 import { GITHUB_REPO_URL } from './github-link'
 import { homepageLaunchHint, type LocalRuntime } from '../lib/runtime'
+
+export const LOCAL_LAUNCH_COMMAND = 'npx hookfish up'
+export const LOCAL_LAUNCH_COPIED = 'copied to clipboard'
+
+function LaunchCommandCopy() {
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!copied) {
+      return
+    }
+    const timer = window.setTimeout(() => setCopied(false), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${LOCAL_LAUNCH_COMMAND}`}
+      aria-live="polite"
+      className="inline-flex items-center bg-ink/5 px-1.5 py-0.5 font-mono outline-none hover:bg-ink/10 focus-visible:bg-ink/10"
+      onFocus={(event) => event.stopPropagation()}
+      onClick={() => {
+        void copyText(LOCAL_LAUNCH_COMMAND).then((ok) => {
+          if (ok) {
+            setCopied(true)
+          }
+        })
+      }}
+    >
+      {copied ? LOCAL_LAUNCH_COPIED : LOCAL_LAUNCH_COMMAND}
+    </button>
+  )
+}
 
 export function HomepageLaunchHint({
   location,
@@ -36,7 +72,7 @@ export function HomepageLaunchHint({
         Run it yourself
       </a>
       {': '}
-      <code className="font-mono">npx hookfish up</code>
+      <LaunchCommandCopy />
     </p>
   )
 }
