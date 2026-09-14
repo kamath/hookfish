@@ -50,6 +50,13 @@
       "when": 1788753600000,
       "tag": "0006_hookfish_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789084800000,
+      "tag": "0007_default_mcp_servers",
+      "breakpoints": true
     }
   ]
 }
