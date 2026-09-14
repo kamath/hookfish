@@ -204,6 +204,7 @@ export function ResponsePane({
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [descriptionClipped, setDescriptionClipped] = useState(false)
   const treeRef = useRef<HTMLDivElement>(null)
+  const selectedRowRef = useRef<HTMLDivElement>(null)
   const selectedTextRef = useRef<HTMLSpanElement>(null)
   const descriptionRef = useRef<HTMLParagraphElement>(null)
   const rows = useMemo(
@@ -239,6 +240,10 @@ export function ResponsePane({
   useEffect(() => {
     setSelected((current) => Math.min(current, Math.max(rows.length - 1, 0)))
   }, [rows.length])
+
+  useLayoutEffect(() => {
+    selectedRowRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [selected, rows])
 
   const measureSelected = useCallback(() => {
     const text = selectedTextRef.current
@@ -611,6 +616,7 @@ export function ResponsePane({
             return (
               <div
                 key={node.id}
+                ref={isSelected ? selectedRowRef : undefined}
                 role="treeitem"
                 aria-selected={isSelected}
                 aria-expanded={expandable ? showsAll : undefined}
