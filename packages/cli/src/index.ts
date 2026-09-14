@@ -12,6 +12,8 @@ import { isAddressInUse, resolveListenPort } from './listen.js'
 import { attachLocalRuntime, localRuntimeResponse } from './local-runtime.js'
 import { runUpdate, warnIfOutdated } from './update.js'
 
+const SHUTDOWN_TIMEOUT_MS = 1_000
+
 const require = createRequire(import.meta.url)
 const pkg = require('../package.json') as {
   bin?: Record<string, string>
@@ -85,6 +87,9 @@ async function startServer(options: { host: string; port: number }) {
           const response = await serverEntry.default.fetch(request)
           return attachLocalRuntime(response, port)
         },
+        // srvx installs its own SIGINT/SIGTERM handlers that close the socket
+        // but never exit, which leaves Ctrl+C doing nothing.
+        gracefulShutdown: false,
         hostname: options.host,
         middleware: [staticMiddleware({ dir: clientDirectory })],
         port,
@@ -96,12 +101,21 @@ async function startServer(options: { host: string; port: number }) {
       await warmupLocalApp(listenUrl)
       console.log(`${pkg.name} ${version} listening on ${listenUrl}`)
 
-      const shutdown = async () => {
-        await server.close(true)
+      let closing = false
+      const shutdown = () => {
+        if (closing) {
+          process.exit(0)
+        }
+        closing = true
+
+        // Never let a stuck connection or database handle keep the CLI alive.
+        setTimeout(() => process.exit(0), SHUTDOWN_TIMEOUT_MS).unref()
+        const exit = () => process.exit(0)
+        void server.close(true).then(exit, exit)
       }
 
-      process.once('SIGINT', shutdown)
-      process.once('SIGTERM', shutdown)
+      process.on('SIGINT', shutdown)
+      process.on('SIGTERM', shutdown)
       return
     } catch (error) {
       if (isAddressInUse(error) && port < 65_535) {

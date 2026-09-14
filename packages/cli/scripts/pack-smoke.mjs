@@ -143,9 +143,14 @@ try {
     const spec = await openApi.json()
     assert.equal(typeof spec, 'object')
     assert.ok(spec.openapi || spec.swagger)
+
+    child.kill('SIGINT')
+    const exit = await waitForExit(child, 5_000)
+    assert.equal(exit.timedOut, false, 'CLI did not exit within 5s of SIGINT')
+    assert.equal(exit.signal, null, `CLI exited on ${exit.signal} instead of shutting itself down`)
+    assert.equal(exit.code, 0)
   } finally {
-    child.kill('SIGTERM')
-    await waitForExit(child, 10_000)
+    child.kill('SIGKILL')
   }
 
   console.log(`packed ${packageJson.name}@${packageJson.version} install-and-serve smoke test passed`)
@@ -232,18 +237,18 @@ function waitForOutput(child, output, pattern, timeoutMs) {
 function waitForExit(child, timeoutMs) {
   return new Promise((resolveWait) => {
     if (child.exitCode !== null || child.signalCode) {
-      resolveWait()
+      resolveWait({ code: child.exitCode, signal: child.signalCode, timedOut: false })
       return
     }
 
     const deadline = setTimeout(() => {
       child.kill('SIGKILL')
-      resolveWait()
+      resolveWait({ code: null, signal: null, timedOut: true })
     }, timeoutMs)
 
-    child.once('exit', () => {
+    child.once('exit', (code, signal) => {
       clearTimeout(deadline)
-      resolveWait()
+      resolveWait({ code, signal, timedOut: false })
     })
   })
 }
