@@ -1,5 +1,10 @@
 # hookfish
 
+## 0.13.3
+### Patch Changes
+
+- 8823108: Exit immediately on Ctrl+C while `hookfish up` is running
+
 ## 0.13.2
 ### Patch Changes
 
