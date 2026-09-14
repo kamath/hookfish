@@ -1,5 +1,10 @@
 # hookfish
 
+## 0.13.4
+### Patch Changes
+
+- e86d31e: Update the default MCP servers to Gmail (Arcade), Linear, Google Calendar (Arcade), Notion, and Slack (Arcade), alternating Arcade-hosted and first-party servers.
+
 ## 0.13.3
 ### Patch Changes
 

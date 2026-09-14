@@ -1,6 +1,6 @@
 {
   "name": "hookfish",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "description": "Run the Hookfish OpenAPI client locally",
   "type": "module",
   "bin": {
