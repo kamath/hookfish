@@ -94,7 +94,9 @@ Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally n
 The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
 `MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
 `GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
-category-keyed response that the homepage renders as panes.
+category-keyed response that the homepage renders as panes. Each category lists its
+entries in `row_id` order, so migrations insert seeded rows in the order they should
+render.
 Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
 
 ```bash
