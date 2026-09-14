@@ -33,7 +33,7 @@ export function createPostgresDb(connection: PostgresConnection): AppDatabase {
         .from(registry)
         .innerJoin(tags, eq(tags.registryRowId, registry.rowId))
         .where(inArray(tags.tag, feedTags))
-        .orderBy(asc(tags.tag), asc(registry.title))
+        .orderBy(asc(tags.tag), asc(registry.rowId))
       return rows
     },
   }

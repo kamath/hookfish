@@ -28,6 +28,17 @@ try {
     'API',
     'MCP',
   ])
+  // MCP servers alternate between Arcade-hosted and first-party.
+  assert.deepEqual(
+    rows.filter((row) => row.tag === 'trending_mcp').map((row) => row.title),
+    [
+      'Gmail (Arcade)',
+      'Linear',
+      'Google Calendar (Arcade)',
+      'Notion',
+      'Slack (Arcade)',
+    ],
+  )
   assert.deepEqual(await database.listRegistryFeedRows(['not_in_feed']), [])
 } finally {
   await rm(dataDir, { force: true, recursive: true })

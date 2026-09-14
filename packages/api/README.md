@@ -16,4 +16,5 @@ The returned application uses Web-standard `Request` and `Response` objects and 
 adapted to Node, Vercel, or Cloudflare Workers. The database supplies the read-only
 `GET /registry/feed` endpoint from `registry` rows (`row_id`, `url`, `title`, and
 `type`) joined to `tags` rows (`registry_row_id`, `tag`). The feed includes entries tagged
-`trending_mcp` or `trending_api`; `type` is `MCP` or `API`.
+`trending_mcp` or `trending_api`, ordered by `row_id` within each tag; `type` is `MCP`
+or `API`.

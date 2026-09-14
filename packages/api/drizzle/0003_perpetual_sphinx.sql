@@ -12,9 +12,9 @@ DROP TABLE "session" CASCADE;--> statement-breakpoint
 DROP TABLE "user" CASCADE;--> statement-breakpoint
 DROP TABLE "verification" CASCADE;--> statement-breakpoint
 INSERT INTO "suggested_source" ("url", "title", "category_name") VALUES
-	('https://server.smithery.ai/gmail', 'Arcade Gmail', 'MCP Servers'),
-	('https://server.smithery.ai/googlecalendar', 'Arcade Google Calendar', 'MCP Servers'),
-	('https://server.smithery.ai/slack', 'Arcade Slack', 'MCP Servers'),
+	('https://omni.arcade.dev/mcp', 'Arcade Omni', 'MCP Servers'),
+	('https://api.bosslevel.dev/mcp/gw_3F3PbNNz9DdEJ6zdHqbegVC7mMo', 'Arcade Full Suite', 'MCP Servers'),
+	('https://server.smithery.ai/gmail', 'Hookfish Gmail', 'MCP Servers'),
 	('https://mcp.linear.app/mcp', 'Linear', 'MCP Servers'),
 	('https://mcp.notion.com/mcp', 'Notion', 'MCP Servers'),
 	('https://api.arcade.dev/v1/swagger', 'Arcade API', 'OpenAPI'),
