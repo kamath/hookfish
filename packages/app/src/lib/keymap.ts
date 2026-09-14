@@ -319,8 +319,11 @@ export function useKeybindingsEnabled() {
 }
 
 export function useShowKeybindings() {
+  // Both hooks must run every render: `enabled` flips when a resize crosses the
+  // keybindings breakpoint, and short-circuiting here would change the hook count.
   const enabled = useKeybindingsEnabled()
-  return enabled && useAtomValue(modeAtom) === 'command'
+  const mode = useAtomValue(modeAtom)
+  return enabled && mode === 'command'
 }
 
 const registrationsAtom = atom(new Map<symbol, Registration>())
