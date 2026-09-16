@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   KEYBINDINGS_MEDIA,
   dialogAllowsBinding,
@@ -257,3 +258,27 @@ withMatchMedia(
 }
 
 console.log('keymap mobile availability ok')
+
+const mcpSource = readFileSync(new URL('./mcp/source.ts', import.meta.url), 'utf8')
+assert.match(mcpSource, /export: 'Copy code'/)
+assert.match(mcpSource, /exported: 'Copied code'/)
+assert.doesNotMatch(mcpSource, /Copy MCP client code/)
+
+const operationClient = readFileSync(
+  new URL('../components/operation-client.tsx', import.meta.url),
+  'utf8',
+)
+const executeButton = operationClient.slice(
+  operationClient.indexOf('exec-solid flex-1 whitespace-nowrap'),
+  operationClient.indexOf('</button>', operationClient.indexOf('exec-solid flex-1 whitespace-nowrap')),
+)
+assert.match(
+  executeButton,
+  /\{showAuth \? 'Continue' : api\.labels\.execute\}\s*<KeyHints className="ml-2 inline-flex gap-1">/,
+  'Call shortcut follows the CTA',
+)
+assert.doesNotMatch(
+  executeButton,
+  /<KeyHints[\s\S]*\{showAuth \? 'Continue' : api\.labels\.execute\}/,
+  'Call shortcut is not before the CTA',
+)
