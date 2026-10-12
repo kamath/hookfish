@@ -1,3 +1,4 @@
+import { MCP_PROXY_HEADERS_HEADER, decodeCustomHeaders } from './headers'
 import { isHttpUrl } from './http'
 import { assertMcpProxyRequest } from './mcp'
 
@@ -28,6 +29,13 @@ function requestHeaders(source: Headers) {
     }
   })
   headers.delete(MCP_PROXY_AUTHORIZATION_HEADER)
+  headers.delete(MCP_PROXY_HEADERS_HEADER)
+  for (const [name, value] of Object.entries(
+    decodeCustomHeaders(source.get(MCP_PROXY_HEADERS_HEADER)),
+  )) {
+    headers.set(name, value)
+  }
+  // The client already resolved which Authorization wins, so the carried one goes last.
   const upstreamAuthorization = source.get(MCP_PROXY_AUTHORIZATION_HEADER)
   if (upstreamAuthorization) {
     headers.set('authorization', upstreamAuthorization)

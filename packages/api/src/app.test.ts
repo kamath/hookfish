@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { hc } from 'hono/client'
 import { createApi, mountApi, type AppType } from './app'
 import { mcpOAuthClientMetadata } from './oauth'
+import { MCP_PROXY_HEADERS_HEADER } from './headers'
 import { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
 
 const seen: Array<{ url: string; init?: RequestInit }> = []
@@ -173,6 +174,56 @@ assert.equal(authorizedProxy.status, 200)
 const authorizedHeaders = new Headers(seen.at(-1)?.init?.headers)
 assert.equal(authorizedHeaders.get('authorization'), 'Bearer upstream-token')
 assert.equal(authorizedHeaders.get(MCP_PROXY_AUTHORIZATION_HEADER), null)
+
+const customProxy = await api.request(
+  '/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fcustom',
+  {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      [MCP_PROXY_HEADERS_HEADER]: JSON.stringify({
+        'X-Api-Key': 'key-1',
+        Authorization: 'Bearer custom',
+        Host: 'evil.test',
+        Cookie: 'a=b',
+        'x-hookfish-mcp-authorization': 'Bearer smuggled',
+        'X-Split': 'a\r\nInjected: yes',
+      }),
+    },
+    body: initializeBody,
+  },
+)
+assert.equal(customProxy.status, 200)
+const customHeaders = new Headers(seen.at(-1)?.init?.headers)
+assert.equal(customHeaders.get('x-api-key'), 'key-1')
+assert.equal(customHeaders.get('authorization'), 'Bearer custom')
+assert.equal(customHeaders.get('host'), null)
+assert.equal(customHeaders.get('cookie'), null)
+assert.equal(customHeaders.get('x-split'), null)
+assert.equal(customHeaders.get('injected'), null)
+assert.equal(customHeaders.get(MCP_PROXY_HEADERS_HEADER), null)
+assert.equal(customHeaders.get(MCP_PROXY_AUTHORIZATION_HEADER), null)
+
+await api.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fcustom', {
+  method: 'POST',
+  headers: {
+    'content-type': 'application/json',
+    [MCP_PROXY_HEADERS_HEADER]: JSON.stringify({ Authorization: 'Bearer custom' }),
+    [MCP_PROXY_AUTHORIZATION_HEADER]: 'Bearer resolved',
+  },
+  body: initializeBody,
+})
+assert.equal(new Headers(seen.at(-1)?.init?.headers).get('authorization'), 'Bearer resolved')
+
+await api.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fcustom', {
+  method: 'POST',
+  headers: {
+    'content-type': 'application/json',
+    [MCP_PROXY_HEADERS_HEADER]: 'not json',
+  },
+  body: initializeBody,
+})
+assert.equal(new Headers(seen.at(-1)?.init?.headers).get('x-api-key'), null)
 
 const rejectedProxy = await client['mcp-proxy'].$get({ query: { url: 'file:///tmp/mcp' } })
 assert.equal(rejectedProxy.status, 400)

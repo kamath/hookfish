@@ -3,9 +3,11 @@ import { UnauthorizedError } from '@modelcontextprotocol/client'
 import type { ApiSummary, ClientApi } from './client-types'
 import {
   apiAuthStored,
+  apiHeadersStored,
   clearApiAuth,
   readApiAuth,
   saveApiAuth,
+  saveApiHeaders,
 } from './auth'
 import { loadSource, sourceAdapterFor } from './source-adapters'
 import { closeMcpConnection } from './mcp/client'
@@ -108,9 +110,11 @@ export async function addApi(
   url: string,
   kind?: string,
   credentials: Record<string, string> = {},
+  headers: Record<string, string> = {},
 ): Promise<{ id: string }> {
   const id = crypto.randomUUID()
   saveApiAuth(id, credentials)
+  saveApiHeaders(id, headers)
   let client: ClientApi
   try {
     client = await loadSource(url, id, credentials, kind, () => rememberProvisional(id, url))
@@ -163,6 +167,7 @@ export async function getApi(id: string): Promise<ClientApi> {
   return {
     ...client,
     credentialsStored: apiAuthStored(row.id) || hasMcpOAuthTokens(row.id),
+    headersStored: apiHeadersStored(row.id),
   }
 }
 

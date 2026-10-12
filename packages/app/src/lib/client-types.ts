@@ -111,6 +111,8 @@ export type ExecutableSource = {
   credentialUiSchema?: FormUiSchema
   credentialsRequired?: boolean
   credentialsStored?: boolean
+  // Custom request headers the user attached when opening the source.
+  headersStored?: boolean
 }
 
 export type SourceSummary = {

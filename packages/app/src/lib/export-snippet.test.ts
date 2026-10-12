@@ -328,5 +328,30 @@ assert.match(
   mcpSnippet,
   /const result = getWeatherOutputSchema\.parse\(response\.structuredContent\)/,
 )
+assert.doesNotMatch(mcpSnippet, /requestInit/)
+
+const exportStorage = new Map([['oc:headers:weather', JSON.stringify({ 'X-Api-Key': 'key-1' })]])
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    localStorage: {
+      getItem: (key: string) => exportStorage.get(key) ?? null,
+      setItem: (key: string, value: string) => exportStorage.set(key, value),
+      removeItem: (key: string) => exportStorage.delete(key),
+    },
+  },
+  configurable: true,
+})
+const mcpHeaderSnippet = mcpExecutableAdapter.exportSnippet?.({
+  source: { id: 'weather', kind: 'mcp' } as InvocationContext['source'],
+  executable: mcpTool,
+  target: 'https://example.com/mcp',
+  formData: { location: 'NYC' },
+  credentials: {},
+})
+assert.match(
+  mcpHeaderSnippet ?? '',
+  /\{ requestInit: \{ headers: \{\n {4}"X-Api-Key": "key-1"\n {2}\} \} \},/,
+)
+Reflect.deleteProperty(globalThis, 'window')
 
 console.log('export-snippet ok')

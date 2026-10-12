@@ -10,6 +10,7 @@ import type {
   ExecutableAdapter,
   InvocationContext,
 } from '../executable-adapters'
+import { readApiHeaders } from '../auth'
 import { asRecord } from '../build-request'
 import { traceMark, traceSince, withMcpConnection } from './client'
 
@@ -211,6 +212,10 @@ function exportSnippet(context: InvocationContext) {
           ? `client.readResource({\n  uri: input.uri,\n})`
           : `client.readResource(${JSON.stringify(value.params, null, 2)})`
         : `client.getPrompt({\n  name: ${JSON.stringify(value.binding.name)},\n  arguments: input,\n})`
+  const headers = readApiHeaders(context.source.id)
+  const transportOptions = Object.keys(headers).length
+    ? `\n  { requestInit: { headers: ${JSON.stringify(headers, null, 2).replace(/\n/g, '\n  ')} } },`
+    : ''
   return withZodExport({
     name: executableSnippetName(executable),
     inputSchema: executable.inputSchema,
@@ -223,7 +228,7 @@ function exportSnippet(context: InvocationContext) {
   { versionNegotiation: { mode: 'auto' } },
 )
 const transport = new StreamableHTTPClientTransport(
-  new URL(${JSON.stringify(value.endpoint)}),
+  new URL(${JSON.stringify(value.endpoint)}),${transportOptions}
 )
 
 await client.connect(transport)`,

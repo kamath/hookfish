@@ -61,3 +61,23 @@ export function writeAuth(apiId: string, fields: Record<string, string>) {
 export function clearAuth(apiId: string) {
   browserStorage()?.removeItem(authKey(apiId))
 }
+
+function headersKey(apiId: string) {
+  return `oc:headers:${apiId}`
+}
+
+export function readHeaders(apiId: string) {
+  return readJson<Record<string, string>>(headersKey(apiId), {})
+}
+
+export function writeHeaders(apiId: string, headers: Record<string, string>) {
+  if (Object.keys(headers).length === 0) {
+    browserStorage()?.removeItem(headersKey(apiId))
+    return
+  }
+  writeJson(headersKey(apiId), headers)
+}
+
+export function clearHeaders(apiId: string) {
+  browserStorage()?.removeItem(headersKey(apiId))
+}

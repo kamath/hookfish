@@ -79,6 +79,11 @@ Hookfish uses the official MCP TypeScript client with automatic protocol negotia
   browser-held session IDs, GET event streams, and session termination
 - OAuth 2.1 authorization-code flows with PKCE, dynamic client registration, and
   Client ID Metadata Documents; registrations and tokens stay in browser storage
+- optional custom request headers (for example `Authorization` or `X-API-Key`), entered
+  under **Headers** next to the launcher's Open button, kept in browser storage, and sent
+  only to the MCP server's origin; a custom `Authorization` replaces the OAuth token.
+  OpenAPI sources send them on every request unless an operation parameter or auth
+  scheme sets the same header
 - tools, resources, resource templates, and prompts rendered through the shared executable UI
 - request/response and notification traces plus capability metadata
 - sampling, elicitation, and roots requests with editable manual JSON responses
