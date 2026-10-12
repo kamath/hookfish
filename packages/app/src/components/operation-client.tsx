@@ -23,8 +23,10 @@ import { activate, enterCommand, usePane } from '../lib/mode'
 import { readOperationFormData, writeOperationFormData } from '../lib/operation-form-cache'
 import { queryErrorMessage } from '../lib/queries'
 import { formPrimaryButtonClass } from '../lib/ui'
+import { callableFromApp, type McpToolApp } from '../lib/mcp/apps'
 import { Kbd, KeyHints } from './hints'
 import { PaneBackButton } from './pane-back-button'
+import { McpAppView } from './mcp-app-view'
 import { ResponsePane } from './response-pane'
 import { SwissForm } from './swiss-form'
 
@@ -82,6 +84,17 @@ function mergeAuth(
     }
   }
   return next
+}
+
+// Views may call any tool on their server except ones scoped to the model alone.
+function appCanCallTool(api: ExecutableSource, name: string) {
+  const tool = api.executables.find(
+    (executable) =>
+      executable.binding.type === 'mcp' &&
+      executable.binding.kind === 'tool' &&
+      executable.binding.name === name,
+  )
+  return Boolean(tool && callableFromApp(asRecord(tool.binding).app as McpToolApp | undefined))
 }
 
 const stepButtonClass =
@@ -334,6 +347,15 @@ export function ExecutableClient({
           onResend={() => executeForm(lastSubmission)}
           executeLabel={api.labels.executed}
           executingLabel={api.labels.executing}
+          app={
+            result.mcpApp ? (
+              <McpAppView
+                key={result.mcpApp.resourceUri}
+                app={result.mcpApp}
+                canCallTool={(name) => appCanCallTool(api, name)}
+              />
+            ) : undefined
+          }
           onContinue={
             result.inputRequired && lastInvocation && adapter.continue
               ? (inputResponses) =>

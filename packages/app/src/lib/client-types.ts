@@ -31,6 +31,10 @@ export type McpBinding = {
   kind: 'tool' | 'resource' | 'resource-template' | 'prompt'
   method: 'tools/call' | 'resources/read' | 'prompts/get'
   name: string
+  app?: {
+    resourceUri: string
+    visibility?: Array<'model' | 'app'>
+  }
   headerParameters?: Array<{
     path: string[]
     header: string
@@ -137,6 +141,23 @@ export type ExecutionResult = {
     requests: Record<string, JsonValue>
     requestState?: string
   }
+  mcpApp?: McpAppContext
+}
+
+// What a response pane needs to render an MCP App view for a completed tool call.
+export type McpAppContext = {
+  sourceId: string
+  endpoint: string
+  resourceUri: string
+  tool: {
+    name: string
+    title?: string
+    description?: string
+    inputSchema: JsonSchema
+    _meta?: Record<string, JsonValue>
+  }
+  arguments: Record<string, JsonValue>
+  result: JsonValue
 }
 
 export type ProtocolTraceEntry = {

@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react'
 import type { ExecutableAnnotation, ExecutionResult } from '../lib/client-types'
 import { copyText } from '../lib/clipboard'
@@ -165,6 +166,7 @@ export function ResponsePane({
   onContinue,
   pane = 'response',
   inspection,
+  app,
 }: {
   result: ExecutionResult
   pending: boolean
@@ -181,7 +183,10 @@ export function ResponsePane({
     annotations?: ExecutableAnnotation[]
     hasOutputSchema: boolean
   }
+  app?: ReactNode
 }) {
+  const [viewApp, setViewApp] = useState(true)
+  const showApp = Boolean(app) && viewApp
   const body = useMemo(() => parseBody(result.body), [result.body])
   const [detailsVisible, setDetailsVisible] = useState(false)
   const [inputError, setInputError] = useState<string>()
@@ -395,7 +400,8 @@ export function ResponsePane({
     canToggleChildren,
     hasDescription: canToggleDescription,
     hasDetails: Boolean(result.details?.items.length),
-    hasJson: Boolean(body.root),
+    hasJson: Boolean(body.root) && !showApp,
+    hasApp: Boolean(app),
   })
   useStepKeys(pane, move)
   usePaneActions(pane, {
@@ -416,6 +422,7 @@ export function ResponsePane({
     details: () => setDetailsVisible((visible) => !visible),
     children: () => toggleSelectedChildren(),
     description: () => setDescriptionExpanded((expanded) => !expanded),
+    view: () => setViewApp((current) => !current),
   })
 
   return (
@@ -439,6 +446,19 @@ export function ResponsePane({
           &nbsp;ms
         </p>
         <div className="ml-auto flex items-center gap-3">
+          {app ? (
+            <button
+              type="button"
+              className={paneBarButtonClass}
+              aria-pressed={showApp}
+              onClick={() => setViewApp((current) => !current)}
+            >
+              {showApp ? 'View JSON' : 'View app'}
+              <KeyHints>
+                <Kbd hotkey="V" />
+              </KeyHints>
+            </button>
+          ) : null}
           <button
             type="button"
             className={paneBarButtonClass}
@@ -590,7 +610,9 @@ export function ResponsePane({
           </div>
         ) : null}
 
-        {inspection && !inspection.hasOutputSchema ? (
+        {showApp ? (
+          app
+        ) : inspection && !inspection.hasOutputSchema ? (
           <p className="text-sm text-mute">Not advertised.</p>
         ) : (
         <div

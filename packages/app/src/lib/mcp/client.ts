@@ -9,6 +9,7 @@ import { getApi } from '../api'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
 import { localUpstreamFetch } from '../upstream'
+import { mcpAppsClientExtensions } from './apps'
 import { BrowserMcpOAuthProvider } from './oauth'
 
 const CLIENT_INFO = {
@@ -160,6 +161,7 @@ async function openMcpTransport(
       roots: { listChanged: false },
       elicitation: {},
       sampling: {},
+      extensions: mcpAppsClientExtensions,
     },
     listChanged: {
       tools: { onChanged: () => emitChanged(sourceId) },
@@ -337,6 +339,24 @@ export function traceMark(connection: McpConnection) {
 
 export function traceSince(connection: McpConnection, mark: number) {
   return connection.trace.slice(mark)
+}
+
+// MCP App views talk to the host, not the server, so their traffic never crosses the transport.
+// Record it beside the server traffic so the trace shows what the view asked for.
+export function traceMcpApp(
+  sourceId: string,
+  entry: { direction: 'out' | 'in'; summary: string; detail?: unknown },
+) {
+  const connection = connections.get(sourceId)
+  if (!connection) {
+    return
+  }
+  traceEntry(connection, {
+    direction: entry.direction,
+    kind: 'notification',
+    summary: `app ${entry.summary}`,
+    detail: entry.detail === undefined ? undefined : jsonValue(entry.detail),
+  })
 }
 
 export function getMcpTrace(sourceId: string): ProtocolTraceEntry[] {

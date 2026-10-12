@@ -82,6 +82,9 @@ Hookfish uses the official MCP TypeScript client with automatic protocol negotia
 - tools, resources, resource templates, and prompts rendered through the shared executable UI
 - request/response and notification traces plus capability metadata
 - sampling, elicitation, and roots requests with editable manual JSON responses
+- MCP Apps (`io.modelcontextprotocol/ui`): a tool that declares a `ui://` resource renders
+  its view in a sandboxed iframe after a call, with tool calls, resource reads, links, and
+  messages from the view relayed through the host and recorded in the trace
 
 The `/api/mcp-proxy` route streams requests and responses without retaining state. MCP
 connections, OAuth credentials, legacy session identifiers, and cached listings remain in

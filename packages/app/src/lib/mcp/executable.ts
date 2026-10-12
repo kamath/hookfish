@@ -2,6 +2,7 @@ import type {
   Executable,
   ExecutionResult,
   JsonValue,
+  McpAppContext,
   McpBinding,
 } from '../client-types'
 import { executableSnippetName, withZodExport } from '../export-snippet'
@@ -18,6 +19,7 @@ type McpInvocation = {
   endpoint: string
   binding: McpBinding
   params: Record<string, unknown>
+  appTool?: McpAppContext['tool']
 }
 
 function mcpBinding(value: InvocationContext['executable']['binding']): McpBinding {
@@ -116,6 +118,20 @@ async function executeMcp(
                   : undefined,
             }
           : undefined
+      const app = invocation.binding.app
+      const mcpApp: McpAppContext | undefined =
+        app && invocation.appTool && !inputRequired
+          ? {
+              sourceId: invocation.sourceId,
+              endpoint: invocation.endpoint,
+              resourceUri: app.resourceUri,
+              tool: invocation.appTool,
+              arguments: JSON.parse(
+                JSON.stringify(asRecord(asRecord(params).arguments)),
+              ) as Record<string, JsonValue>,
+              result: JSON.parse(JSON.stringify(result)) as JsonValue,
+            }
+          : undefined
 
       return {
         status: {
@@ -141,9 +157,23 @@ async function executeMcp(
         action: invocation.binding.method,
         trace: traceSince(connection, mark),
         inputRequired,
+        mcpApp,
       }
     },
   )
+}
+
+function appTool(executable: Executable, binding: McpBinding): McpAppContext['tool'] | undefined {
+  if (!binding.app) {
+    return undefined
+  }
+  return {
+    name: binding.name,
+    title: executable.summary,
+    description: executable.description,
+    inputSchema: executable.inputSchema,
+    _meta: JSON.parse(JSON.stringify({ ui: binding.app })) as Record<string, JsonValue>,
+  }
 }
 
 function buildMcpInvocation(context: InvocationContext): McpInvocation {
@@ -154,6 +184,7 @@ function buildMcpInvocation(context: InvocationContext): McpInvocation {
     endpoint: context.target,
     binding,
     params: invocationParams(binding, context.formData),
+    appTool: appTool(context.executable, binding),
   }
 }
 
