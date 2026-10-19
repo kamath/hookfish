@@ -3,7 +3,6 @@ import type { HeaderEntry } from '@hookfish/api'
 import {
   addHeaderRow,
   headerRowsOrBlank,
-  isBlankHeader,
   pasteHeaderRows,
   pastedHeaders,
   type HeaderField,
@@ -23,6 +22,7 @@ export function HeaderInputs({
   disabled,
   firstInputRef,
   onFocus,
+  onClose,
 }: {
   rows: HeaderEntry[]
   onChange: (rows: HeaderEntry[]) => void
@@ -30,12 +30,12 @@ export function HeaderInputs({
   disabled?: boolean
   firstInputRef?: RefObject<HTMLInputElement | null>
   onFocus?: () => void
+  /** Called when the last row is removed, so the caller can put the headers away. */
+  onClose: () => void
 }) {
   const shown = headerRowsOrBlank(rows)
   // Values are masked until revealed, since they are usually credentials.
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set())
-  // The only row left can be cleared but not removed.
-  const removable = shown.length > 1 || !isBlankHeader(shown[0])
 
   // Enter on a filled name moves to its value; on a filled value it adds another row.
   function enter(index: number, field: HeaderField) {
@@ -118,7 +118,7 @@ export function HeaderInputs({
               disabled={disabled}
               aria-invalid={Boolean(error)}
               // Masked with text-security rather than type="password" so browsers don't offer to save it.
-              className={`${softInputClass} font-mono text-xs ${removable ? 'pr-24' : 'pr-16'} ${revealed.has(index) ? '' : '[-webkit-text-security:disc]'}`}
+              className={`${softInputClass} font-mono text-xs pr-24 ${revealed.has(index) ? '' : '[-webkit-text-security:disc]'}`}
               placeholder={index === 0 ? 'Bearer …' : 'Value'}
               value={row.value}
               onChange={(event) => update(index, 'value', event.target.value)}
@@ -144,23 +144,25 @@ export function HeaderInputs({
               >
                 {revealed.has(index) ? 'Hide' : 'Show'}
               </button>
-              {removable ? (
-                <button
-                  type="button"
-                  aria-label={`Remove header ${index + 1}`}
-                  className="px-3 text-sm text-mute outline-none hover:text-ink focus-visible:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-                  disabled={disabled}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    onChange(headerRowsOrBlank(shown.filter((_, i) => i !== index)))
-                    // Rows shift up, so start the remaining ones masked again.
-                    setRevealed(new Set())
-                    focusHeaderField(Math.max(0, Math.min(index, shown.length - 2)))
-                  }}
-                >
-                  ×
-                </button>
-              ) : null}
+              <button
+                type="button"
+                aria-label={`Remove header ${index + 1}`}
+                className="px-3 text-sm text-mute outline-none hover:text-ink focus-visible:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={disabled}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  if (shown.length === 1) {
+                    onClose()
+                    return
+                  }
+                  onChange(headerRowsOrBlank(shown.filter((_, i) => i !== index)))
+                  // Rows shift up, so start the remaining ones masked again.
+                  setRevealed(new Set())
+                  focusHeaderField(Math.max(0, Math.min(index, shown.length - 2)))
+                }}
+              >
+                ×
+              </button>
             </div>
           </div>
         </div>

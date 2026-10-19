@@ -611,6 +611,12 @@ export function HomePage() {
                     onFocus={() => {
                       activate('specs', 'edit')
                     }}
+                    onClose={() => {
+                      setHeaderRows([])
+                      setHeadersError(undefined)
+                      setHeadersOpen(false)
+                      urlRef.current?.focus()
+                    }}
                   />
                 </div>
               ) : null}
