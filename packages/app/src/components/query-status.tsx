@@ -48,12 +48,14 @@ export function QueryMessage({
 export function QueryStatus({
   label,
   error,
+  errorAction,
   onRetry,
   onBack,
   children,
 }: {
   label?: string
   error?: unknown
+  errorAction?: ReactNode
   onRetry?: () => void
   onBack?: () => void
   children?: ReactNode
@@ -98,6 +100,7 @@ export function QueryStatus({
           role={failed ? 'alert' : undefined}
         >
           {failed ? queryErrorMessage(error, 'Could not load.') : label}
+          {failed ? errorAction : null}
         </p>
         {failed || onBack ? (
           <div className="mt-3 flex flex-wrap justify-center gap-2">

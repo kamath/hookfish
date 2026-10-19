@@ -38,7 +38,7 @@ export async function localUpstreamFetch(
 export function assertNotProxyBlocked(response: Response, target: string) {
   if (response.status === 403 && /text\/html/i.test(response.headers.get('content-type') ?? '')) {
     throw new ProxyBlockedError(
-      `${new URL(target).host} blocked the cloud proxy. Turn off cloud mode to connect from your browser.`,
+      `${new URL(target).host} blocked the cloud proxy.`,
     )
   }
 }

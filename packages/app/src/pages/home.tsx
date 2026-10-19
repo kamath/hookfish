@@ -8,6 +8,7 @@ import { Brand } from '../components/brand'
 import { focusHeaderField, HeaderInputs } from '../components/header-inputs'
 import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
+import { isProxyBlocked, ProxyBlockedActions } from '../components/proxy-blocked-actions'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { saveApiHeaders } from '../lib/auth'
@@ -311,6 +312,12 @@ export function HomePage() {
     }
   }
 
+  function retryOpenSource() {
+    if (openSource.variables) {
+      openSource.mutate(openSource.variables)
+    }
+  }
+
   function launch(entry: CatalogEntry) {
     if (openSource.isPending) {
       return
@@ -436,6 +443,7 @@ export function HomePage() {
             {row.items.map((item, index) => {
               const itemActive = active && (activeItems[row.id] ?? 0) === index
               const status = item.type === 'catalog' ? entryStatus(item.entry) : undefined
+              const blocked = status?.failed && isProxyBlocked(openSource.error)
               const added =
                 item.type === 'catalog' &&
                 apis.some(
@@ -468,7 +476,7 @@ export function HomePage() {
                     <span className="mt-0.5 block truncate font-mono text-xs text-faint">
                         {item.detail}
                     </span>
-                      {status?.message ? (
+                      {status?.message && !blocked ? (
                       <span
                         role={status.failed ? 'alert' : undefined}
                         className={`mt-1 block truncate font-mono text-xs ${
@@ -486,6 +494,13 @@ export function HomePage() {
                       </span>
                     ) : null}
                 </button>
+                {blocked ? (
+                  // The action is a button, so it can't live in the row's status line.
+                  <p role="alert" className="px-3 pb-2 font-mono text-xs text-error">
+                    {status.message}
+                    <ProxyBlockedActions onRetry={retryOpenSource} />
+                  </p>
+                ) : null}
               </li>
             )
           })}
@@ -659,6 +674,9 @@ export function HomePage() {
           {urlError ? (
             <p className="mt-2 line-clamp-3 break-words text-sm text-error" role="alert">
               {urlError}
+              {isProxyBlocked(openSource.error) ? (
+                <ProxyBlockedActions onRetry={retryOpenSource} />
+              ) : null}
             </p>
           ) : null}
         </form>
