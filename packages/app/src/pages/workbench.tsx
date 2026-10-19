@@ -16,7 +16,7 @@ import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
 import { QueryStatus, StatusPane } from '../components/query-status'
-import { apiAuthStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
+import { apiAuthStored, apiHeadersStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import { listApis } from '../lib/apis'
 import type {
   Executable,
@@ -177,7 +177,10 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
     },
   })
   const [authDismissed, setAuthDismissed] = useState(false)
-  const canClearAuth = apiAuthStored(apiId) || Boolean(apiQuery.data?.credentialsStored)
+  const canClearAuth =
+    apiAuthStored(apiId) ||
+    apiHeadersStored(apiId) ||
+    Boolean(apiQuery.data?.credentialsStored)
 
   useEffect(() => {
     activate(routePane, 'command')
@@ -253,7 +256,7 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       onSearchChange={onSearchChange}
       needsAuth={needsAuth}
       onClearAuth={
-        canAuth && api.credentialsStored
+        (canAuth && api.credentialsStored) || api.headersStored
           ? async () => {
               await clearAuth.mutateAsync()
             }

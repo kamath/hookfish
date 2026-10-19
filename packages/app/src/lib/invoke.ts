@@ -40,6 +40,8 @@ export function buildOperationRequest(input: {
   formData: unknown
   auth: Record<string, string>
   authSchemes: AuthScheme[]
+  // Source-wide custom headers. Operation parameters and auth schemes override them.
+  defaultHeaders?: Record<string, string>
 }): ExecuteRequest {
   if (!isHttpUrl(input.serverUrl)) {
     throw new Error('Choose an http or https server URL.')
@@ -54,7 +56,7 @@ export function buildOperationRequest(input: {
   const url = new URL(
     buildRequestUrl(input.serverUrl, binding.path, path, query),
   )
-  const headers = new Headers()
+  const headers = new Headers(input.defaultHeaders)
 
   for (const [name, value] of Object.entries(header)) {
     headers.set(name, String(value))

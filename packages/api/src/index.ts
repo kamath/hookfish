@@ -22,3 +22,14 @@ export { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 export { isHttpUrl } from './http'
 export { isOwnOpenApiUrl } from './self'
 export { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
+export {
+  MCP_PROXY_HEADERS_HEADER,
+  decodeCustomHeaders,
+  encodeCustomHeaders,
+  isAllowedCustomHeader,
+  isHeaderName,
+  parseHeaderText,
+  validateHeaderEntries,
+  type HeaderEntry,
+  type ParsedHeaders,
+} from './headers'

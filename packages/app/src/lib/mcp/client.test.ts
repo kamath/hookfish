@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { MCP_PROXY_AUTHORIZATION_HEADER } from '@hookfish/api'
+import { MCP_PROXY_AUTHORIZATION_HEADER, MCP_PROXY_HEADERS_HEADER } from '@hookfish/api'
 import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
 import { setCloudProxy } from '../cloud'
 import { closeMcpConnection, getMcpTrace } from './client'
@@ -556,6 +556,46 @@ assert.ok(
     .every((request) => !request.endpoint.includes('/api/mcp-proxy')),
 )
 await closeMcpConnection('direct')
+setCloudProxy(true)
+
+browserStorage.set(
+  'oc:headers:custom-headers',
+  JSON.stringify({ 'X-Api-Key': 'key-1', Authorization: 'Bearer custom' }),
+)
+const customStart = proxiedAuthorizationHeaders.length
+await loadMcpSource('https://mcp.test/modern', 'custom-headers', {})
+const customProxied = proxiedAuthorizationHeaders.slice(customStart)
+assert.ok(customProxied.length > 0)
+for (const headers of customProxied) {
+  assert.equal(headers.get('x-api-key'), null)
+  assert.equal(headers.get('authorization'), null)
+  assert.equal(headers.get(MCP_PROXY_AUTHORIZATION_HEADER), 'Bearer custom')
+  assert.deepEqual(JSON.parse(headers.get(MCP_PROXY_HEADERS_HEADER) ?? '{}'), {
+    'X-Api-Key': 'key-1',
+  })
+}
+
+browserStorage.set('oc:headers:custom-headers', JSON.stringify({ 'X-Api-Key': 'key-2' }))
+const changedStart = proxiedAuthorizationHeaders.length
+await loadMcpSource('https://mcp.test/modern', 'custom-headers', {})
+const changedProxied = proxiedAuthorizationHeaders.slice(changedStart)
+assert.ok(
+  changedProxied.some(
+    (headers) => JSON.parse(headers.get(MCP_PROXY_HEADERS_HEADER) ?? '{}')['X-Api-Key'] === 'key-2',
+  ),
+)
+assert.ok(changedProxied.every((headers) => headers.get(MCP_PROXY_AUTHORIZATION_HEADER) === null))
+await closeMcpConnection('custom-headers')
+
+setCloudProxy(false)
+const directCustomStart = seen.length
+await loadMcpSource('http://localhost:8787/modern', 'custom-headers', {})
+const directCustom = seen.slice(directCustomStart)
+assert.ok(directCustom.length > 0)
+assert.ok(directCustom.every((request) => request.headers.get('x-api-key') === 'key-2'))
+assert.ok(directCustom.every((request) => request.headers.get(MCP_PROXY_HEADERS_HEADER) === null))
+await closeMcpConnection('custom-headers')
+browserStorage.delete('oc:headers:custom-headers')
 setCloudProxy(true)
 
 console.log('mcp modern, legacy SHTTP, OAuth, and direct-browser transport ok')

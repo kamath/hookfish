@@ -6,6 +6,7 @@ import type {
   ExecutableSource,
   ExecutionResult,
 } from './client-types'
+import { readApiHeaders } from './auth'
 import { asRecord, buildRequestUrl, omitEmpty } from './build-request'
 import { getCloudProxy } from './cloud'
 import { toHttpExportSnippet } from './export-snippet'
@@ -68,6 +69,7 @@ function buildOpenApiInvocation(context: InvocationContext): ExecuteRequest {
     formData: context.formData,
     auth: context.credentials,
     authSchemes: openApiAuthSchemes(context.source),
+    defaultHeaders: readApiHeaders(context.source.id),
   })
 }
 

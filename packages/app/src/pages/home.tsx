@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { validateHeaderEntries, type HeaderEntry } from '@hookfish/api'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
+import { focusHeaderField, HeaderInputs } from '../components/header-inputs'
 import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
+import { saveApiHeaders } from '../lib/auth'
 import {
   carouselActionId,
   catalogSourceUrl,
@@ -27,7 +30,8 @@ import {
   registryEntries,
   registrySearchRow,
 } from '../lib/registry-search'
-import { primaryButtonClass, softInputClass } from '../lib/ui'
+import { addHeaderRow, isBlankHeader } from '../lib/header-rows'
+import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 type PendingAuth = {
   href: string
@@ -39,6 +43,7 @@ type OpenSource = {
   url: string
   kind?: string
   entryId?: string
+  headers?: Record<string, string>
 }
 
 type CarouselItem =
@@ -70,9 +75,13 @@ export function HomePage() {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
+  const headersRef = useRef<HTMLInputElement>(null)
   const panelRefs = useRef<Record<string, HTMLElement | null>>({})
   const [url, setUrl] = useState('')
   const [urlFocused, setUrlFocused] = useState(false)
+  const [headersOpen, setHeadersOpen] = useState(false)
+  const [headerRows, setHeaderRows] = useState<HeaderEntry[]>([])
+  const [headersError, setHeadersError] = useState<string>()
   const [activeRow, setActiveRow] = useState(0)
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
@@ -135,20 +144,29 @@ export function HomePage() {
   const showKeybindings = useShowKeybindings()
 
   const openSource = useMutation({
-    mutationFn: async ({ url: sourceUrl, kind }: OpenSource) => {
+    mutationFn: async ({ url: sourceUrl, kind, headers = {} }: OpenSource) => {
       const key = sourceUrlKey(sourceUrl)
       const existing = apis.find(
         (api) =>
           sourceUrlKey(api.sourceUrl) === key &&
           (kind === undefined || api.kind === kind),
       )
-      return existing ? { id: existing.id } : addApi(sourceUrl, kind)
+      if (existing) {
+        // Reopening with headers replaces the ones stored for that source.
+        if (Object.keys(headers).length > 0) {
+          saveApiHeaders(existing.id, headers)
+        }
+        return { id: existing.id }
+      }
+      return addApi(sourceUrl, kind, {}, headers)
     },
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({
         queryKey: apisQueryOptions.queryKey,
       })
       setUrl('')
+      setHeaderRows([])
+      setHeadersOpen(false)
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
         params: { apiId: id, pane: 'routes', operationId: undefined },
@@ -175,7 +193,8 @@ export function HomePage() {
   })
   const submittingUrl = openSource.isPending && !openSource.variables?.entryId
   const showSubmitButtons =
-    (urlFocused || submittingUrl) && (isSourceUrl(url) || submittingUrl)
+    (urlFocused || submittingUrl || (headersOpen && headerRows.some((row) => !isBlankHeader(row)))) &&
+    (isSourceUrl(url) || submittingUrl)
   const urlError =
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
@@ -276,7 +295,14 @@ export function HomePage() {
       if (!formRef.current?.reportValidity()) {
         return
       }
-      openSource.mutate({ url: sourceUrl })
+      const parsed = validateHeaderEntries(headersOpen ? headerRows : [])
+      if (!parsed.ok) {
+        setHeadersError(parsed.error)
+        headersRef.current?.focus()
+        return
+      }
+      setHeadersError(undefined)
+      openSource.mutate({ url: sourceUrl, headers: parsed.headers })
       return
     }
     const item = searchItems[activeItems[SEARCH_ROW_ID] ?? 0]
@@ -506,6 +532,23 @@ export function HomePage() {
               event.preventDefault()
               submit()
             }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.altKey || event.nativeEvent.isComposing) {
+                return
+              }
+              // Mod+Enter opens the source from any field in the launcher.
+              if (event.metaKey || event.ctrlKey) {
+                event.preventDefault()
+                submit()
+                return
+              }
+              // For a source URL, Enter moves on to the headers instead of opening it.
+              if (event.target === urlRef.current && isSourceUrl(url)) {
+                event.preventDefault()
+                setHeadersOpen(true)
+                focusHeaderField(0)
+              }
+            }}
             onFocus={() => setUrlFocused(true)}
             onBlur={(event) => {
               const next = event.relatedTarget
@@ -553,15 +596,63 @@ export function HomePage() {
             ) : null}
           </div>
           {showSubmitButtons ? (
-            <div className="mt-2">
-              <button
-                type="submit"
-                className={`${primaryButtonClass} w-full`}
-                disabled={openSource.isPending || dialogOpen}
-              >
-                {submittingUrl ? 'Opening…' : 'Open'}
-                {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
-              </button>
+            <div className="mt-2 space-y-2">
+              {headersOpen ? (
+                <div id="headers">
+                  <HeaderInputs
+                    rows={headerRows}
+                    onChange={(rows) => {
+                      setHeaderRows(rows)
+                      setHeadersError(undefined)
+                    }}
+                    error={headersError}
+                    disabled={openSource.isPending || dialogOpen}
+                    firstInputRef={headersRef}
+                    onFocus={() => {
+                      activate('specs', 'edit')
+                    }}
+                    onClose={() => {
+                      setHeaderRows([])
+                      setHeadersError(undefined)
+                      setHeadersOpen(false)
+                      urlRef.current?.focus()
+                    }}
+                  />
+                </div>
+              ) : null}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  aria-controls="headers"
+                  // Same width as the header name column so the two line up.
+                  className={`${softButtonClass} w-2/5 shrink-0`}
+                  disabled={openSource.isPending || dialogOpen}
+                  // Keep focus inside the form so the launcher controls stay visible.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setHeadersError(undefined)
+                    if (!headersOpen) {
+                      setHeadersOpen(true)
+                      focusHeaderField(0)
+                      return
+                    }
+                    const next = addHeaderRow(headerRows)
+                    setHeaderRows(next.rows)
+                    focusHeaderField(next.index)
+                  }}
+                >
+                  {headersOpen ? 'Add header' : 'Headers'}
+                  {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
+                </button>
+                <button
+                  type="submit"
+                  className={`${primaryButtonClass} min-w-0 flex-1`}
+                  disabled={openSource.isPending || dialogOpen}
+                >
+                  {submittingUrl ? 'Connecting…' : 'Connect'}
+                  {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
+                </button>
+              </div>
             </div>
           ) : null}
           {!showSubmitButtons ? <HomepageLaunchHint /> : null}

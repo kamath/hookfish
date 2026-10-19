@@ -1,4 +1,10 @@
+import { findCause, ProxyBlockedError } from './upstream'
+
 export function neitherSourceError(errors: unknown[]) {
+  const blocked = errors.map((error) => findCause(error, ProxyBlockedError)).find(Boolean)
+  if (blocked) {
+    return blocked
+  }
   const messages = errors
     .filter((error): error is Error => error instanceof Error)
     .map((error) => error.message)

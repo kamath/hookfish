@@ -4,11 +4,21 @@ import {
   StreamableHTTPClientTransport,
   UnauthorizedError,
 } from '@modelcontextprotocol/client'
-import { MCP_PROXY_AUTHORIZATION_HEADER } from '@hookfish/api'
+import {
+  MCP_PROXY_AUTHORIZATION_HEADER,
+  MCP_PROXY_HEADERS_HEADER,
+  encodeCustomHeaders,
+} from '@hookfish/api'
 import { getApi } from '../api'
+import { readApiHeaders } from '../auth'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
-import { localUpstreamFetch } from '../upstream'
+import {
+  assertNotProxyBlocked,
+  CorsError,
+  localUpstreamFetch,
+  ProxyBlockedError,
+} from '../upstream'
 import { mcpAppsClientExtensions } from './apps'
 import { BrowserMcpOAuthProvider } from './oauth'
 
@@ -21,6 +31,8 @@ type TraceSink = {
   sourceId: string
   trace: ProtocolTraceEntry[]
   startedAt: number
+  // The SDK rewraps fetch failures without their cause, so keep the original to classify it.
+  fetchError?: unknown
 }
 
 type McpConnection = TraceSink & {
@@ -28,6 +40,7 @@ type McpConnection = TraceSink & {
   transport: StreamableHTTPClientTransport
   endpoint: string
   cloudProxy: boolean
+  headersKey: string
 }
 
 const connections = new Map<string, McpConnection>()
@@ -68,7 +81,20 @@ function jsonValue(value: unknown): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue
 }
 
-function upstreamFetch(connection: TraceSink, cloudProxy: boolean) {
+function sameOrigin(target: string, endpoint: string) {
+  try {
+    return new URL(target).origin === new URL(endpoint).origin
+  } catch {
+    return false
+  }
+}
+
+function upstreamFetch(
+  connection: TraceSink,
+  cloudProxy: boolean,
+  endpoint: string,
+  customHeaders: Record<string, string>,
+) {
   return async (input: string | URL | Request, init?: RequestInit) => {
     const target =
       input instanceof Request
@@ -85,19 +111,44 @@ function upstreamFetch(connection: TraceSink, cloudProxy: boolean) {
     })
     let fetchInput: string | URL | Request = input
     let fetchInit = init
-    if (cloudProxy) {
-      fetchInput = getApi()['mcp-proxy'].$url({ query: { url: target } })
+    // Custom headers go only to the MCP server's origin, never to a separate OAuth
+    // authorization server. A custom Authorization replaces the OAuth bearer token: the
+    // user typed it for this server, and clearing auth removes it to fall back to OAuth.
+    const custom = sameOrigin(target, endpoint) ? Object.entries(customHeaders) : []
+    if (cloudProxy || custom.length > 0) {
       const headers = new Headers(input instanceof Request ? input.headers : init?.headers)
-      const authorization = headers.get('authorization')
-      if (authorization) {
-        // The deployment authenticates its own bearer credentials before this route runs.
-        // Carry the MCP server's credential under a private header and restore it in the proxy.
-        headers.delete('authorization')
-        headers.set(MCP_PROXY_AUTHORIZATION_HEADER, authorization)
-        fetchInit = { ...init, headers }
+      for (const [name, value] of custom) {
+        headers.set(name, value)
       }
+      if (cloudProxy) {
+        fetchInput = getApi()['mcp-proxy'].$url({ query: { url: target } })
+        const authorization = headers.get('authorization')
+        if (authorization) {
+          // The deployment authenticates its own bearer credentials before this route runs.
+          // Carry the MCP server's credential under a private header and restore it in the proxy.
+          headers.delete('authorization')
+          headers.set(MCP_PROXY_AUTHORIZATION_HEADER, authorization)
+        }
+        // The proxy forwards only an allowlist, so the rest ride in one JSON carrier.
+        const carried = Object.fromEntries(
+          custom.filter(([name]) => name.toLowerCase() !== 'authorization'),
+        )
+        for (const name of Object.keys(carried)) {
+          headers.delete(name)
+        }
+        if (Object.keys(carried).length > 0) {
+          headers.set(MCP_PROXY_HEADERS_HEADER, encodeCustomHeaders(carried))
+        }
+      }
+      fetchInit = { ...init, headers }
     }
-    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, fetchInit)
+    let response: Response
+    try {
+      response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, fetchInit)
+    } catch (error) {
+      connection.fetchError = error
+      throw error
+    }
     traceEntry(connection, {
       direction: 'in',
       kind: 'http',
@@ -107,6 +158,14 @@ function upstreamFetch(connection: TraceSink, cloudProxy: boolean) {
         sessionId: response.headers.get('mcp-session-id'),
       },
     })
+    if (cloudProxy && target === endpoint) {
+      try {
+        assertNotProxyBlocked(response, target)
+      } catch (error) {
+        connection.fetchError = error
+        throw error
+      }
+    }
     return response
   }
 }
@@ -132,11 +191,14 @@ function askForJson(label: string, request: unknown, fallback: unknown) {
   }
 }
 
-function isProbeAccessDenied(error: unknown) {
+// Retry with the legacy handshake when the version probe is refused. Servers that predate
+// the probe may reject it outright, and their CORS allowlists may not include its headers.
+function shouldRetryLegacy(error: unknown, fetchError: unknown) {
   return (
-    SdkHttpError.isInstance(error) &&
-    error.status === 403 &&
-    /version negotiation failed/i.test(error.message)
+    (SdkHttpError.isInstance(error) &&
+      error.status === 403 &&
+      /version negotiation failed/i.test(error.message)) ||
+    fetchError instanceof CorsError
   )
 }
 
@@ -149,10 +211,11 @@ async function openMcpTransport(
   authProvider: BrowserMcpOAuthProvider,
   callbackParameters: URLSearchParams | undefined,
   finishAuth: boolean,
+  customHeaders: Record<string, string>,
 ) {
   const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
     authProvider,
-    fetch: upstreamFetch(pending, cloudProxy),
+    fetch: upstreamFetch(pending, cloudProxy, endpoint, customHeaders),
   })
   const client = new Client(CLIENT_INFO, {
     versionNegotiation: { mode },
@@ -205,11 +268,14 @@ export async function getMcpConnection(
   endpoint: string,
 ) {
   const cloudProxy = getCloudProxy()
+  const customHeaders = readApiHeaders(sourceId)
+  const headersKey = encodeCustomHeaders(customHeaders)
   const current = connections.get(sourceId)
   if (
     current &&
     current.endpoint === endpoint &&
-    current.cloudProxy === cloudProxy
+    current.cloudProxy === cloudProxy &&
+    current.headersKey === headersKey
   ) {
     return current
   }
@@ -236,9 +302,15 @@ export async function getMcpConnection(
         authProvider,
         callbackParameters,
         Boolean(callbackParameters),
+        customHeaders,
       )
     } catch (error) {
-      if (!isProbeAccessDenied(error)) {
+      const { fetchError } = pending
+      pending.fetchError = undefined
+      if (fetchError instanceof ProxyBlockedError) {
+        throw fetchError
+      }
+      if (!shouldRetryLegacy(error, fetchError)) {
         throw error
       }
       try {
@@ -251,6 +323,7 @@ export async function getMcpConnection(
           authProvider,
           callbackParameters,
           false,
+          customHeaders,
         )
       } catch (legacyError) {
         throw UnauthorizedError.isInstance(legacyError) ? legacyError : error
@@ -264,6 +337,7 @@ export async function getMcpConnection(
     endpoint,
     sourceId,
     cloudProxy,
+    headersKey,
     trace: pending.trace,
     startedAt: pending.startedAt,
   }
