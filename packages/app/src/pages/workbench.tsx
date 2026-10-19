@@ -676,12 +676,10 @@ function ApiWorkbench({
             }
           }}
           onPointerEnter={() => {
-            if (!consumePointerIntent()) {
+            // Hovering the list while an operation is open must not swap it
+            // out; clicking is how another one gets picked.
+            if (activePane !== 'routes' || !consumePointerIntent()) {
               return
-            }
-            if (activePane !== 'routes') {
-              blurActive()
-              activate('routes', 'command')
             }
             if (heldOpRef.current !== operation.id) {
               holdOp(operation.id)
