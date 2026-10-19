@@ -15,6 +15,7 @@ import { PaneBackButton } from '../components/pane-back-button'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
+import { isProxyBlocked, ProxyBlockedActions } from '../components/proxy-blocked-actions'
 import { QueryStatus, StatusPane } from '../components/query-status'
 import { apiAuthStored, apiHeadersStored, clearApiAuth, fieldsFromForm, saveApiAuth } from '../lib/auth'
 import { listApis } from '../lib/apis'
@@ -229,15 +230,16 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
         </StatusPane>
       )
     }
+    const retry = () => {
+      setAuthDismissed(false)
+      void apiQuery.refetch()
+    }
     return (
-      <QueryStatus
-        error={apiQuery.error}
-        onRetry={() => {
-          setAuthDismissed(false)
-          void apiQuery.refetch()
-        }}
-        onBack={goHome}
-      />
+      <QueryStatus error={apiQuery.error} onRetry={retry} onBack={goHome}>
+        {isProxyBlocked(apiQuery.error) ? (
+          <ProxyBlockedActions onRetry={retry} className="mt-3 justify-center" />
+        ) : null}
+      </QueryStatus>
     )
   }
 

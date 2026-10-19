@@ -8,6 +8,7 @@ import { Brand } from '../components/brand'
 import { focusHeaderField, HeaderInputs } from '../components/header-inputs'
 import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
+import { isProxyBlocked, ProxyBlockedActions } from '../components/proxy-blocked-actions'
 import { QueryMessage, StatusPane } from '../components/query-status'
 import { addApi, removeApi } from '../lib/apis'
 import { saveApiHeaders } from '../lib/auth'
@@ -311,6 +312,12 @@ export function HomePage() {
     }
   }
 
+  function retryOpenSource() {
+    if (openSource.variables) {
+      openSource.mutate(openSource.variables)
+    }
+  }
+
   function launch(entry: CatalogEntry) {
     if (openSource.isPending) {
       return
@@ -486,6 +493,9 @@ export function HomePage() {
                       </span>
                     ) : null}
                 </button>
+                {status?.failed && isProxyBlocked(openSource.error) ? (
+                  <ProxyBlockedActions onRetry={retryOpenSource} className="px-3 pb-2" />
+                ) : null}
               </li>
             )
           })}
@@ -660,6 +670,9 @@ export function HomePage() {
             <p className="mt-2 line-clamp-3 break-words text-sm text-error" role="alert">
               {urlError}
             </p>
+          ) : null}
+          {urlError && isProxyBlocked(openSource.error) ? (
+            <ProxyBlockedActions onRetry={retryOpenSource} className="mt-2" />
           ) : null}
         </form>
         </div>
