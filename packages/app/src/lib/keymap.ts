@@ -111,7 +111,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
     parent: 'specs',
     path: '/apis/$apiId/routes',
     bindings: [
-      { id: 'filter', hotkey: '/', label: 'filter' },
+      { id: 'filter', hotkey: '/', label: 'search' },
       { id: 'next', hotkey: 'J', aliases: ['ArrowDown'], label: 'next' },
       { id: 'previous', hotkey: 'K', aliases: ['ArrowUp'], label: 'previous' },
       { id: 'nextTab', hotkey: 'Tab', label: 'next' },

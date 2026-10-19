@@ -67,11 +67,10 @@ assert.match(stateless, /MCP 2026-07-28/)
 assert.match(stateless, / · /)
 assert.match(stateless, /modern\/stateless/)
 assert.match(stateless, /prompts/)
-assert.match(stateless, /traces/)
+assert.doesNotMatch(stateless, /traces/)
 assert.doesNotMatch(stateless, /OAuth/)
 assert.doesNotMatch(stateless, /sessionless/)
 assert.doesNotMatch(stateless, /bg-paper[^"]*">OAuth/)
-assert.match(stateless, /bg-paper text-mute hover:text-ink/)
 assert.doesNotMatch(stateless, /ml-auto/)
 
 const stateful = renderToString(

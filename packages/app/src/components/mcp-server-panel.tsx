@@ -1,7 +1,5 @@
 import type { ExecutableSource } from '../lib/client-types'
 import { asRecord } from '../lib/build-request'
-import { useMcpTrace } from '../lib/mcp/trace'
-import { Kbd } from './hints'
 
 export function mcpTransportLabel(era: unknown, sessionId: unknown) {
   const protocol = era === 'modern' ? 'modern' : 'legacy SHTTP'
@@ -34,40 +32,17 @@ export function mcpChromeFacts(data: Record<string, unknown>): McpChromeFact[] {
   return facts
 }
 
-export function McpServerPanel({
-  source,
-  traceOpen,
-  onToggleTrace,
-}: {
-  source: ExecutableSource
-  traceOpen?: boolean
-  onToggleTrace?: () => void
-}) {
+export function McpServerPanel({ source }: { source: ExecutableSource }) {
   if (source.kind !== 'mcp') {
     return null
   }
-  return (
-    <McpServerChrome
-      source={source}
-      traceOpen={traceOpen}
-      onToggleTrace={onToggleTrace}
-    />
-  )
+  return <McpServerChrome source={source} />
 }
 
-function McpServerChrome({
-  source,
-  traceOpen,
-  onToggleTrace,
-}: {
-  source: ExecutableSource
-  traceOpen?: boolean
-  onToggleTrace?: () => void
-}) {
+function McpServerChrome({ source }: { source: ExecutableSource }) {
   const data = asRecord(source.adapterData)
   const capabilities = Object.keys(asRecord(data.capabilities))
   const capabilitySet = new Set(capabilities)
-  const entries = useMcpTrace(source.id)
   const counts = source.executables.reduce(
     (current, executable) => {
       if (executable.binding.type !== 'mcp') {
@@ -114,20 +89,6 @@ function McpServerChrome({
             </span>
           )
         })}
-        <button
-          type="button"
-          data-oc-trace-toggle
-          data-oc-command-focus="true"
-          aria-pressed={traceOpen}
-          aria-label={traceOpen ? 'Close protocol traces' : 'Open protocol traces'}
-          className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 font-mono ${
-            traceOpen ? 'bg-paper text-ink' : 'bg-paper text-mute hover:text-ink'
-          }`}
-          onClick={onToggleTrace}
-        >
-          traces {entries.length}
-          <Kbd hotkey="T" />
-        </button>
         {capabilities
           .filter(
             (capability) =>
