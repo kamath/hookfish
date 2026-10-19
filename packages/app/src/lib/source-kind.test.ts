@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { neitherSourceError, probeSource } from './source-kind.ts'
+import { ProxyBlockedError } from './upstream.ts'
 
 {
   const calls: string[] = []
@@ -106,6 +107,15 @@ assert.equal(
     new Error('bare unauthorized response'),
   ]).message,
   'This URL requires authentication, so its source type could not be detected.',
+)
+assert.equal(
+  neitherSourceError([
+    new Error('Could not fetch the spec (403).'),
+    new Error('Error POSTing to endpoint', {
+      cause: new ProxyBlockedError('mcp.example.test blocked the cloud proxy.'),
+    }),
+  ]).message,
+  'mcp.example.test blocked the cloud proxy.',
 )
 
 console.log('source kind inference ok')

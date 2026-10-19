@@ -13,7 +13,12 @@ import { getApi } from '../api'
 import { readApiHeaders } from '../auth'
 import type { JsonValue, ProtocolTraceEntry } from '../client-types'
 import { getCloudProxy } from '../cloud'
-import { localUpstreamFetch } from '../upstream'
+import {
+  assertNotProxyBlocked,
+  CorsError,
+  localUpstreamFetch,
+  ProxyBlockedError,
+} from '../upstream'
 import { mcpAppsClientExtensions } from './apps'
 import { BrowserMcpOAuthProvider } from './oauth'
 
@@ -26,6 +31,8 @@ type TraceSink = {
   sourceId: string
   trace: ProtocolTraceEntry[]
   startedAt: number
+  // The SDK rewraps fetch failures without their cause, so keep the original to classify it.
+  fetchError?: unknown
 }
 
 type McpConnection = TraceSink & {
@@ -135,7 +142,13 @@ function upstreamFetch(
       }
       fetchInit = { ...init, headers }
     }
-    const response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, fetchInit)
+    let response: Response
+    try {
+      response = await (cloudProxy ? fetch : localUpstreamFetch)(fetchInput, fetchInit)
+    } catch (error) {
+      connection.fetchError = error
+      throw error
+    }
     traceEntry(connection, {
       direction: 'in',
       kind: 'http',
@@ -145,6 +158,14 @@ function upstreamFetch(
         sessionId: response.headers.get('mcp-session-id'),
       },
     })
+    if (cloudProxy && target === endpoint) {
+      try {
+        assertNotProxyBlocked(response, target)
+      } catch (error) {
+        connection.fetchError = error
+        throw error
+      }
+    }
     return response
   }
 }
@@ -170,11 +191,14 @@ function askForJson(label: string, request: unknown, fallback: unknown) {
   }
 }
 
-function isProbeAccessDenied(error: unknown) {
+// Retry with the legacy handshake when the version probe is refused. Servers that predate
+// the probe may reject it outright, and their CORS allowlists may not include its headers.
+function shouldRetryLegacy(error: unknown, fetchError: unknown) {
   return (
-    SdkHttpError.isInstance(error) &&
-    error.status === 403 &&
-    /version negotiation failed/i.test(error.message)
+    (SdkHttpError.isInstance(error) &&
+      error.status === 403 &&
+      /version negotiation failed/i.test(error.message)) ||
+    fetchError instanceof CorsError
   )
 }
 
@@ -281,7 +305,12 @@ export async function getMcpConnection(
         customHeaders,
       )
     } catch (error) {
-      if (!isProbeAccessDenied(error)) {
+      const { fetchError } = pending
+      pending.fetchError = undefined
+      if (fetchError instanceof ProxyBlockedError) {
+        throw fetchError
+      }
+      if (!shouldRetryLegacy(error, fetchError)) {
         throw error
       }
       try {
