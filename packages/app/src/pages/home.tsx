@@ -616,17 +616,10 @@ export function HomePage() {
               ) : null}
               <div className="flex gap-2">
                 <button
-                  type="submit"
-                  className={`${primaryButtonClass} flex-1`}
-                  disabled={openSource.isPending || dialogOpen}
-                >
-                  {submittingUrl ? 'Connecting…' : 'Connect'}
-                  {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
-                </button>
-                <button
                   type="button"
                   aria-controls="headers"
-                  className={softButtonClass}
+                  // Same width as the header name column so the two line up.
+                  className={`${softButtonClass} w-2/5 shrink-0`}
                   disabled={openSource.isPending || dialogOpen}
                   // Keep focus inside the form so the launcher controls stay visible.
                   onMouseDown={(event) => event.preventDefault()}
@@ -644,6 +637,14 @@ export function HomePage() {
                 >
                   {headersOpen ? 'Add header' : 'Headers'}
                   {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
+                </button>
+                <button
+                  type="submit"
+                  className={`${primaryButtonClass} min-w-0 flex-1`}
+                  disabled={openSource.isPending || dialogOpen}
+                >
+                  {submittingUrl ? 'Connecting…' : 'Connect'}
+                  {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
                 </button>
               </div>
             </div>
