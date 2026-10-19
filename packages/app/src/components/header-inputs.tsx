@@ -1,13 +1,20 @@
-import { useRef, type ClipboardEvent, type KeyboardEvent, type RefObject } from 'react'
+import type { ClipboardEvent, KeyboardEvent, RefObject } from 'react'
 import type { HeaderEntry } from '@hookfish/api'
 import {
+  addHeaderRow,
+  headerRowsOrBlank,
   isBlankHeader,
   pasteHeaderRows,
   pastedHeaders,
-  withTrailingRow,
   type HeaderField,
 } from '../lib/header-rows'
 import { softButtonClass, softInputClass } from '../lib/ui'
+
+export function focusHeaderField(index: number, field: HeaderField = 'name') {
+  requestAnimationFrame(() => {
+    document.getElementById(`header-${field}-${index}`)?.focus()
+  })
+}
 
 export function HeaderInputs({
   rows,
@@ -24,41 +31,38 @@ export function HeaderInputs({
   firstInputRef?: RefObject<HTMLInputElement | null>
   onFocus?: () => void
 }) {
-  const listRef = useRef<HTMLDivElement>(null)
-  const shown = withTrailingRow(rows)
+  const shown = headerRowsOrBlank(rows)
+  // The only row left can be cleared but not removed.
+  const removable = shown.length > 1 || !isBlankHeader(shown[0])
 
-  function focusName(index: number) {
-    requestAnimationFrame(() => {
-      listRef.current
-        ?.querySelector<HTMLInputElement>(`[data-header-name="${index}"]`)
-        ?.focus()
-    })
-  }
-
-  // Enter steps through the fields: name, value, then the next row's name.
-  function next(event: KeyboardEvent<HTMLInputElement>) {
-    if (
-      event.key !== 'Enter' ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey ||
-      event.nativeEvent.isComposing
-    ) {
-      return
+  // Enter on a filled name moves to its value; on a filled value it adds another row.
+  function enter(index: number, field: HeaderField) {
+    return (event: KeyboardEvent<HTMLInputElement>) => {
+      if (
+        event.key !== 'Enter' ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.nativeEvent.isComposing
+      ) {
+        return
+      }
+      event.preventDefault()
+      if (!event.currentTarget.value.trim()) {
+        return
+      }
+      if (field === 'name') {
+        focusHeaderField(index, 'value')
+        return
+      }
+      const next = addHeaderRow(shown, index)
+      onChange(next.rows)
+      focusHeaderField(next.index)
     }
-    event.preventDefault()
-    const fields = [
-      ...(listRef.current?.querySelectorAll<HTMLInputElement>('input') ?? []),
-    ]
-    fields[fields.indexOf(event.currentTarget) + 1]?.focus()
   }
 
   function update(index: number, field: HeaderField, value: string) {
-    onChange(
-      withTrailingRow(
-        shown.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-      ),
-    )
+    onChange(shown.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
   }
 
   function paste(index: number, field: HeaderField) {
@@ -70,12 +74,12 @@ export function HeaderInputs({
       event.preventDefault()
       const next = pasteHeaderRows(shown, index, pasted)
       onChange(next)
-      focusName(next.length - 1)
+      focusHeaderField(next.length - 1, 'value')
     }
   }
 
   return (
-    <div ref={listRef} className="space-y-1">
+    <div className="space-y-1">
       {shown.map((row, index) => (
         <div key={index} className="flex gap-1">
           <label htmlFor={`header-name-${index}`} className="sr-only">
@@ -85,7 +89,6 @@ export function HeaderInputs({
             <input
               ref={index === 0 ? firstInputRef : undefined}
               id={`header-name-${index}`}
-              data-header-name={index}
               type="text"
               autoComplete="off"
               spellCheck={false}
@@ -97,7 +100,7 @@ export function HeaderInputs({
               value={row.name}
               onChange={(event) => update(index, 'name', event.target.value)}
               onPaste={paste(index, 'name')}
-              onKeyDown={next}
+              onKeyDown={enter(index, 'name')}
               onFocus={onFocus}
             />
           </div>
@@ -117,19 +120,19 @@ export function HeaderInputs({
               value={row.value}
               onChange={(event) => update(index, 'value', event.target.value)}
               onPaste={paste(index, 'value')}
-              onKeyDown={next}
+              onKeyDown={enter(index, 'value')}
               onFocus={onFocus}
             />
           </div>
           <button
             type="button"
             aria-label={`Remove header ${index + 1}`}
-            className={`${softButtonClass} px-3 ${isBlankHeader(row) ? 'invisible' : ''}`}
-            disabled={disabled || isBlankHeader(row)}
+            className={`${softButtonClass} px-3 ${removable ? '' : 'invisible'}`}
+            disabled={disabled || !removable}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
-              onChange(withTrailingRow(shown.filter((_, i) => i !== index)))
-              focusName(Math.min(index, shown.length - 2))
+              onChange(headerRowsOrBlank(shown.filter((_, i) => i !== index)))
+              focusHeaderField(Math.max(0, Math.min(index, shown.length - 2)))
             }}
           >
             ×
@@ -142,8 +145,7 @@ export function HeaderInputs({
         </p>
       ) : (
         <p id="headers-hint" className="text-xs text-mute">
-          Paste .env lines, JSON, or Name: value lines to fill these in. Enter moves to the
-          next field.
+          Paste .env lines, JSON, or Name: value lines to fill these in.
         </p>
       )}
     </div>

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
-import { HeaderInputs } from '../components/header-inputs'
+import { focusHeaderField, HeaderInputs } from '../components/header-inputs'
 import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
@@ -30,7 +30,7 @@ import {
   registryEntries,
   registrySearchRow,
 } from '../lib/registry-search'
-import { isBlankHeader } from '../lib/header-rows'
+import { addHeaderRow, isBlankHeader } from '../lib/header-rows'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 type PendingAuth = {
@@ -546,7 +546,7 @@ export function HomePage() {
               if (event.target === urlRef.current && isSourceUrl(url)) {
                 event.preventDefault()
                 setHeadersOpen(true)
-                requestAnimationFrame(() => headersRef.current?.focus())
+                focusHeaderField(0)
               }
             }}
             onFocus={() => setUrlFocused(true)}
@@ -620,30 +620,30 @@ export function HomePage() {
                   className={`${primaryButtonClass} flex-1`}
                   disabled={openSource.isPending || dialogOpen}
                 >
-                  {submittingUrl ? 'Opening…' : 'Open'}
+                  {submittingUrl ? 'Connecting…' : 'Connect'}
                   {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
                 </button>
                 <button
                   type="button"
-                  aria-expanded={headersOpen}
                   aria-controls="headers"
                   className={softButtonClass}
                   disabled={openSource.isPending || dialogOpen}
                   // Keep focus inside the form so the launcher controls stay visible.
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
-                    const next = !headersOpen
-                    setHeadersOpen(next)
                     setHeadersError(undefined)
-                    if (next) {
-                      requestAnimationFrame(() => headersRef.current?.focus())
-                    } else {
-                      urlRef.current?.focus()
+                    if (!headersOpen) {
+                      setHeadersOpen(true)
+                      focusHeaderField(0)
+                      return
                     }
+                    const next = addHeaderRow(headerRows)
+                    setHeaderRows(next.rows)
+                    focusHeaderField(next.index)
                   }}
                 >
-                  {headersOpen ? 'Hide headers' : 'Headers'}
-                  {headersOpen || showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
+                  {headersOpen ? 'Add header' : 'Headers'}
+                  {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
                 </button>
               </div>
             </div>

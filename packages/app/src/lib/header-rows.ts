@@ -2,14 +2,35 @@ import { parseHeaderText, type HeaderEntry } from '@hookfish/api'
 
 export type HeaderField = 'name' | 'value'
 
+const blankHeader = (): HeaderEntry => ({ name: '', value: '' })
+
 export function isBlankHeader(row: HeaderEntry) {
   return !row.name.trim() && !row.value.trim()
 }
 
-// Keeps a blank row at the end so there is always somewhere to type the next header.
-export function withTrailingRow(rows: HeaderEntry[]): HeaderEntry[] {
-  const last = rows.at(-1)
-  return last && isBlankHeader(last) ? rows : [...rows, { name: '', value: '' }]
+// There is always at least one row to type into.
+export function headerRowsOrBlank(rows: HeaderEntry[]): HeaderEntry[] {
+  return rows.length > 0 ? rows : [blankHeader()]
+}
+
+// Adds a blank row after `index` and returns where it is. An existing blank row there is
+// reused, so pressing Enter twice does not stack up empty rows.
+export function addHeaderRow(
+  rows: HeaderEntry[],
+  index = rows.length - 1,
+): { rows: HeaderEntry[]; index: number } {
+  const shown = headerRowsOrBlank(rows)
+  const next = shown[index + 1]
+  if (next && isBlankHeader(next)) {
+    return { rows: shown, index: index + 1 }
+  }
+  if (index === shown.length - 1 && isBlankHeader(shown[index])) {
+    return { rows: shown, index }
+  }
+  return {
+    rows: [...shown.slice(0, index + 1), blankHeader(), ...shown.slice(index + 1)],
+    index: index + 1,
+  }
 }
 
 // A paste into a name field fills rows whenever it reads as headers. A paste into a value
@@ -22,7 +43,7 @@ export function pastedHeaders(text: string, field: HeaderField): HeaderEntry[] |
 }
 
 // Spreads pasted headers from the row they were pasted into. A pasted name replaces any row
-// with the same name, and blank rows other than the trailing one are dropped.
+// with the same name, and blank rows are dropped.
 export function pasteHeaderRows(
   rows: HeaderEntry[],
   index: number,
@@ -31,7 +52,7 @@ export function pasteHeaderRows(
   const names = new Set(pasted.map((entry) => entry.name.trim().toLowerCase()))
   const keep = (row: HeaderEntry) =>
     !isBlankHeader(row) && !names.has(row.name.trim().toLowerCase())
-  return withTrailingRow([
+  return headerRowsOrBlank([
     ...rows.slice(0, index + 1).filter(keep),
     ...pasted,
     ...rows.slice(index + 1).filter(keep),

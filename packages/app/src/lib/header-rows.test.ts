@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict'
-import { pasteHeaderRows, pastedHeaders, withTrailingRow } from './header-rows'
+import { addHeaderRow, headerRowsOrBlank, pasteHeaderRows, pastedHeaders } from './header-rows'
 
 const blank = { name: '', value: '' }
+const a = { name: 'X-A', value: '1' }
+const b = { name: 'X-B', value: '2' }
 
-assert.deepEqual(withTrailingRow([]), [blank])
-assert.deepEqual(withTrailingRow([blank]), [blank])
-assert.deepEqual(withTrailingRow([{ name: 'X-A', value: '1' }]), [
-  { name: 'X-A', value: '1' },
-  blank,
-])
+assert.deepEqual(headerRowsOrBlank([]), [blank])
+assert.deepEqual(headerRowsOrBlank([a]), [a])
+
+assert.deepEqual(addHeaderRow([a]), { rows: [a, blank], index: 1 })
+assert.deepEqual(addHeaderRow([a, b], 0), { rows: [a, blank, b], index: 1 })
+assert.deepEqual(addHeaderRow([a, blank], 0), { rows: [a, blank], index: 1 })
+assert.deepEqual(addHeaderRow([a, blank]), { rows: [a, blank], index: 1 })
+assert.deepEqual(addHeaderRow([]), { rows: [blank], index: 0 })
 
 assert.deepEqual(pastedHeaders('API_KEY=k1', 'name'), [{ name: 'API_KEY', value: 'k1' }])
 assert.equal(pastedHeaders('Bearer a=b', 'value'), undefined)
@@ -32,15 +36,9 @@ assert.deepEqual(
     { name: 'X-Keep', value: '1' },
     { name: 'X-Api-Key', value: 'new' },
     { name: 'X-Team', value: 'core' },
-    blank,
   ],
 )
 
-assert.deepEqual(
-  pasteHeaderRows([blank, { name: 'X-After', value: '2' }, blank], 0, [
-    { name: 'X-A', value: '1' },
-  ]),
-  [{ name: 'X-A', value: '1' }, { name: 'X-After', value: '2' }, blank],
-)
+assert.deepEqual(pasteHeaderRows([blank, b], 0, [a]), [a, b])
 
 console.log('header rows tests passed')
