@@ -14,7 +14,7 @@ import type {
   JsonSchema,
   McpBinding,
 } from '../client-types'
-import { toolApp, visibleToModel, type McpToolApp } from './apps'
+import { isAppResource, toolApp, visibleToModel, type McpToolApp } from './apps'
 import { withMcpConnection } from './client'
 import { hasMcpOAuthTokens } from './oauth'
 
@@ -188,12 +188,14 @@ function toolExecutable(tool: Tool) {
 }
 
 function resourceExecutable(resource: Resource) {
+  const app = isAppResource(resource) ? { resourceUri: resource.uri } : undefined
   return executable(
     {
       type: 'mcp',
       kind: 'resource',
       method: 'resources/read',
       name: resource.uri,
+      ...(app ? { app } : {}),
     },
     {
       type: 'object',
@@ -203,7 +205,12 @@ function resourceExecutable(resource: Resource) {
     {
       title: resource.title,
       description: resource.description,
-      annotations: contentAnnotations(resource.annotations),
+      annotations: [
+        ...(app
+          ? [{ label: 'app', detail: 'An MCP App view. Reading it renders the view.' }]
+          : []),
+        ...contentAnnotations(resource.annotations),
+      ],
     },
   )
 }

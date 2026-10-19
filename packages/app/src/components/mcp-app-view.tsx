@@ -44,7 +44,7 @@ function useAppearance(): ThemeAppearance {
 
 function hostContext(app: McpAppContext, appearance: ThemeAppearance): McpUiHostContext {
   return {
-    toolInfo: { tool: app.tool as never },
+    ...(app.tool ? { toolInfo: { tool: app.tool as never } } : {}),
     theme: appearance,
     styles: { variables: hostStyleVariables(appearance) as never },
     displayMode: 'inline',
@@ -128,8 +128,10 @@ export function McpAppView({
 
     bridge.addEventListener('initialized', () => {
       traceMcpApp(sourceId, { direction: 'in', summary: 'ui/notifications/initialized' })
-      void bridge.sendToolInput({ arguments: app.arguments })
-      void bridge.sendToolResult(app.result as never)
+      if (app.tool) {
+        void bridge.sendToolInput({ arguments: app.arguments ?? {} })
+        void bridge.sendToolResult(app.result as never)
+      }
     })
     bridge.addEventListener('sizechange', ({ height: next }) => {
       if (next !== undefined) {

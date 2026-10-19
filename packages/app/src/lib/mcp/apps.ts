@@ -44,6 +44,12 @@ export function toolApp(tool: Partial<Tool>): McpToolApp | undefined {
   return { resourceUri, visibility: visibility?.length ? visibility : undefined }
 }
 
+// The ui:// scheme is reserved for MCP App views, so trust it even when a server leaves the
+// listing's mimeType off.
+export function isAppResource(resource: { uri: string; mimeType?: string }) {
+  return resource.mimeType === RESOURCE_MIME_TYPE || resource.uri.startsWith('ui://')
+}
+
 // Visibility defaults to ["model", "app"] when absent.
 export function visibleToModel(app: McpToolApp | undefined) {
   return !app?.visibility || app.visibility.includes('model')

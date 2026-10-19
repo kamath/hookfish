@@ -144,20 +144,21 @@ export type ExecutionResult = {
   mcpApp?: McpAppContext
 }
 
-// What a response pane needs to render an MCP App view for a completed tool call.
+// What a response pane needs to render an MCP App view: after a tool call, or on its own when
+// the ui:// resource is read directly (then there is no tool, input, or result to hand it).
 export type McpAppContext = {
   sourceId: string
   endpoint: string
   resourceUri: string
-  tool: {
+  tool?: {
     name: string
     title?: string
     description?: string
     inputSchema: JsonSchema
     _meta?: Record<string, JsonValue>
   }
-  arguments: Record<string, JsonValue>
-  result: JsonValue
+  arguments?: Record<string, JsonValue>
+  result?: JsonValue
 }
 
 export type ProtocolTraceEntry = {

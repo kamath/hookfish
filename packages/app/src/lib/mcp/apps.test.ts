@@ -6,6 +6,7 @@ import {
   appResourceFrom,
   callableFromApp,
   clampAppHeight,
+  isAppResource,
   isOpenableLink,
   mcpAppsClientExtensions,
   toolApp,
@@ -121,3 +122,8 @@ assert.equal(clampAppHeight(10, 360), 80)
 assert.equal(clampAppHeight(512.2, 360), 513)
 assert.equal(clampAppHeight(99999, 360), 4000)
 console.log('mcp apps helpers ok')
+
+assert.equal(isAppResource({ uri: 'ui://abc/view' }), true)
+assert.equal(isAppResource({ uri: 'https://x/view', mimeType: 'text/html;profile=mcp-app' }), true)
+assert.equal(isAppResource({ uri: 'file:///readme.md', mimeType: 'text/markdown' }), false)
+console.log('mcp app resource detection ok')

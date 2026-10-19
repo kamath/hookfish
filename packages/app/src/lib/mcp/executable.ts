@@ -120,7 +120,13 @@ async function executeMcp(
           : undefined
       const app = invocation.binding.app
       const mcpApp: McpAppContext | undefined =
-        app && invocation.appTool && !inputRequired
+        app && !inputRequired && invocation.binding.kind === 'resource'
+          ? {
+              sourceId: invocation.sourceId,
+              endpoint: invocation.endpoint,
+              resourceUri: app.resourceUri,
+            }
+          : app && invocation.appTool && !inputRequired
           ? {
               sourceId: invocation.sourceId,
               endpoint: invocation.endpoint,
