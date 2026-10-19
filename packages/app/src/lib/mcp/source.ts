@@ -14,6 +14,7 @@ import type {
   JsonSchema,
   McpBinding,
 } from '../client-types'
+import { isAppResource, toolApp, visibleToModel, type McpToolApp } from './apps'
 import { withMcpConnection } from './client'
 import { hasMcpOAuthTokens } from './oauth'
 
@@ -109,6 +110,7 @@ function executable(
     description?: string
     outputSchema?: JsonSchema
     annotations?: ExecutableAnnotation[]
+    group?: string
   },
 ): Executable {
   const labels = {
@@ -136,7 +138,7 @@ function executable(
     accent: labels.accent,
     summary: value.title,
     description: value.description,
-    groups: [labels.group],
+    groups: [value.group ?? labels.group],
     binding,
     inputSchema,
     inputUiSchema: FORM_UI,
@@ -145,13 +147,33 @@ function executable(
   }
 }
 
+export const APP_ONLY_TOOLS_GROUP = 'App-only tools'
+
+export function appAnnotations(app: McpToolApp | undefined): ExecutableAnnotation[] {
+  if (!app) {
+    return []
+  }
+  const shown: ExecutableAnnotation[] = [
+    { label: 'app', detail: `Renders the MCP App ${app.resourceUri} after a call.` },
+  ]
+  if (!visibleToModel(app)) {
+    shown.push({
+      label: 'app-only',
+      detail: 'Hidden from the model; meant to be called by its MCP App view.',
+    })
+  }
+  return shown
+}
+
 function toolExecutable(tool: Tool) {
+  const app = toolApp(tool)
   return executable(
     {
       type: 'mcp',
       kind: 'tool',
       method: 'tools/call',
       name: tool.name,
+      ...(app ? { app } : {}),
     },
     tool.inputSchema as JsonSchema,
     {
@@ -159,18 +181,21 @@ function toolExecutable(tool: Tool) {
       title: tool.title ?? tool.annotations?.title,
       description: tool.description,
       outputSchema: tool.outputSchema as JsonSchema | undefined,
-      annotations: toolAnnotations(tool.annotations),
+      annotations: [...appAnnotations(app), ...toolAnnotations(tool.annotations)],
+      group: visibleToModel(app) ? undefined : APP_ONLY_TOOLS_GROUP,
     },
   )
 }
 
 function resourceExecutable(resource: Resource) {
+  const app = isAppResource(resource) ? { resourceUri: resource.uri } : undefined
   return executable(
     {
       type: 'mcp',
       kind: 'resource',
       method: 'resources/read',
       name: resource.uri,
+      ...(app ? { app } : {}),
     },
     {
       type: 'object',
@@ -180,7 +205,12 @@ function resourceExecutable(resource: Resource) {
     {
       title: resource.title,
       description: resource.description,
-      annotations: contentAnnotations(resource.annotations),
+      annotations: [
+        ...(app
+          ? [{ label: 'app', detail: 'An MCP App view. Reading it renders the view.' }]
+          : []),
+        ...contentAnnotations(resource.annotations),
+      ],
     },
   )
 }
@@ -293,6 +323,10 @@ export async function loadMcpSource(
           description: 'Parameterized resource URIs available to read.',
         },
         { name: 'Prompts', description: 'Prompt templates exposed by this server.' },
+        {
+          name: APP_ONLY_TOOLS_GROUP,
+          description: 'Tools only MCP App views are meant to call.',
+        },
       ],
       labels: {
         source: 'MCP server',

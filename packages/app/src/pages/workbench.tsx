@@ -701,6 +701,9 @@ function ApiWorkbench({
             {operation.badge}
           </span>
           <span className="min-w-0 truncate font-mono text-xs">{operation.name}</span>
+          {operation.annotations?.some((annotation) => annotation.label === 'app') ? (
+            <span className="shrink-0 bg-ink/10 px-1 font-mono text-[10px] text-mute">app</span>
+          ) : null}
           {description ? (
             <span className="min-w-0 flex-1 truncate text-xs text-faint">{description}</span>
           ) : null}

@@ -217,6 +217,7 @@ export const paneConfig: Record<Pane, PaneConfig> = {
         label: 'resend',
       },
       { id: 'details', hotkey: 'H', label: 'details', flag: 'hasDetails' },
+      { id: 'view', hotkey: 'V', label: 'toggle app/JSON', flag: 'hasApp' },
       {
         id: 'children',
         hotkey: 'A',
