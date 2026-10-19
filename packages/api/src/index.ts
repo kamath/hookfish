@@ -28,6 +28,8 @@ export {
   encodeCustomHeaders,
   isAllowedCustomHeader,
   isHeaderName,
-  parseHeaderLines,
+  parseHeaderText,
+  validateHeaderEntries,
+  type HeaderEntry,
   type ParsedHeaders,
 } from './headers'

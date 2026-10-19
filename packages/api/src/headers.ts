@@ -74,30 +74,89 @@ export function decodeCustomHeaders(raw: string | null | undefined) {
   return headers
 }
 
+export type HeaderEntry = { name: string; value: string }
+
 export type ParsedHeaders =
   | { ok: true; headers: Record<string, string> }
   | { ok: false; error: string }
 
-// Parses one `Name: value` pair per line. Blank lines are ignored.
-export function parseHeaderLines(text: string): ParsedHeaders {
-  const headers: Record<string, string> = {}
-  const lines = text.split(/\r?\n/)
-  for (const [index, line] of lines.entries()) {
-    if (!line.trim()) {
+function unquote(value: string) {
+  const quote = value[0]
+  if ((quote === '"' || quote === "'") && value.length > 1 && value.endsWith(quote)) {
+    return value.slice(1, -1)
+  }
+  return value
+}
+
+function jsonEntries(text: string): HeaderEntry[] | undefined {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return undefined
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return undefined
+  }
+  const entries: HeaderEntry[] = []
+  for (const [name, value] of Object.entries(parsed)) {
+    if (typeof value === 'object' && value !== null) {
+      return undefined
+    }
+    entries.push({ name, value: value === null ? '' : String(value) })
+  }
+  return entries
+}
+
+// Reads pasted headers as a JSON object, `.env` lines (`NAME=value`, optional `export`,
+// quotes, `#` comments), or `Name: value` lines. The earlier of `=` and `:` splits a line,
+// so `Authorization: Bearer a=b` and `TOKEN=a:b` both read as intended. Returns undefined
+// when the text is not in one of those shapes, so callers can treat it as a plain value.
+export function parseHeaderText(text: string): HeaderEntry[] | undefined {
+  const trimmed = text.trim()
+  if (trimmed.startsWith('{')) {
+    return jsonEntries(trimmed)
+  }
+  const entries: HeaderEntry[] = []
+  for (const raw of trimmed.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) {
       continue
     }
-    const separator = line.indexOf(':')
-    const name = (separator === -1 ? line : line.slice(0, separator)).trim()
-    const value = separator === -1 ? '' : line.slice(separator + 1).trim()
-    const lineLabel = `Line ${index + 1}`
-    if (separator === -1) {
-      return { ok: false, error: `${lineLabel}: use "Name: value".` }
+    const body = line.replace(/^export\s+/, '')
+    const separators = [body.indexOf('='), body.indexOf(':')].filter((index) => index > 0)
+    if (separators.length === 0) {
+      return undefined
+    }
+    const separator = Math.min(...separators)
+    entries.push({
+      name: body.slice(0, separator).trim(),
+      value: unquote(body.slice(separator + 1).trim()),
+    })
+  }
+  return entries.length > 0 ? entries : undefined
+}
+
+// Validates header rows. Rows with neither a name nor a value are ignored.
+export function validateHeaderEntries(entries: HeaderEntry[]): ParsedHeaders {
+  const headers: Record<string, string> = {}
+  for (const entry of entries) {
+    const name = entry.name.trim()
+    const value = entry.value.trim()
+    if (!name && !value) {
+      continue
+    }
+    if (!name) {
+      return { ok: false, error: 'Each header value needs a name.' }
     }
     if (!isHeaderName(name)) {
-      return { ok: false, error: `${lineLabel}: "${name}" is not a valid header name.` }
+      return { ok: false, error: `"${name}" is not a valid header name.` }
     }
     if (!isAllowedCustomHeader(name)) {
-      return { ok: false, error: `${lineLabel}: ${name} cannot be set.` }
+      return { ok: false, error: `${name} cannot be set.` }
+    }
+    if (!isHeaderValue(value)) {
+      return { ok: false, error: `${name} has a line break in its value.` }
     }
     headers[name] = value
   }

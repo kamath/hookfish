@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { parseHeaderLines } from '@hookfish/api'
+import { validateHeaderEntries, type HeaderEntry } from '@hookfish/api'
 import { UnauthorizedError } from '@modelcontextprotocol/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { AuthRedirect, finishPendingAuthRedirect } from '../components/auth-status'
 import { Brand } from '../components/brand'
+import { HeaderInputs } from '../components/header-inputs'
 import { HomepageLaunchHint } from '../components/homepage-launch-hint'
 import { KeyHints, Kbd } from '../components/hints'
 import { QueryMessage, StatusPane } from '../components/query-status'
@@ -29,6 +30,7 @@ import {
   registryEntries,
   registrySearchRow,
 } from '../lib/registry-search'
+import { isBlankHeader } from '../lib/header-rows'
 import { primaryButtonClass, softButtonClass, softInputClass } from '../lib/ui'
 
 type PendingAuth = {
@@ -73,12 +75,12 @@ export function HomePage() {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const urlRef = useRef<HTMLInputElement>(null)
-  const headersRef = useRef<HTMLTextAreaElement>(null)
+  const headersRef = useRef<HTMLInputElement>(null)
   const panelRefs = useRef<Record<string, HTMLElement | null>>({})
   const [url, setUrl] = useState('')
   const [urlFocused, setUrlFocused] = useState(false)
   const [headersOpen, setHeadersOpen] = useState(false)
-  const [headersText, setHeadersText] = useState('')
+  const [headerRows, setHeaderRows] = useState<HeaderEntry[]>([])
   const [headersError, setHeadersError] = useState<string>()
   const [activeRow, setActiveRow] = useState(0)
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
@@ -163,7 +165,7 @@ export function HomePage() {
         queryKey: apisQueryOptions.queryKey,
       })
       setUrl('')
-      setHeadersText('')
+      setHeaderRows([])
       setHeadersOpen(false)
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
@@ -191,7 +193,7 @@ export function HomePage() {
   })
   const submittingUrl = openSource.isPending && !openSource.variables?.entryId
   const showSubmitButtons =
-    (urlFocused || submittingUrl || (headersOpen && Boolean(headersText.trim()))) &&
+    (urlFocused || submittingUrl || (headersOpen && headerRows.some((row) => !isBlankHeader(row)))) &&
     (isSourceUrl(url) || submittingUrl)
   const urlError =
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
@@ -293,7 +295,7 @@ export function HomePage() {
       if (!formRef.current?.reportValidity()) {
         return
       }
-      const parsed = parseHeaderLines(headersOpen ? headersText : '')
+      const parsed = validateHeaderEntries(headersOpen ? headerRows : [])
       if (!parsed.ok) {
         setHeadersError(parsed.error)
         headersRef.current?.focus()
@@ -530,6 +532,23 @@ export function HomePage() {
               event.preventDefault()
               submit()
             }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.altKey || event.nativeEvent.isComposing) {
+                return
+              }
+              // Mod+Enter opens the source from any field in the launcher.
+              if (event.metaKey || event.ctrlKey) {
+                event.preventDefault()
+                submit()
+                return
+              }
+              // For a source URL, Enter moves on to the headers instead of opening it.
+              if (event.target === urlRef.current && isSourceUrl(url)) {
+                event.preventDefault()
+                setHeadersOpen(true)
+                requestAnimationFrame(() => headersRef.current?.focus())
+              }
+            }}
             onFocus={() => setUrlFocused(true)}
             onBlur={(event) => {
               const next = event.relatedTarget
@@ -579,43 +598,20 @@ export function HomePage() {
           {showSubmitButtons ? (
             <div className="mt-2 space-y-2">
               {headersOpen ? (
-                <div>
-                  <label htmlFor="headers" className="sr-only">
-                    Request headers, one Name: value per line
-                  </label>
-                  <textarea
-                    ref={headersRef}
-                    id="headers"
-                    name="headers"
-                    rows={3}
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={openSource.isPending || dialogOpen}
-                    aria-invalid={Boolean(headersError)}
-                    aria-describedby={headersError ? 'headers-error' : undefined}
-                    className={`${softInputClass} resize-y font-mono text-xs`}
-                    placeholder={'Authorization: Bearer …\nX-API-Key: …'}
-                    value={headersText}
-                    onChange={(event) => {
-                      setHeadersText(event.target.value)
+                <div id="headers">
+                  <HeaderInputs
+                    rows={headerRows}
+                    onChange={(rows) => {
+                      setHeaderRows(rows)
                       setHeadersError(undefined)
                     }}
+                    error={headersError}
+                    disabled={openSource.isPending || dialogOpen}
+                    firstInputRef={headersRef}
                     onFocus={() => {
                       activate('specs', 'edit')
                     }}
-                    onKeyDown={(event) => {
-                      // Enter adds a line here; Mod+Enter opens the source.
-                      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                        event.preventDefault()
-                        formRef.current?.requestSubmit()
-                      }
-                    }}
                   />
-                  {headersError ? (
-                    <p id="headers-error" className="mt-1 text-sm text-error" role="alert">
-                      {headersError}
-                    </p>
-                  ) : null}
                 </div>
               ) : null}
               <div className="flex gap-2">
@@ -625,7 +621,7 @@ export function HomePage() {
                   disabled={openSource.isPending || dialogOpen}
                 >
                   {submittingUrl ? 'Opening…' : 'Open'}
-                  {showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
+                  {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
                 </button>
                 <button
                   type="button"
@@ -647,6 +643,7 @@ export function HomePage() {
                   }}
                 >
                   {headersOpen ? 'Hide headers' : 'Headers'}
+                  {headersOpen || showKeybindings ? null : <Kbd hotkey="Enter" persistent />}
                 </button>
               </div>
             </div>
