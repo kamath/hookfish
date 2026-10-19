@@ -235,11 +235,14 @@ export function WorkbenchPage({ params, search, onSearchChange }: WorkbenchRoute
       void apiQuery.refetch()
     }
     return (
-      <QueryStatus error={apiQuery.error} onRetry={retry} onBack={goHome}>
-        {isProxyBlocked(apiQuery.error) ? (
-          <ProxyBlockedActions onRetry={retry} className="mt-3 justify-center" />
-        ) : null}
-      </QueryStatus>
+      <QueryStatus
+        error={apiQuery.error}
+        errorAction={
+          isProxyBlocked(apiQuery.error) ? <ProxyBlockedActions onRetry={retry} /> : null
+        }
+        onRetry={retry}
+        onBack={goHome}
+      />
     )
   }
 
