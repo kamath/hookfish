@@ -321,7 +321,8 @@ export function useKeybindingsEnabled() {
 
 export function useShowKeybindings() {
   const enabled = useKeybindingsEnabled()
-  return enabled && useAtomValue(modeAtom) === 'command'
+  const mode = useAtomValue(modeAtom)
+  return enabled && mode === 'command'
 }
 
 const registrationsAtom = atom(new Map<symbol, Registration>())
