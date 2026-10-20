@@ -34,6 +34,7 @@ paths:
         headers: { ...Object.fromEntries(headers), 'content-type': 'text/event-stream' },
       })
     }
+    headers.set('content-encoding', 'br')
     return new Response('{"jsonrpc":"2.0","id":1,"result":{}}', {
       status: 200,
       headers,
@@ -156,6 +157,8 @@ const proxied = await api.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse',
 })
 assert.equal(proxied.status, 200)
 assert.equal(proxied.headers.get('mcp-session-id'), 'session-1')
+assert.equal(proxied.headers.get('content-encoding'), null, 'decoded bodies drop content-encoding')
+assert.equal(await proxied.text(), '{"jsonrpc":"2.0","id":1,"result":{}}')
 assert.equal(seen.at(-1)?.url, 'https://mcp.test/sse')
 assert.equal(seen.at(-1)?.init?.body, initializeBody)
 

@@ -4,12 +4,13 @@ import { type ReactNode, useEffect, useLayoutEffect } from 'react'
 import { Brand } from './components/brand'
 import { CloudToggle } from './components/cloud-toggle'
 import { GitHubLink } from './components/github-link'
-import { Kbd } from './components/hints'
+import { Kbd, KeyHints } from './components/hints'
 import { BackCaret } from './components/pane-back-button'
 import { QueryStatus } from './components/query-status'
 import { ThemeToggle } from './components/theme-toggle'
 import { configureApp } from './config'
 import { hydrateCloudProxy } from './lib/cloud'
+import { useMcpTrace } from './lib/mcp/trace'
 import { bindEnterMode, useGlobalKeybindings } from './lib/keymap'
 import { bindModeFromFocus } from './lib/mode'
 import { bindTheme } from './lib/theme'
@@ -61,45 +62,114 @@ function AppToolbar() {
   return (
     <div className="flex shrink-0 items-center gap-2 px-3 py-1.5 md:gap-3 md:px-4">
       {source ? (
-        <>
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
           <Brand compact />
-          <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
-          {source.onClearAuth ? (
-            <button
-              type="button"
-              className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
-              aria-label="Clear auth"
-              disabled={source.authPending}
-              onClick={() => {
-                void source.onClearAuth?.()
-              }}
-            >
-              <span className="oc-bar-action-label">Clear auth</span>
-              <span className="oc-bar-action-icon" aria-hidden="true">
-                <TrashIcon />
+          {source.onBack ? (
+            <>
+              <button
+                type="button"
+                className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-1.5 text-sm leading-4 text-mute hover:text-ink"
+                aria-label={source.backLabel ?? 'Back'}
+                onClick={source.onBack}
+              >
+                <span className="oc-bar-action-icon" aria-hidden="true">
+                  <BackCaret />
+                </span>
+                <span className="oc-bar-action-label">{source.backLabel ?? 'Back'}</span>
+                <KeyHints>
+                  <Kbd hotkey="Escape" />
+                </KeyHints>
+              </button>
+              <span aria-hidden="true" className="oc-bar-action-label text-sm text-faint">
+                /
               </span>
-              <Kbd hotkey="Mod+Backspace" />
-            </button>
+            </>
           ) : null}
-        </>
+          <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
+        </nav>
       ) : null}
-      <div className="ml-auto flex shrink-0 items-center">
-        {source?.onBack ? (
+      <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+        {source?.traceSourceId && source.onToggleTrace ? (
+          <TraceToggle
+            sourceId={source.traceSourceId}
+            open={Boolean(source.traceOpen)}
+            onToggle={source.onToggleTrace}
+          />
+        ) : null}
+        {source?.onClearAuth ? (
           <button
             type="button"
-            className="oc-chrome-back oc-bar-action inline-flex shrink-0 items-center justify-center text-sm leading-4 text-mute hover:text-ink"
-            aria-label={source.backLabel}
-            onClick={source.onBack}
+            className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
+            aria-label="Clear auth"
+            disabled={source.authPending}
+            onClick={() => {
+              void source.onClearAuth?.()
+            }}
           >
-            <BackCaret />
-            <Kbd hotkey="Escape" />
+            <span className="oc-bar-action-label">Clear auth</span>
+            <span className="oc-bar-action-icon" aria-hidden="true">
+              <TrashIcon />
+            </span>
+            <Kbd hotkey="Mod+Backspace" />
           </button>
         ) : null}
-        <CloudToggle />
-        <GitHubLink />
-        <ThemeToggle />
+        <div className="flex shrink-0 items-center">
+          <CloudToggle />
+          <GitHubLink />
+          <ThemeToggle />
+        </div>
       </div>
     </div>
+  )
+}
+
+function TraceToggle({
+  sourceId,
+  open,
+  onToggle,
+}: {
+  sourceId: string
+  open: boolean
+  onToggle: () => void
+}) {
+  const entries = useMcpTrace(sourceId)
+
+  return (
+    <button
+      type="button"
+      data-oc-trace-toggle
+      data-oc-command-focus="true"
+      aria-pressed={open}
+      aria-label={open ? 'Close protocol traces' : 'Open protocol traces'}
+      className={`oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 ${
+        open ? 'text-ink' : 'text-mute hover:text-ink'
+      }`}
+      onClick={onToggle}
+    >
+      <span className="oc-bar-action-label">Traces</span>
+      <span className="oc-bar-action-icon" aria-hidden="true">
+        <TraceIcon />
+      </span>
+      <span className="font-mono text-xs">{entries.length}</span>
+      <Kbd hotkey="T" />
+    </button>
+  )
+}
+
+function TraceIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12h4l3-7 4 14 3-7h4" />
+    </svg>
   )
 }
 

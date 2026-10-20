@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { AuthCallback, AuthRedirect } from '../components/auth-status'
 import { Kbd } from '../components/hints'
-import { PaneBackButton } from '../components/pane-back-button'
 import { McpServerPanel } from '../components/mcp-server-panel'
 import { ExecutableClient } from '../components/operation-client'
 import { ProtocolTrace } from '../components/protocol-trace'
@@ -723,6 +722,9 @@ function ApiWorkbench({
 
   useSourceToolbar({
     title: api.title,
+    traceSourceId: hasTrace ? api.id : undefined,
+    traceOpen: routePane === 'trace' || activePane === 'trace',
+    onToggleTrace: hasTrace ? openTrace : undefined,
     onClearAuth,
     authPending,
     backLabel,
@@ -770,14 +772,10 @@ function ApiWorkbench({
           </div>
         </div>
       ) : null}
-      <McpServerPanel
-        source={api}
-        traceOpen={routePane === 'trace' || activePane === 'trace'}
-        onToggleTrace={openTrace}
-      />
+      <McpServerPanel source={api} />
 
       {routePane === 'trace' || activePane === 'trace' ? (
-        <ProtocolTrace sourceId={api.id} onClose={stepBack} />
+        <ProtocolTrace sourceId={api.id} />
       ) : (
         <div
           className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${
@@ -817,15 +815,9 @@ function ApiWorkbench({
               </div>
             ) : (
               <div className="flex h-9 w-full items-stretch gap-2">
-                {activePane === 'routes' ? (
-                  <PaneBackButton
-                    label={previousPaneTitle('routes', api.labels) ?? api.labels.sourcePlural}
-                    onClick={stepBack}
-                  />
-                ) : null}
                 <div className="relative h-9 min-w-0 w-full max-w-[26rem] flex-1">
                   <label htmlFor="operation-filter" className="sr-only">
-                    Filter {api.labels.executablePlural}
+                    Search
                   </label>
                   <input
                     id="operation-filter"
@@ -841,12 +833,12 @@ function ApiWorkbench({
                       activate('routes', 'edit')
                     }}
                     onChange={(event) => setFilterValue(event.target.value)}
-                    placeholder={`Filter ${api.labels.executablePlural}`}
+                    placeholder="Search"
                   />
                   {filterValue ? (
                     <button
                       type="button"
-                      aria-label={`Clear ${api.labels.executable} filter`}
+                      aria-label="Clear search"
                       className={`absolute inset-y-0 inline-flex w-9 items-center justify-center text-mute hover:text-ink focus-visible:text-ink ${
                         keybindings ? 'right-8' : 'right-0'
                       }`}
@@ -927,8 +919,6 @@ function ApiWorkbench({
             canNext={canNextOperation}
             onPrevious={() => navigateOperation(-1)}
             onNext={() => navigateOperation(1)}
-            onBack={stepBack}
-            backLabel={previousPaneTitle('input', api.labels) ?? api.labels.executablePlural}
           />
         ) : null}
         </div>

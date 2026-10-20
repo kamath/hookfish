@@ -11,8 +11,12 @@ const REQUEST_HEADER_ALLOWLIST = new Set([
   'last-event-id',
 ])
 
+// fetch() hands back a decoded body, so the upstream's content-encoding no longer describes it.
+// Passing it through makes the browser try to decompress plain bytes and fail, as happens on
+// Node for brotli-compressed OAuth metadata.
 const RESPONSE_HEADER_BLOCKLIST = new Set([
   'connection',
+  'content-encoding',
   'content-length',
   'set-cookie',
   'transfer-encoding',

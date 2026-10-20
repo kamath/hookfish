@@ -9,7 +9,6 @@ import {
   type ProtocolRpc,
 } from '../lib/mcp/trace'
 import { Kbd } from './hints'
-import { PaneBackButton } from './pane-back-button'
 
 function moveSelection(
   groups: ProtocolRpc[],
@@ -184,13 +183,7 @@ function claimTracePane() {
   }
 }
 
-export function ProtocolTrace({
-  sourceId,
-  onClose,
-}: {
-  sourceId: string
-  onClose: () => void
-}) {
+export function ProtocolTrace({ sourceId }: { sourceId: string }) {
   const entries = useMcpTrace(sourceId)
   const groups = useMemo(() => groupProtocolTrace(entries), [entries])
   const [selectedId, setSelectedId] = useState<string>()
@@ -303,9 +296,6 @@ export function ProtocolTrace({
       }}
     >
       <div className="oc-bar flex shrink-0 flex-wrap items-center gap-3 px-3 py-2 md:px-4">
-        <PaneBackButton label="Close traces" onClick={onClose}>
-          Close traces
-        </PaneBackButton>
         <p className="font-mono text-xs text-ink">{count}</p>
       </div>
       <div

@@ -224,12 +224,6 @@ html[data-oc-mode='edit'] [data-oc-hint='escape'] .oc-key-hint {
   justify-content: center;
 }
 
-@media (min-width: 768px) and (not (pointer: coarse)) {
-  .oc-chrome-back {
-    display: none;
-  }
-}
-
 @media (pointer: coarse), (max-width: 767px) {
   kbd,
   .oc-key-hints,
