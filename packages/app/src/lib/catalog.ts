@@ -5,6 +5,7 @@ export type CatalogEntry = {
   detail: string
   url: string
   description?: string
+  homepage?: string
   /** How the source authenticates, when known (web search results). */
   auth?: 'none' | 'oauth' | 'headers' | 'unknown'
   /** Headers the source requires; the launcher pre-fills them for the user to complete. */

@@ -89,6 +89,9 @@ type Prefill = {
   url: string
   kind?: string
   headers: readonly string[]
+  /** Set for web results, whose URL and auth are Exa's reading of the docs. */
+  guessed: boolean
+  homepage?: string
 }
 
 type CarouselRow = {
@@ -278,6 +281,8 @@ export function HomePage() {
   const showSubmitButtons =
     (urlFocused || submittingUrl || (headersOpen && headerRows.some((row) => !isBlankHeader(row)))) &&
     (isSourceUrl(url) || submittingUrl)
+  // Clears as soon as the user edits the URL away from the guess.
+  const guessedPrefill = prefill?.guessed && prefill.url === url.trim() ? prefill : undefined
   const urlError =
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
@@ -463,7 +468,13 @@ export function HomePage() {
       cancelAuthorization()
     }
     openSource.reset()
-    setPrefill({ url: sourceUrl, kind: entry.kind, headers })
+    setPrefill({
+      url: sourceUrl,
+      kind: entry.kind,
+      headers,
+      guessed: entry.auth !== undefined,
+      homepage: entry.homepage,
+    })
     setUrl(sourceUrl)
     setHeaderRows(headers.map((name) => ({ name, value: '' })))
     setHeadersOpen(headers.length > 0)
@@ -743,8 +754,12 @@ export function HomePage() {
               }
               setUrlFocused(false)
             }}
-            className="w-full"
+            className={guessedPrefill ? 'w-full bg-warn/10 p-3' : 'w-full'}
           >
+          {guessedPrefill ? <GuessedPrefillNote
+              homepage={guessedPrefill.homepage}
+              hasHeaders={guessedPrefill.headers.length > 0}
+            /> : null}
           <label htmlFor="url" className="sr-only">
             Search MCP or OpenAPI titles, or paste a source URL
           </label>
@@ -923,5 +938,37 @@ export function HomePage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function homepageLabel(homepage: string) {
+  try {
+    const url = new URL(homepage)
+    const path = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '')
+    return `${url.hostname}${path}`
+  } catch {
+    return homepage
+  }
+}
+
+function GuessedPrefillNote({ homepage, hasHeaders }: { homepage?: string; hasHeaders: boolean }) {
+  return (
+    <p className="mb-3 text-xs text-warn" role="status">
+      <span className="font-medium">Best guess.</span>{' '}
+      {hasHeaders ? 'This URL and its headers were' : 'This URL was'} read from the web. Check{' '}
+      {homepage ? (
+        <a
+          href={homepage}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium underline underline-offset-2"
+        >
+          {homepageLabel(homepage)}
+        </a>
+      ) : (
+        "the server's docs"
+      )}{' '}
+      to confirm the setup instructions.
+    </p>
   )
 }

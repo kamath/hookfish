@@ -56,6 +56,7 @@ export function registrySearchToEntries(search: RegistrySearch): CatalogEntry[] 
     detail: suggestionDetail(result.url),
     url: result.url,
     description: result.description,
+    homepage: result.homepage,
     auth: result.auth,
     headers: result.headers,
   }))
