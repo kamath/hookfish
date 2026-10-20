@@ -15,8 +15,7 @@ import appCss from '@hookfish/app/styles.css?url'
 import { type ReactNode, useEffect, useRef } from 'react'
 
 const TITLE = 'Hookfish'
-const DESCRIPTION =
-  'Browse, configure, and run MCP servers and OpenAPI endpoints from your browser.'
+const DESCRIPTION = 'Browse and inspect MCP and OpenAPI. MIT License.'
 // Link unfurlers ignore relative image URLs, so point at the public deployment.
 const SHARE_IMAGE = 'https://hookfish.dev/og.png'
 
