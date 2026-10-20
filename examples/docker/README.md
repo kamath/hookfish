@@ -5,7 +5,7 @@ workspace and lockfile are in context:
 
 ```bash
 docker build -f examples/docker/Dockerfile -t hookfish-example .
-docker run --rm -p 3000:3000 -e POSTGRES_URL hookfish-example
+docker run --rm -p 3000:3000 -e EXA_API_KEY hookfish-example
 ```
 
 [`Dockerfile`](./Dockerfile) is two stages. The build stage installs the workspace and runs
@@ -15,4 +15,4 @@ server bundle). The runtime stage copies that plus `dist/` onto a clean `node:22
 drops to the `node` user. The result is ~90 MB.
 
 `PORT` and `HOST` are read at startup, both already set in the image.
-`POSTGRES_URL` is required for database-backed homepage suggestions.
+`EXA_API_KEY` is optional and enables web search for MCP servers.

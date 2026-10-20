@@ -14,13 +14,23 @@ import { addApi, removeApi } from '../lib/apis'
 import { saveApiHeaders } from '../lib/auth'
 import {
   carouselActionId,
+  catalogAuthLabel,
   catalogSourceUrl,
   sourceUrlKey,
   type CatalogEntry,
 } from '../lib/catalog'
-import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
+import {
+  MAX_CAROUSEL_ITEMS,
+  visibleCarouselItems,
+  wrappedCarouselIndex,
+} from '../lib/carousel'
 import { blurActive } from '../lib/focus'
-import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
+import {
+  apisQueryOptions,
+  carouselQueryOptions,
+  queryErrorMessage,
+  webSearchQueryOptions,
+} from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
@@ -61,7 +71,28 @@ type CarouselItem =
       title: string
       detail: string
       entry: CatalogEntry
+      /** Fill the launcher for the user to confirm instead of connecting straight away. */
+      prefill?: boolean
     }
+  | {
+      /** Runs a web search for the current query; trails the search row's matches. */
+      type: 'web-search'
+      id: string
+      title: string
+      detail: string
+      disabled: boolean
+      failed: boolean
+    }
+
+/** A search result copied into the launcher, awaiting the user's Connect. */
+type Prefill = {
+  url: string
+  kind?: string
+  headers: readonly string[]
+  /** Set for web results, whose URL and auth are Exa's reading of the docs. */
+  guessed: boolean
+  homepage?: string
+}
 
 type CarouselRow = {
   id: string
@@ -85,6 +116,9 @@ export function HomePage() {
   const [headersError, setHeadersError] = useState<string>()
   const [activeRow, setActiveRow] = useState(0)
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
+  // The query last sent to web search; only searched on request, never per keystroke.
+  const [webQuery, setWebQuery] = useState<string>()
+  const [prefill, setPrefill] = useState<Prefill>()
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
     return pending
@@ -99,6 +133,11 @@ export function HomePage() {
     query,
   )
   const hasSearchRow = Boolean(searchRow)
+  const webSearch = useQuery({
+    ...webSearchQueryOptions(webQuery ?? ''),
+    enabled: Boolean(webQuery),
+  })
+  const webSearched = Boolean(webQuery) && webQuery === query
   const catalogRows: CarouselRow[] = (carouselQuery.data ?? [])
     .filter((row) => row.source !== 'recent' || apis.length > 0)
     .map((row) => ({
@@ -123,14 +162,59 @@ export function HomePage() {
               entry,
             })),
     }))
-  const searchItems = searchRow
-    ? visibleCarouselItems(searchRow.items).map((entry) => ({
-        type: 'catalog' as const,
-        id: entry.id,
-        title: entry.title,
-        detail: `${entry.kind} · ${entry.detail}`,
-        entry,
-      }))
+  const localMatches = searchRow?.items ?? []
+  const localMatchKeys = new Set(
+    localMatches.map((entry) => sourceUrlKey(catalogSourceUrl(entry))),
+  )
+  const webMatches =
+    webSearched && webSearch.data
+      ? webSearch.data.filter((entry) => !localMatchKeys.has(sourceUrlKey(entry.url)))
+      : []
+  const searchEntries = visibleCarouselItems([...localMatches, ...webMatches])
+  // Index of the first web result, once results are in and fit in the row.
+  const firstWebIndex =
+    webMatches.length > 0 && localMatches.length < MAX_CAROUSEL_ITEMS
+      ? localMatches.length
+      : undefined
+  // Stays in the row after a search that found nothing new, so the search visibly finished.
+  const webFoundNothing = webSearched && webSearch.isSuccess && webMatches.length === 0
+  const webSearchItem: CarouselItem | undefined =
+    searchRow && !(webSearched && webSearch.isSuccess && webMatches.length > 0)
+      ? {
+          type: 'web-search',
+          id: 'web-search',
+          title:
+            webSearched && webSearch.isPending
+              ? 'Searching the web…'
+              : webSearched && webSearch.isError
+                ? 'Search the web again'
+                : webFoundNothing
+                  ? localMatches.length > 0
+                    ? 'No other MCP servers found on the web'
+                    : 'No MCP servers found on the web'
+                  : `Search the web for “${query}”`,
+          detail:
+            webSearched && webSearch.isError
+              ? queryErrorMessage(webSearch.error, 'Web search failed.')
+              : 'remote MCP servers',
+          disabled: (webSearched && webSearch.isPending) || webFoundNothing,
+          failed: webSearched && webSearch.isError,
+        }
+      : undefined
+  const searchItems: CarouselItem[] = searchRow
+    ? [
+        ...searchEntries.map((entry) => ({
+          type: 'catalog' as const,
+          id: entry.id,
+          title: entry.title,
+          detail: [entry.kind, entry.detail, catalogAuthLabel(entry)]
+            .filter(Boolean)
+            .join(' · '),
+          entry,
+          prefill: true,
+        })),
+        ...(webSearchItem ? [webSearchItem] : []),
+      ]
     : []
   const carouselRows: CarouselRow[] = searchRow
     ? [
@@ -168,6 +252,7 @@ export function HomePage() {
       setUrl('')
       setHeaderRows([])
       setHeadersOpen(false)
+      setPrefill(undefined)
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
         params: { apiId: id, pane: 'routes', operationId: undefined },
@@ -196,6 +281,8 @@ export function HomePage() {
   const showSubmitButtons =
     (urlFocused || submittingUrl || (headersOpen && headerRows.some((row) => !isBlankHeader(row)))) &&
     (isSourceUrl(url) || submittingUrl)
+  // Clears as soon as the user edits the URL away from the guess.
+  const guessedPrefill = prefill?.guessed && prefill.url === url.trim() ? prefill : undefined
   const urlError =
     openSource.isError && !openSource.variables?.entryId && !pendingAuth
       ? queryErrorMessage(openSource.error, 'Could not read that source.')
@@ -224,6 +311,35 @@ export function HomePage() {
       })
     })
   }, [hasSearchRow, query])
+
+  useEffect(() => {
+    // Web results can replace the trailing search row, so keep the selection in range.
+    setActiveItems((current) => {
+      const index = current[SEARCH_ROW_ID] ?? 0
+      return index < searchItems.length
+        ? current
+        : { ...current, [SEARCH_ROW_ID]: Math.max(searchItems.length - 1, 0) }
+    })
+  }, [searchItems.length])
+
+  useEffect(() => {
+    if (firstWebIndex === undefined) {
+      return
+    }
+    setActiveRow(0)
+    setActiveItems((current) => ({ ...current, [SEARCH_ROW_ID]: firstWebIndex }))
+  }, [firstWebIndex, webQuery])
+
+  function searchWeb() {
+    if (!query || isSourceUrl(query)) {
+      return
+    }
+    if (webQuery !== query) {
+      setWebQuery(query)
+    } else if (webSearch.isError) {
+      void webSearch.refetch()
+    }
+  }
 
   function moveList(delta: number) {
     setActiveRow((index) => {
@@ -302,8 +418,24 @@ export function HomePage() {
         headersRef.current?.focus()
         return
       }
+      const prefilled = prefill?.url === sourceUrl ? prefill : undefined
+      // A required header the user removed is their call; one left blank is a mistake.
+      const blankIndex = headersOpen
+        ? headerRows.findIndex(
+            (row) =>
+              !row.value.trim() &&
+              prefilled?.headers.some(
+                (name) => name.toLowerCase() === row.name.trim().toLowerCase(),
+              ),
+          )
+        : -1
+      if (blankIndex >= 0) {
+        setHeadersError(`Fill in ${headerRows[blankIndex]?.name.trim()}.`)
+        focusHeaderField(blankIndex, 'value')
+        return
+      }
       setHeadersError(undefined)
-      openSource.mutate({ url: sourceUrl, headers: parsed.headers })
+      openSource.mutate({ url: sourceUrl, kind: prefilled?.kind, headers: parsed.headers })
       return
     }
     const item = searchItems[activeItems[SEARCH_ROW_ID] ?? 0]
@@ -328,9 +460,44 @@ export function HomePage() {
     openSource.mutate({ url: catalogSourceUrl(entry), kind: entry.kind, entryId: entry.id })
   }
 
+  /** Copy a search result into the launcher so the user can review it and add headers. */
+  function prefillSource(entry: CatalogEntry) {
+    const sourceUrl = catalogSourceUrl(entry)
+    const headers = entry.headers ?? []
+    if (pendingAuth) {
+      cancelAuthorization()
+    }
+    openSource.reset()
+    setPrefill({
+      url: sourceUrl,
+      kind: entry.kind,
+      headers,
+      guessed: entry.auth !== undefined,
+      homepage: entry.homepage,
+    })
+    setUrl(sourceUrl)
+    setHeaderRows(headers.map((name) => ({ name, value: '' })))
+    setHeadersOpen(headers.length > 0)
+    setHeadersError(undefined)
+    activate('specs', 'edit')
+    if (headers.length > 0) {
+      focusHeaderField(0, 'value')
+    } else {
+      requestAnimationFrame(() => urlRef.current?.focus())
+    }
+  }
+
   function openCarouselItem(item: CarouselItem) {
     if (item.type === 'catalog') {
-      launch(item.entry)
+      if (item.prefill) {
+        prefillSource(item.entry)
+      } else {
+        launch(item.entry)
+      }
+      return
+    }
+    if (item.type === 'web-search') {
+      searchWeb()
       return
     }
     void router.navigate({
@@ -462,7 +629,11 @@ export function HomePage() {
                 <button
                   type="button"
                     className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
-                  disabled={openSource.isPending || dialogOpen}
+                  disabled={
+                    openSource.isPending ||
+                    dialogOpen ||
+                    (item.type === 'web-search' && item.disabled)
+                  }
                     onClick={() => openCarouselItem(item)}
                     onFocus={() => {
                       setActiveRow(rowIndex)
@@ -473,9 +644,19 @@ export function HomePage() {
                       <span className="block truncate text-sm text-ink">
                         {item.title}
                       </span>
-                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                    <span
+                      role={item.type === 'web-search' && item.failed ? 'alert' : undefined}
+                      className={`mt-0.5 block truncate font-mono text-xs ${
+                        item.type === 'web-search' && item.failed ? 'text-error' : 'text-faint'
+                      }`}
+                    >
                         {item.detail}
                     </span>
+                      {item.type === 'catalog' && item.entry.description ? (
+                        <span className="mt-0.5 block truncate text-xs text-mute">
+                          {item.entry.description}
+                        </span>
+                      ) : null}
                       {status?.message && !blocked ? (
                       <span
                         role={status.failed ? 'alert' : undefined}
@@ -488,7 +669,7 @@ export function HomePage() {
                     ) : null}
                   </span>
                   {added ? <span className="sr-only">added</span> : null}
-                    {active && showKeybindings ? (
+                    {active && showKeybindings && index < MAX_CAROUSEL_ITEMS ? (
                       <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
                         <Kbd hotkey={String(index + 1)} />
                       </span>
@@ -525,6 +706,7 @@ export function HomePage() {
             carouselQuery.data
               ?.flatMap((row) => row.items)
               .find((entry) => entry.id === pendingAuth.entryId)?.title ??
+            webSearch.data?.find((entry) => entry.id === pendingAuth.entryId)?.title ??
             apis.find((api) => api.id === pendingAuth.sourceId)?.title
           }
           onCancel={cancelAuthorization}
@@ -572,8 +754,12 @@ export function HomePage() {
               }
               setUrlFocused(false)
             }}
-            className="w-full"
+            className={guessedPrefill ? 'w-full bg-warn/10 p-3' : 'w-full'}
           >
+          {guessedPrefill ? <GuessedPrefillNote
+              homepage={guessedPrefill.homepage}
+              hasHeaders={guessedPrefill.headers.length > 0}
+            /> : null}
           <label htmlFor="url" className="sr-only">
             Search MCP or OpenAPI titles, or paste a source URL
           </label>
@@ -597,7 +783,7 @@ export function HomePage() {
                 if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
                   return
                 }
-                if (!hasSearchRow || searchItems.length === 0) {
+                if (!hasSearchRow) {
                   return
                 }
                 event.preventDefault()
@@ -752,5 +938,37 @@ export function HomePage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function homepageLabel(homepage: string) {
+  try {
+    const url = new URL(homepage)
+    const path = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '')
+    return `${url.hostname}${path}`
+  } catch {
+    return homepage
+  }
+}
+
+function GuessedPrefillNote({ homepage, hasHeaders }: { homepage?: string; hasHeaders: boolean }) {
+  return (
+    <p className="mb-3 text-xs text-warn" role="status">
+      <span className="font-medium">Best guess.</span>{' '}
+      {hasHeaders ? 'This URL and its headers were' : 'This URL was'} read from the web. Check{' '}
+      {homepage ? (
+        <a
+          href={homepage}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium underline underline-offset-2"
+        >
+          {homepageLabel(homepage)}
+        </a>
+      ) : (
+        "the server's docs"
+      )}{' '}
+      to confirm the setup instructions.
+    </p>
   )
 }

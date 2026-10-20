@@ -15,8 +15,8 @@ its own — change the two `workspace:*` dependencies to published versions and 
 
 The shells share the same client and API. `src/routes/__root.tsx` renders the document and
 mounts the client; `src/routes/api.$.ts` forwards `/api/*` into the Hono app; `src/server.ts`
-exports the `fetch` handler each platform wraps. Node uses local PGlite when `POSTGRES_URL`
-is absent; hosted examples require Postgres for homepage suggestions.
+exports the `fetch` handler each platform wraps. None of them need a database; set
+`EXA_API_KEY` to enable web search for MCP servers.
 
 CI builds all four on every pull request, so a dependency that stops working on one runtime
 fails the build rather than being discovered at deploy time.

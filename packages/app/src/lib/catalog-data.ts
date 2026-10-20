@@ -1,4 +1,4 @@
-import type { RegistryFeed } from '@hookfish/api'
+import type { RegistryFeed, RegistrySearch } from '@hookfish/api'
 import { apiJson, getApi } from './api'
 import type { CatalogEntry } from './catalog'
 import type { CarouselListContract } from './carousel'
@@ -46,4 +46,26 @@ export async function getCarouselCatalog() {
     await getApi().registry.feed.$get(),
   )
   return registryFeedToCarousel(feed)
+}
+
+export function registrySearchToEntries(search: RegistrySearch): CatalogEntry[] {
+  return search.results.map((result) => ({
+    id: result.url,
+    kind: 'mcp',
+    title: result.title,
+    detail: suggestionDetail(result.url),
+    url: result.url,
+    description: result.description,
+    homepage: result.homepage,
+    auth: result.auth,
+    headers: result.headers,
+  }))
+}
+
+/** Search the web for MCP servers matching `query`. */
+export async function searchWebCatalog(query: string) {
+  const search = await apiJson<RegistrySearch>(
+    await getApi().registry.search.$get({ query: { q: query } }),
+  )
+  return registrySearchToEntries(search)
 }

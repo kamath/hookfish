@@ -13,13 +13,11 @@ concurrency:
 
 jobs:
   deploy:
-    name: Migrate Neon and deploy Cloudflare Worker
+    name: Deploy Cloudflare Worker
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       WORKER_NAME: hookfish
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -43,45 +41,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Resolve primary Neon connection
-        run: |
-          BRANCHES=$(curl --fail-with-body --silent --show-error \
-            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            --header "Authorization: Bearer $NEON_API_KEY")
-          BRANCH_ID=$(jq -er \
-            '[.branches[] | select(.default == true)][0].id //
-             [.branches[] | select(.primary == true)][0].id' \
-            <<< "$BRANCHES")
-
-          DATABASES=$(curl --fail-with-body --silent --show-error \
-            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID/databases" \
-            --header "Authorization: Bearer $NEON_API_KEY")
-          DATABASE=$(jq -er '[.databases[] | select(.name == "neondb")][0].name // .databases[0].name' \
-            <<< "$DATABASES")
-          ROLE=$(jq -er '[.databases[] | select(.name == $database)][0].owner_name' \
-            --arg database "$DATABASE" <<< "$DATABASES")
-          QUERY=$(jq -nr --arg database "$DATABASE" --arg role "$ROLE" \
-            '"database_name=" + ($database | @uri) + "&role_name=" + ($role | @uri) + "&pooled=false"')
-
-          CONNECTION=$(curl --fail-with-body --silent --show-error \
-            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?$QUERY" \
-            --header "Authorization: Bearer $NEON_API_KEY")
-          POSTGRES_URL=$(jq -er '.uri' <<< "$CONNECTION")
-          echo "::add-mask::$POSTGRES_URL"
-          echo "POSTGRES_URL=$POSTGRES_URL" >> "$GITHUB_ENV"
-
-      - name: Apply database migrations
-        run: pnpm --filter @hookfish/api db:migrate:prod
-
       - name: Build Worker
         run: pnpm turbo run build --filter=@hookfish/example-cloudflare
 
       - name: Create Worker secrets file
+        env:
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
         run: |
+          # Web search stays off (503) when the EXA_API_KEY Actions secret is unset.
           SECRETS_FILE="$RUNNER_TEMP/worker-secrets.json"
-          jq -n \
-            --arg postgresUrl "$POSTGRES_URL" \
-            '{POSTGRES_URL: $postgresUrl}' \
+          jq -n --arg exaApiKey "$EXA_API_KEY" \
+            'if $exaApiKey == "" then {} else {EXA_API_KEY: $exaApiKey} end' \
             > "$SECRETS_FILE"
           chmod 600 "$SECRETS_FILE"
           echo "SECRETS_FILE=$SECRETS_FILE" >> "$GITHUB_ENV"
@@ -125,5 +95,5 @@ jobs:
             echo "### Production deployed"
             echo
             echo "- Worker: [$WORKER_NAME]($PRODUCTION_URL)"
-            echo "- Primary Neon migrations and database-backed suggestions smoke tests passed."
+            echo "- Suggestions smoke tests passed."
           } >> "$GITHUB_STEP_SUMMARY"

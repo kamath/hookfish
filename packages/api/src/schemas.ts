@@ -82,7 +82,32 @@ export const registryFeedSchema = z
   .record(z.string(), z.array(registryFeedItemSchema))
   .openapi('RegistryFeed')
 
+export const registrySearchQuerySchema = z.object({
+  q: z.string().trim().min(1, 'A search query is required.').max(200),
+})
+
+export const registrySearchResultSchema = z
+  .object({
+    url: z.string(),
+    title: z.string(),
+    type: z.literal('MCP'),
+    homepage: z.string().optional(),
+    description: z.string().optional(),
+    /** How the server authenticates; `headers` means the client must send `headers`. */
+    auth: z.enum(['none', 'oauth', 'headers', 'unknown']),
+    headers: z.array(z.string()),
+  })
+  .openapi('RegistrySearchResult')
+
+export const registrySearchSchema = z
+  .object({
+    results: z.array(registrySearchResultSchema),
+  })
+  .openapi('RegistrySearch')
+
 export type HttpRequest = z.infer<typeof httpRequestSchema>
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>
 export type ExecuteResult = z.infer<typeof executeResultSchema>
 export type RegistryFeed = z.infer<typeof registryFeedSchema>
+export type RegistrySearch = z.infer<typeof registrySearchSchema>
+export type RegistrySearchResult = z.infer<typeof registrySearchResultSchema>

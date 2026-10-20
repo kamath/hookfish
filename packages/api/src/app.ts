@@ -11,9 +11,12 @@ import {
   mcpOAuthClientSchema,
   mcpProxyQuerySchema,
   registryFeedSchema,
+  registrySearchQuerySchema,
+  registrySearchSchema,
   specRequestSchema,
 } from './schemas'
-import { resolveDatabase, type DatabaseInput } from './db/types'
+import { searchMcpServers } from './exa'
+import { registryFeed } from './registry'
 import {
   INTERNAL_FETCH_HEADER,
   isOwnOpenApiUrl,
@@ -25,7 +28,8 @@ import { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 
 export type CreateApiOptions = {
   fetch?: typeof fetch
-  database?: DatabaseInput
+  /** Exa API key for `/registry/search`. Search answers 503 without one. */
+  exaApiKey?: string
   openapi?: {
     title?: string
     version?: string
@@ -34,14 +38,6 @@ export type CreateApiOptions = {
 }
 
 const specDocumentSchema = z.any().openapi('SpecDocument')
-const registryFeedCategories: ReadonlyArray<{
-  tag: string
-  categoryName: string
-}> = [
-  { tag: 'trending_mcp', categoryName: 'MCP Servers' },
-  { tag: 'trending_api', categoryName: 'APIs' },
-]
-
 const registryFeedRoute = createRoute({
   method: 'get',
   path: '/registry/feed',
@@ -56,8 +52,44 @@ const registryFeedRoute = createRoute({
         },
       },
     },
+  },
+})
+
+const registrySearchRoute = createRoute({
+  method: 'get',
+  path: '/registry/search',
+  tags: ['Registry'],
+  summary: 'Search the web for remote MCP servers',
+  request: {
+    query: registrySearchQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'MCP servers found for the query',
+      content: {
+        'application/json': {
+          schema: registrySearchSchema,
+        },
+      },
+    },
+    400: {
+      description: 'A search query is required',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
+    502: {
+      description: 'The search provider failed',
+      content: {
+        'application/json': {
+          schema: errorSchema,
+        },
+      },
+    },
     503: {
-      description: 'The registry feed database is not configured',
+      description: 'Web search is not configured',
       content: {
         'application/json': {
           schema: errorSchema,
@@ -245,35 +277,18 @@ export function createApi(options: CreateApiOptions = {}) {
       }
 
   const routes = app
-    .openapi(registryFeedRoute, async (c) => {
-      if (!options.database) {
-        return c.json({ error: 'The registry feed database is not configured.' }, 503)
+    .openapi(registryFeedRoute, (c) => c.json(registryFeed, 200))
+    .openapi(registrySearchRoute, async (c) => {
+      const apiKey = options.exaApiKey?.trim()
+      if (!apiKey) {
+        return c.json({ error: 'Web search is not configured.' }, 503)
       }
-      const database = await resolveDatabase(options.database)
-      const feed: Record<string, Array<{ url: string; title: string; type: 'MCP' | 'API' }>> =
-        Object.fromEntries(
-          registryFeedCategories.map(({ categoryName }) => [categoryName, []]),
-        )
-      const categoryNames = new Map(
-        registryFeedCategories.map(({ tag, categoryName }) => [tag, categoryName]),
-      )
-      const rows = await database.listRegistryFeedRows(
-        registryFeedCategories.map(({ tag }) => tag),
-      )
-      for (const row of rows) {
-        const categoryName = categoryNames.get(row.tag)
-        if (!categoryName) {
-          continue
-        }
-        const category = feed[categoryName] ?? []
-        category.push({
-          url: row.url,
-          title: row.title,
-          type: row.type,
-        })
-        feed[categoryName] = category
+      try {
+        const results = await searchMcpServers(c.req.valid('query').q, apiKey, upstreamFetch)
+        return c.json({ results }, 200)
+      } catch (error) {
+        return c.json({ error: errorMessage(error, 'Web search failed.') }, 502)
       }
-      return c.json(feed, 200)
     })
     .openapi(specRoute, async (c) => {
       try {

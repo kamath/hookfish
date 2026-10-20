@@ -1,5 +1,6 @@
 export { createApi, mountApi, type AppType, type CreateApiOptions } from './app'
-export type { AppDatabase, DatabaseInput } from './db/types'
+export { exaSearchResults, searchMcpServers } from './exa'
+export { registryFeed } from './registry'
 export { mcpOAuthClientMetadata } from './oauth'
 export {
   executeRequestSchema,
@@ -7,10 +8,14 @@ export {
   httpRequestSchema,
   registryFeedItemSchema,
   registryFeedSchema,
+  registrySearchResultSchema,
+  registrySearchSchema,
   type ExecuteRequest,
   type ExecuteResult,
   type HttpRequest,
   type RegistryFeed,
+  type RegistrySearch,
+  type RegistrySearchResult,
 } from './schemas'
 export { assertHttpRequestMatchesSpec, isOpenApiDocument } from './spec'
 export {

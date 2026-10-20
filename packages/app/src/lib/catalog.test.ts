@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import { registryFeedToCarousel } from './catalog-data'
-import { catalogSourceUrl } from './catalog'
+import { registryFeedToCarousel, registrySearchToEntries } from './catalog-data'
+import { catalogAuthLabel, catalogSourceUrl } from './catalog'
 
 const carousel = registryFeedToCarousel({
   'MCP Servers': [
@@ -41,4 +41,48 @@ assert.equal(
   'http://localhost/api/openapi.json',
 )
 
-console.log('database suggestions group into category panes')
+assert.deepEqual(
+  registrySearchToEntries({
+    results: [
+      {
+        url: 'https://mcp.linear.app/mcp',
+        title: 'Linear MCP Server',
+        type: 'MCP',
+        description: 'Read and write Linear issues.',
+        homepage: 'https://linear.app/docs/mcp',
+        auth: 'headers',
+        headers: ['Authorization'],
+      },
+    ],
+  }),
+  [
+    {
+      id: 'https://mcp.linear.app/mcp',
+      kind: 'mcp',
+      title: 'Linear MCP Server',
+      detail: 'mcp.linear.app',
+      url: 'https://mcp.linear.app/mcp',
+      description: 'Read and write Linear issues.',
+      homepage: 'https://linear.app/docs/mcp',
+      auth: 'headers',
+      headers: ['Authorization'],
+    },
+  ],
+)
+
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a', auth: 'oauth' }), 'OAuth')
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a', auth: 'none' }), 'no auth')
+assert.equal(
+  catalogAuthLabel({
+    id: 'a',
+    title: 'A',
+    detail: 'a',
+    url: 'https://a',
+    auth: 'headers',
+    headers: ['X-API-Key', 'X-Workspace'],
+  }),
+  'X-API-Key, X-Workspace',
+)
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a' }), undefined)
+
+console.log('suggestions group into category panes and web results become entries')
