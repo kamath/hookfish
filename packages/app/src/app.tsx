@@ -61,54 +61,63 @@ function AppToolbar() {
 
   return (
     <div className="flex shrink-0 items-center gap-2 px-3 py-1.5 md:gap-3 md:px-4">
-      {source?.onBack ? (
-        <button
-          type="button"
-          className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-1.5 text-sm leading-4 text-mute hover:text-ink"
-          aria-label={source.backLabel ?? 'Back'}
-          onClick={source.onBack}
-        >
-          <BackCaret />
-          <span className="oc-bar-action-label">{source.backLabel ?? 'Back'}</span>
-          <KeyHints>
-            <Kbd hotkey="Escape" />
-          </KeyHints>
-        </button>
-      ) : null}
       {source ? (
-        <>
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
           <Brand compact />
-          <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
-          {source.traceSourceId && source.onToggleTrace ? (
-            <TraceToggle
-              sourceId={source.traceSourceId}
-              open={Boolean(source.traceOpen)}
-              onToggle={source.onToggleTrace}
-            />
-          ) : null}
-          {source.onClearAuth ? (
-            <button
-              type="button"
-              className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
-              aria-label="Clear auth"
-              disabled={source.authPending}
-              onClick={() => {
-                void source.onClearAuth?.()
-              }}
-            >
-              <span className="oc-bar-action-label">Clear auth</span>
-              <span className="oc-bar-action-icon" aria-hidden="true">
-                <TrashIcon />
+          {source.onBack ? (
+            <>
+              <button
+                type="button"
+                className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-1.5 text-sm leading-4 text-mute hover:text-ink"
+                aria-label={source.backLabel ?? 'Back'}
+                onClick={source.onBack}
+              >
+                <span className="oc-bar-action-icon" aria-hidden="true">
+                  <BackCaret />
+                </span>
+                <span className="oc-bar-action-label">{source.backLabel ?? 'Back'}</span>
+                <KeyHints>
+                  <Kbd hotkey="Escape" />
+                </KeyHints>
+              </button>
+              <span aria-hidden="true" className="oc-bar-action-label text-sm text-faint">
+                /
               </span>
-              <Kbd hotkey="Mod+Backspace" />
-            </button>
+            </>
           ) : null}
-        </>
+          <span className="min-w-0 truncate text-sm text-ink">{source.title}</span>
+        </nav>
       ) : null}
-      <div className="ml-auto flex shrink-0 items-center">
-        <CloudToggle />
-        <GitHubLink />
-        <ThemeToggle />
+      <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+        {source?.traceSourceId && source.onToggleTrace ? (
+          <TraceToggle
+            sourceId={source.traceSourceId}
+            open={Boolean(source.traceOpen)}
+            onToggle={source.onToggleTrace}
+          />
+        ) : null}
+        {source?.onClearAuth ? (
+          <button
+            type="button"
+            className="oc-bar-action inline-flex shrink-0 items-center justify-center gap-2 text-sm leading-4 text-mute hover:text-ink disabled:opacity-40"
+            aria-label="Clear auth"
+            disabled={source.authPending}
+            onClick={() => {
+              void source.onClearAuth?.()
+            }}
+          >
+            <span className="oc-bar-action-label">Clear auth</span>
+            <span className="oc-bar-action-icon" aria-hidden="true">
+              <TrashIcon />
+            </span>
+            <Kbd hotkey="Mod+Backspace" />
+          </button>
+        ) : null}
+        <div className="flex shrink-0 items-center">
+          <CloudToggle />
+          <GitHubLink />
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   )
