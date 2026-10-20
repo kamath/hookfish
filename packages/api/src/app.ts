@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { mcpAppFrameResponse } from './app-frame'
 import { mcpOAuthClientMetadata } from './oauth'
 import { proxyMcpRequest } from './proxy'
 import {
@@ -164,6 +165,23 @@ const oauthRoute = createRoute({
   },
 })
 
+const mcpAppFrameRoute = createRoute({
+  method: 'get',
+  path: '/mcp-app-frame',
+  tags: ['MCP'],
+  summary: 'Sandboxed document that MCP App views are written into',
+  responses: {
+    200: {
+      description: 'Frame bootstrap document',
+      content: {
+        'text/html': {
+          schema: z.string(),
+        },
+      },
+    },
+  },
+})
+
 function mcpProxyRoute(method: 'get' | 'post' | 'delete') {
   return createRoute({
     method,
@@ -307,6 +325,7 @@ export function createApi(options: CreateApiOptions = {}) {
         },
       )
     })
+    .openapi(mcpAppFrameRoute, () => mcpAppFrameResponse())
     .openapi(mcpProxyRoute('get'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
     .openapi(mcpProxyRoute('post'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))
     .openapi(mcpProxyRoute('delete'), (c) => proxyMcpRequest(c.req.raw, upstreamFetch))

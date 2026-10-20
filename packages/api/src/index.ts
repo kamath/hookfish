@@ -22,6 +22,7 @@ export { executeUpstreamRequest, fetchUpstreamSpec } from './upstream'
 export { isHttpUrl } from './http'
 export { isOwnOpenApiUrl } from './self'
 export { MCP_PROXY_AUTHORIZATION_HEADER } from './proxy'
+export { MCP_APP_FRAME_HTML, MCP_APP_FRAME_READY } from './app-frame'
 export {
   MCP_PROXY_HEADERS_HEADER,
   decodeCustomHeaders,

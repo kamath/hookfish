@@ -32,3 +32,16 @@ test('attachLocalRuntime rewrites HTML and leaves JSON alone', async () => {
   )
   assert.equal(await json.text(), '{"ok":true}')
 })
+
+test('attachLocalRuntime stamps the page CSP nonce on the injected script', async () => {
+  const html = await attachLocalRuntime(
+    new Response('<html><head></head></html>', {
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': "script-src 'nonce-abc+/12==' 'strict-dynamic'",
+      },
+    }),
+    3002,
+  )
+  assert.match(await html.text(), /<head><script nonce="abc\+\/12==">window\.__HOOKFISH_RUNTIME__=/)
+})

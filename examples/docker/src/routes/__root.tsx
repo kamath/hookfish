@@ -1,14 +1,25 @@
 import {
   HeadContent,
   Outlet,
+  ScriptOnce,
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import { mountApp, THEME_COLORS, THEME_INIT_SCRIPT } from '@hookfish/app'
+import {
+  contentSecurityPolicy,
+  mountApp,
+  THEME_COLORS,
+  THEME_INIT_SCRIPT,
+} from '@hookfish/app'
 import appCss from '@hookfish/app/styles.css?url'
 import { type ReactNode, useEffect, useRef } from 'react'
 
 export const Route = createRootRoute({
+  // Only rendered pages carry the policy; API responses set their own headers.
+  headers: ({ ssr }) =>
+    ssr?.nonce
+      ? { 'Content-Security-Policy': contentSecurityPolicy(ssr.nonce) }
+      : undefined,
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -68,7 +79,7 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <ScriptOnce>{THEME_INIT_SCRIPT}</ScriptOnce>
       </head>
       <body>
         {children}

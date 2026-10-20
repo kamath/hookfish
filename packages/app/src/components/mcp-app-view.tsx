@@ -6,6 +6,8 @@ import {
   PostMessageTransport,
   type McpUiHostContext,
 } from '@modelcontextprotocol/ext-apps/app-bridge'
+import { MCP_APP_FRAME_HTML, MCP_APP_FRAME_READY } from '@hookfish/api'
+import { getApi } from '../lib/api'
 import type { McpAppContext } from '../lib/client-types'
 import { traceMcpApp, withMcpConnection } from '../lib/mcp/client'
 import {
@@ -21,9 +23,11 @@ import { appearanceFor, prefersDarkScheme, themeAtom, type ThemeAppearance } fro
 const HOST_INFO = { name: 'hookfish-inspector', version: '1.0.0' }
 const INITIAL_HEIGHT = 360
 
-// Without a separate sandbox origin to host the spec's double-iframe proxy, the view loads from
-// srcdoc into a frame sandboxed without allow-same-origin. That gives it an opaque origin: it can
-// script itself and post messages, but cannot reach this page's DOM, storage, or cookies. The
+// Without a separate sandbox origin to host the spec's double-iframe proxy, the view loads into
+// a frame sandboxed without allow-same-origin. That gives it an opaque origin: it can script
+// itself and post messages, but cannot reach this page's DOM, memory, storage, or cookies. The
+// frame starts on the API's /mcp-app-frame document rather than srcdoc, because a srcdoc view
+// would inherit this page's nonce-only script policy and its inline bundle would never run. The
 // injected CSP limits its network to the origins the resource declares. Popups are not allowed;
 // links go through ui/open-link instead.
 const SANDBOX = 'allow-scripts allow-forms'
@@ -184,16 +188,28 @@ export function McpAppView({
     }
     bridge.onrequestdisplaymode = async () => ({ mode: 'inline' })
 
+    const html = appDocument(resource.data.html, resource.data.csp)
+    const onFrameReady = (event: MessageEvent) => {
+      if (event.source !== target || event.data?.type !== MCP_APP_FRAME_READY) {
+        return
+      }
+      window.removeEventListener('message', onFrameReady)
+      // The frame has an opaque origin, so there is no narrower target origin to name.
+      target.postMessage({ type: MCP_APP_FRAME_HTML, html }, '*')
+    }
+
     void (async () => {
       // Listen before the document loads so the view's ui/initialize is not missed.
       await bridge.connect(new PostMessageTransport(target, target))
       if (!closed) {
-        frame.srcdoc = appDocument(resource.data.html, resource.data.csp)
+        window.addEventListener('message', onFrameReady)
+        frame.src = getApi()['mcp-app-frame'].$url().toString()
       }
     })()
 
     return () => {
       closed = true
+      window.removeEventListener('message', onFrameReady)
       bridgeRef.current = null
       // The frame is already detached when this runs, so a ui/resource-teardown request would
       // never be answered. Closing drops the listener.

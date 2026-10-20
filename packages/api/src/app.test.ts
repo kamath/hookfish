@@ -158,7 +158,38 @@ const proxied = await api.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fsse',
 assert.equal(proxied.status, 200)
 assert.equal(proxied.headers.get('mcp-session-id'), 'session-1')
 assert.equal(proxied.headers.get('content-encoding'), null, 'decoded bodies drop content-encoding')
+assert.equal(proxied.headers.get('cache-control'), 'no-store', 'credentialed responses are never cached')
 assert.equal(await proxied.text(), '{"jsonrpc":"2.0","id":1,"result":{}}')
+
+const unreachableApi = createApi({
+  fetch: async () => {
+    throw new TypeError('fetch failed')
+  },
+})
+const unreachable = await unreachableApi.request('/mcp-proxy?url=https%3A%2F%2Fmcp.test%2Fdown', {
+  method: 'POST',
+  headers: {
+    'content-type': 'application/json',
+    [MCP_PROXY_AUTHORIZATION_HEADER]: 'Bearer secret-token',
+  },
+  body: initializeBody,
+})
+assert.equal(unreachable.status, 502)
+assert.equal(
+  (await unreachable.text()).includes('secret-token'),
+  false,
+  'an unreachable server is reported without echoing credentials',
+)
+
+const frame = await api.request('/mcp-app-frame')
+assert.equal(frame.status, 200)
+assert.match(frame.headers.get('content-type') ?? '', /text\/html/)
+assert.equal(
+  frame.headers.get('content-security-policy'),
+  "sandbox allow-scripts allow-forms; frame-ancestors 'self'",
+  'the frame document stays sandboxed even when opened directly',
+)
+assert.match(await frame.text(), /event\.source !== parent/)
 assert.equal(seen.at(-1)?.url, 'https://mcp.test/sse')
 assert.equal(seen.at(-1)?.init?.body, initializeBody)
 

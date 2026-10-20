@@ -93,17 +93,27 @@ export async function proxyMcpRequest(
   }
 
   const headers = requestHeaders(request.headers)
-  const response = await upstreamFetch(target, {
-    method,
-    headers,
-    body,
-    signal: request.signal,
-    redirect: 'manual',
-  })
+  let response: Response
+  try {
+    response = await upstreamFetch(target, {
+      method,
+      headers,
+      body,
+      signal: request.signal,
+      redirect: 'manual',
+    })
+  } catch {
+    // Answer here rather than letting the framework log the failed request, which carries the
+    // user's credentials.
+    return Response.json({ error: 'The MCP server could not be reached.' }, { status: 502 })
+  }
   const responseHeaders = filteredResponseHeaders(response.headers)
+  // Responses are fetched with the user's credentials, so no shared cache may keep them.
   if (responseHeaders.get('content-type')?.includes('text/event-stream')) {
-    responseHeaders.set('Cache-Control', 'no-cache, no-transform')
+    responseHeaders.set('Cache-Control', 'no-store, no-transform')
     responseHeaders.set('X-Accel-Buffering', 'no')
+  } else {
+    responseHeaders.set('Cache-Control', 'no-store')
   }
 
   return new Response(response.body, {
