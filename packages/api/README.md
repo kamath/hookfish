@@ -4,17 +4,15 @@ Mountable Hono API for the Hookfish client.
 
 ```ts
 import { mountApi } from '@hookfish/api/app'
-import { createPostgresDb } from '@hookfish/api/postgres'
 
 const api = mountApi('/api', {
-  database: createPostgresDb(process.env.POSTGRES_URL!),
+  exaApiKey: process.env.EXA_API_KEY,
 })
 const response = await api.fetch(request)
 ```
 
 The returned application uses Web-standard `Request` and `Response` objects and can be
-adapted to Node, Vercel, or Cloudflare Workers. The database supplies the read-only
-`GET /registry/feed` endpoint from `registry` rows (`row_id`, `url`, `title`, and
-`type`) joined to `tags` rows (`registry_row_id`, `tag`). The feed includes entries tagged
-`trending_mcp` or `trending_api`, ordered by `row_id` within each tag; `type` is `MCP`
-or `API`.
+adapted to Node, Vercel, or Cloudflare Workers. `GET /registry/feed` returns the built-in
+suggested sources keyed by category; `type` is `MCP` or `API`. `GET /registry/search?q=`
+finds remote MCP servers through Exa structured output and needs `exaApiKey`; without it the
+route answers `503`.

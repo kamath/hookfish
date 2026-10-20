@@ -4,6 +4,7 @@ export type CatalogEntry = {
   title: string
   detail: string
   url: string
+  description?: string
 }
 
 export function carouselActionId(index: number) {

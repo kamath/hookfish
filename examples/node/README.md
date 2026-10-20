@@ -16,4 +16,4 @@ that never runs `pnpm install`.
 `packages/cli` builds this example and copies its `dist/` into the published `hookfish`
 package, which is why the CLI can run the app straight from npm with no build step.
 
-Suggested sources use PGlite by default. Set `POSTGRES_URL` to use Postgres instead.
+Set `EXA_API_KEY` to enable web search for MCP servers.

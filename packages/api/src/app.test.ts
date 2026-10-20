@@ -10,6 +10,27 @@ const seen: Array<{ url: string; init?: RequestInit }> = []
 const upstreamFetch: typeof fetch = async (input, init) => {
   seen.push({ url: String(input), init })
   const url = String(input)
+  if (url === 'https://api.exa.ai/search') {
+    const body = JSON.parse(String(init?.body)) as { query: string }
+    if (body.query.includes('broken')) {
+      return new Response('{}', { status: 500 })
+    }
+    return Response.json({
+      results: [],
+      output: {
+        content: {
+          servers: [
+            {
+              name: 'Linear MCP Server',
+              mcpUrl: 'https://mcp.linear.app/mcp',
+              homepage: 'https://linear.app/docs/mcp',
+              description: 'Read and write Linear issues.',
+            },
+          ],
+        },
+      },
+    })
+  }
   if (url.endsWith('.yaml')) {
     return new Response(`openapi: 3.1.0
 info:
@@ -47,22 +68,9 @@ paths:
   })
 }
 
-let requestedFeedTags: readonly string[] = []
 const api = createApi({
   fetch: upstreamFetch,
-  database: {
-    async listRegistryFeedRows(tags) {
-      requestedFeedTags = tags
-      return [
-        {
-          url: 'https://mcp.example.test',
-          title: 'Example MCP',
-          type: 'MCP',
-          tag: 'trending_mcp',
-        },
-      ]
-    },
-  },
+  exaApiKey: 'exa-test-key',
 })
 const client = hc<AppType>('http://hookfish.test', {
   fetch: ((input, init) => api.request(input, init as RequestInit)) as typeof fetch,
@@ -70,17 +78,34 @@ const client = hc<AppType>('http://hookfish.test', {
 
 const registryFeed = await client.registry.feed.$get()
 assert.equal(registryFeed.status, 200)
-assert.deepEqual(await registryFeed.json(), {
-  'MCP Servers': [
+const feed = await registryFeed.json()
+assert.deepEqual(Object.keys(feed), ['MCP Servers', 'APIs'])
+// MCP servers alternate between Arcade-hosted and first-party.
+assert.deepEqual(
+  feed['MCP Servers']?.map((item) => item.title),
+  ['Gmail (Arcade)', 'Linear', 'Google Calendar (Arcade)', 'Notion', 'Slack (Arcade)'],
+)
+assert.equal(feed.APIs?.length, 5)
+
+const search = await client.registry.search.$get({ query: { q: 'linear' } })
+assert.equal(search.status, 200)
+assert.deepEqual(await search.json(), {
+  results: [
     {
-      url: 'https://mcp.example.test',
-      title: 'Example MCP',
+      url: 'https://mcp.linear.app/mcp',
+      title: 'Linear MCP Server',
       type: 'MCP',
+      homepage: 'https://linear.app/docs/mcp',
+      description: 'Read and write Linear issues.',
     },
   ],
-  APIs: [],
 })
-assert.deepEqual(requestedFeedTags, ['trending_mcp', 'trending_api'])
+const exaRequest = seen.find((entry) => entry.url === 'https://api.exa.ai/search')
+assert.equal(new Headers(exaRequest?.init?.headers).get('x-api-key'), 'exa-test-key')
+assert.match(JSON.parse(String(exaRequest?.init?.body)).query, /linear/)
+
+assert.equal((await api.request('/registry/search?q=%20')).status, 400)
+assert.equal((await api.request('/registry/search?q=broken')).status, 502)
 
 const spec = await client.spec.$post({ json: { url: 'http://localhost:8787/openapi.yaml' } })
 assert.equal(spec.status, 200)
@@ -291,6 +316,7 @@ assert.ok(document.paths['/execute'])
 assert.ok(document.paths['/mcp-proxy'])
 assert.ok(document.paths['/mcp-oauth-client'])
 assert.ok(document.paths['/registry/feed'])
+assert.ok(document.paths['/registry/search'])
 assert.equal(document.paths['/auth/sign-up'], undefined)
 assert.equal(document.paths['/auth/session'], undefined)
 assert.equal(document.paths['/registry'], undefined)
@@ -300,7 +326,8 @@ assert.equal((await api.request('/auth/session')).status, 404)
 assert.equal((await api.request('/registry')).status, 404)
 
 const mounted = mountApi('/api', { fetch: upstreamFetch })
-assert.equal((await mounted.request('/api/registry/feed')).status, 503)
+assert.equal((await mounted.request('/api/registry/feed')).status, 200)
+assert.equal((await mounted.request('/api/registry/search?q=linear')).status, 503)
 const mountedSpec = await mounted.request('/api/spec', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },

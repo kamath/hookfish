@@ -5,7 +5,7 @@
     {
       "name": "dev",
       "command": "pnpm dev",
-      "description": "Runs the app watcher (@hookfish/app) and the TanStack Start node example on http://localhost:3000 with PGlite (no external Postgres required)."
+      "description": "Runs the app watcher (@hookfish/app) and the TanStack Start node example on http://localhost:3000."
     }
   ],
   "ports": [

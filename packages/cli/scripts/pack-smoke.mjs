@@ -12,7 +12,6 @@ const commandName = Object.keys(packageJson.bin ?? {})[0]
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'hookfish-cli-pack-smoke-'))
 const packagesDirectory = join(temporaryDirectory, 'packages')
 const consumerDirectory = join(temporaryDirectory, 'consumer')
-const pgliteDirectory = join(temporaryDirectory, 'pglite')
 
 if (!commandName) {
   throw new Error('packages/cli package.json must define a bin command')
@@ -115,7 +114,6 @@ try {
       env: {
         ...process.env,
         HOOKFISH_SKIP_UPDATE_CHECK: '1',
-        PGLITE_DATA_DIR: pgliteDirectory,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     },

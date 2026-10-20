@@ -18,9 +18,10 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The launcher groups database-backed suggestions into one pane
-per category. Paste any other URL in the bar and press `Enter`; Hookfish probes the URL to
-decide whether it is an MCP server or an OpenAPI document.
+Open `http://localhost:3000`. The launcher groups suggested sources into one pane per
+category. Paste any other URL in the bar and press `Enter`; Hookfish probes the URL to
+decide whether it is an MCP server or an OpenAPI document. Type a name instead of a URL to
+filter the suggestions, or search the web for a remote MCP server (needs `EXA_API_KEY`).
 
 ## Embedding the client
 
@@ -40,10 +41,9 @@ Mount `@hookfish/api` at the matching path in the deployment platform's request 
 
 ```ts
 import { mountApi } from '@hookfish/api/app'
-import { createPostgresDb } from '@hookfish/api/postgres'
 
 export default mountApi('/api', {
-  database: createPostgresDb(process.env.POSTGRES_URL!),
+  exaApiKey: process.env.EXA_API_KEY,
 })
 ```
 
@@ -98,27 +98,16 @@ the browser. The UI talks to the `App` component's `apiBaseUrl` through Hono RPC
 shell mounts it at `/api`. Auto-generated OpenAPI is served at `/api/openapi.json`.
 Deprecated pre-Streamable-HTTP HTTP+SSE and stdio transports are intentionally not supported.
 
-## Registry database
+## Suggestions and web search
 
-The `registry` table contains `row_id`, `url`, `title`, and `type`; `type` is constrained to
-`MCP` or `API`. The `tags` table associates each `registry_row_id` with a string `tag`.
-`GET /api/registry/feed` queries `trending_mcp` and `trending_api`, returning a
-category-keyed response that the homepage renders as panes. Each category lists its
-entries in `row_id` order, so migrations insert seeded rows in the order they should
-render.
-Local Node development and the CLI use PGlite; hosted deployments use Postgres/Neon.
+`GET /api/registry/feed` returns the suggested sources in `packages/api/src/registry.ts`,
+keyed by category; the homepage renders each category as a pane in the listed order. Edit
+that file to change the suggestions.
 
-```bash
-pnpm db:migrate
-pnpm db:studio
-```
-
-Production migration commands require `POSTGRES_URL`:
-
-```bash
-pnpm db:migrate:prod
-pnpm db:studio:prod
-```
+`GET /api/registry/search?q=` asks [Exa](https://exa.ai) for remote MCP servers matching the
+query, using structured output (`name`, `mcpUrl`, `homepage`, `description`). It needs an
+`EXA_API_KEY` passed to `mountApi` as `exaApiKey` and answers `503` without one. The
+homepage only calls it when you ask it to search the web.
 
 Build every workspace package:
 

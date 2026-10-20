@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { registryFeedToCarousel } from './catalog-data'
+import { registryFeedToCarousel, registrySearchToEntries } from './catalog-data'
 import { catalogSourceUrl } from './catalog'
 
 const carousel = registryFeedToCarousel({
@@ -41,4 +41,27 @@ assert.equal(
   'http://localhost/api/openapi.json',
 )
 
-console.log('database suggestions group into category panes')
+assert.deepEqual(
+  registrySearchToEntries({
+    results: [
+      {
+        url: 'https://mcp.linear.app/mcp',
+        title: 'Linear MCP Server',
+        type: 'MCP',
+        description: 'Read and write Linear issues.',
+      },
+    ],
+  }),
+  [
+    {
+      id: 'https://mcp.linear.app/mcp',
+      kind: 'mcp',
+      title: 'Linear MCP Server',
+      detail: 'mcp.linear.app',
+      url: 'https://mcp.linear.app/mcp',
+      description: 'Read and write Linear issues.',
+    },
+  ],
+)
+
+console.log('suggestions group into category panes and web results become entries')

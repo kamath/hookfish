@@ -18,9 +18,18 @@ import {
   sourceUrlKey,
   type CatalogEntry,
 } from '../lib/catalog'
-import { visibleCarouselItems, wrappedCarouselIndex } from '../lib/carousel'
+import {
+  MAX_CAROUSEL_ITEMS,
+  visibleCarouselItems,
+  wrappedCarouselIndex,
+} from '../lib/carousel'
 import { blurActive } from '../lib/focus'
-import { apisQueryOptions, carouselQueryOptions, queryErrorMessage } from '../lib/queries'
+import {
+  apisQueryOptions,
+  carouselQueryOptions,
+  queryErrorMessage,
+  webSearchQueryOptions,
+} from '../lib/queries'
 import { usePaneActions, usePaneFlags, useShowKeybindings, useStepKeys } from '../lib/keys'
 import { activate, enterCommand, useChrome } from '../lib/mode'
 import { pendingMcpAuthorization, clearPendingMcpAuthorization } from '../lib/mcp/oauth'
@@ -62,6 +71,15 @@ type CarouselItem =
       detail: string
       entry: CatalogEntry
     }
+  | {
+      /** Runs a web search for the current query; trails the search row's matches. */
+      type: 'web-search'
+      id: string
+      title: string
+      detail: string
+      disabled: boolean
+      failed: boolean
+    }
 
 type CarouselRow = {
   id: string
@@ -85,6 +103,8 @@ export function HomePage() {
   const [headersError, setHeadersError] = useState<string>()
   const [activeRow, setActiveRow] = useState(0)
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
+  // The query last sent to web search; only searched on request, never per keystroke.
+  const [webQuery, setWebQuery] = useState<string>()
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
     return pending
@@ -99,6 +119,11 @@ export function HomePage() {
     query,
   )
   const hasSearchRow = Boolean(searchRow)
+  const webSearch = useQuery({
+    ...webSearchQueryOptions(webQuery ?? ''),
+    enabled: Boolean(webQuery),
+  })
+  const webSearched = Boolean(webQuery) && webQuery === query
   const catalogRows: CarouselRow[] = (carouselQuery.data ?? [])
     .filter((row) => row.source !== 'recent' || apis.length > 0)
     .map((row) => ({
@@ -123,14 +148,56 @@ export function HomePage() {
               entry,
             })),
     }))
-  const searchItems = searchRow
-    ? visibleCarouselItems(searchRow.items).map((entry) => ({
-        type: 'catalog' as const,
-        id: entry.id,
-        title: entry.title,
-        detail: `${entry.kind} · ${entry.detail}`,
-        entry,
-      }))
+  const localMatches = searchRow?.items ?? []
+  const localMatchKeys = new Set(
+    localMatches.map((entry) => sourceUrlKey(catalogSourceUrl(entry))),
+  )
+  const webMatches =
+    webSearched && webSearch.data
+      ? webSearch.data.filter((entry) => !localMatchKeys.has(sourceUrlKey(entry.url)))
+      : []
+  const searchEntries = visibleCarouselItems([...localMatches, ...webMatches])
+  // Index of the first web result, once results are in and fit in the row.
+  const firstWebIndex =
+    webMatches.length > 0 && localMatches.length < MAX_CAROUSEL_ITEMS
+      ? localMatches.length
+      : undefined
+  // Stays in the row after a search that found nothing new, so the search visibly finished.
+  const webFoundNothing = webSearched && webSearch.isSuccess && webMatches.length === 0
+  const webSearchItem: CarouselItem | undefined =
+    searchRow && !(webSearched && webSearch.isSuccess && webMatches.length > 0)
+      ? {
+          type: 'web-search',
+          id: 'web-search',
+          title:
+            webSearched && webSearch.isPending
+              ? 'Searching the web…'
+              : webSearched && webSearch.isError
+                ? 'Search the web again'
+                : webFoundNothing
+                  ? localMatches.length > 0
+                    ? 'No other MCP servers found on the web'
+                    : 'No MCP servers found on the web'
+                  : `Search the web for “${query}”`,
+          detail:
+            webSearched && webSearch.isError
+              ? queryErrorMessage(webSearch.error, 'Web search failed.')
+              : 'remote MCP servers',
+          disabled: (webSearched && webSearch.isPending) || webFoundNothing,
+          failed: webSearched && webSearch.isError,
+        }
+      : undefined
+  const searchItems: CarouselItem[] = searchRow
+    ? [
+        ...searchEntries.map((entry) => ({
+          type: 'catalog' as const,
+          id: entry.id,
+          title: entry.title,
+          detail: `${entry.kind} · ${entry.detail}`,
+          entry,
+        })),
+        ...(webSearchItem ? [webSearchItem] : []),
+      ]
     : []
   const carouselRows: CarouselRow[] = searchRow
     ? [
@@ -224,6 +291,35 @@ export function HomePage() {
       })
     })
   }, [hasSearchRow, query])
+
+  useEffect(() => {
+    // Web results can replace the trailing search row, so keep the selection in range.
+    setActiveItems((current) => {
+      const index = current[SEARCH_ROW_ID] ?? 0
+      return index < searchItems.length
+        ? current
+        : { ...current, [SEARCH_ROW_ID]: Math.max(searchItems.length - 1, 0) }
+    })
+  }, [searchItems.length])
+
+  useEffect(() => {
+    if (firstWebIndex === undefined) {
+      return
+    }
+    setActiveRow(0)
+    setActiveItems((current) => ({ ...current, [SEARCH_ROW_ID]: firstWebIndex }))
+  }, [firstWebIndex, webQuery])
+
+  function searchWeb() {
+    if (!query || isSourceUrl(query)) {
+      return
+    }
+    if (webQuery !== query) {
+      setWebQuery(query)
+    } else if (webSearch.isError) {
+      void webSearch.refetch()
+    }
+  }
 
   function moveList(delta: number) {
     setActiveRow((index) => {
@@ -331,6 +427,10 @@ export function HomePage() {
   function openCarouselItem(item: CarouselItem) {
     if (item.type === 'catalog') {
       launch(item.entry)
+      return
+    }
+    if (item.type === 'web-search') {
+      searchWeb()
       return
     }
     void router.navigate({
@@ -462,7 +562,11 @@ export function HomePage() {
                 <button
                   type="button"
                     className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left outline-none hover:bg-ink/10 focus-visible:bg-ink/10 disabled:opacity-50"
-                  disabled={openSource.isPending || dialogOpen}
+                  disabled={
+                    openSource.isPending ||
+                    dialogOpen ||
+                    (item.type === 'web-search' && item.disabled)
+                  }
                     onClick={() => openCarouselItem(item)}
                     onFocus={() => {
                       setActiveRow(rowIndex)
@@ -473,9 +577,19 @@ export function HomePage() {
                       <span className="block truncate text-sm text-ink">
                         {item.title}
                       </span>
-                    <span className="mt-0.5 block truncate font-mono text-xs text-faint">
+                    <span
+                      role={item.type === 'web-search' && item.failed ? 'alert' : undefined}
+                      className={`mt-0.5 block truncate font-mono text-xs ${
+                        item.type === 'web-search' && item.failed ? 'text-error' : 'text-faint'
+                      }`}
+                    >
                         {item.detail}
                     </span>
+                      {item.type === 'catalog' && item.entry.description ? (
+                        <span className="mt-0.5 block truncate text-xs text-mute">
+                          {item.entry.description}
+                        </span>
+                      ) : null}
                       {status?.message && !blocked ? (
                       <span
                         role={status.failed ? 'alert' : undefined}
@@ -488,7 +602,7 @@ export function HomePage() {
                     ) : null}
                   </span>
                   {added ? <span className="sr-only">added</span> : null}
-                    {active && showKeybindings ? (
+                    {active && showKeybindings && index < MAX_CAROUSEL_ITEMS ? (
                       <span className="ml-auto inline-flex w-4 shrink-0 justify-center">
                         <Kbd hotkey={String(index + 1)} />
                       </span>
@@ -525,6 +639,7 @@ export function HomePage() {
             carouselQuery.data
               ?.flatMap((row) => row.items)
               .find((entry) => entry.id === pendingAuth.entryId)?.title ??
+            webSearch.data?.find((entry) => entry.id === pendingAuth.entryId)?.title ??
             apis.find((api) => api.id === pendingAuth.sourceId)?.title
           }
           onCancel={cancelAuthorization}
@@ -597,7 +712,7 @@ export function HomePage() {
                 if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
                   return
                 }
-                if (!hasSearchRow || searchItems.length === 0) {
+                if (!hasSearchRow) {
                   return
                 }
                 event.preventDefault()

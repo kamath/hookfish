@@ -7,7 +7,7 @@ npm install --global hookfish
 hookfish up --port 3000
 ```
 
-`hookfish` with no command prints help. Open `http://127.0.0.1:3000`. Suggested sources use PGlite under `~/.hookfish/pglite`. Set `POSTGRES_URL` to use Postgres instead.
+`hookfish` with no command prints help. Open `http://127.0.0.1:3000`. Set `EXA_API_KEY` to enable web search for MCP servers.
 
 ```bash
 hookfish up --host 0.0.0.0 --port 4000

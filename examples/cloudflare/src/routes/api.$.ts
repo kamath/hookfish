@@ -1,26 +1,11 @@
 import { mountApi } from '@hookfish/api/app'
-import { createPostgresDb } from '@hookfish/api/postgres'
 import { env } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
 import type {} from '@tanstack/react-start'
 
-type DatabaseEnv = {
-  HYPERDRIVE?: { connectionString: string }
-  POSTGRES_URL?: string
-}
+const runtimeEnv: { EXA_API_KEY?: string } = env
 
-function databaseConnection() {
-  const runtimeEnv: DatabaseEnv = env
-  const connection = runtimeEnv.HYPERDRIVE ?? runtimeEnv.POSTGRES_URL
-  if (!connection) {
-    throw new Error('Cloudflare requires a Hyperdrive binding or POSTGRES_URL secret.')
-  }
-  return connection
-}
-
-const api = mountApi('/api', {
-  database: () => createPostgresDb(databaseConnection()),
-})
+const api = mountApi('/api', { exaApiKey: runtimeEnv.EXA_API_KEY })
 
 const handle = ({ request }: { request: Request }) => api.fetch(request)
 

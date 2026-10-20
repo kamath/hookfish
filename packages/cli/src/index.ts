@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Command, InvalidArgumentError } from 'commander'
 import { serve } from 'srvx'
@@ -33,35 +30,14 @@ function parsePort(value: string): number {
   return port
 }
 
-function ensureLocalPgliteDataDir() {
-  if (process.env.POSTGRES_URL) {
-    return
-  }
-
-  const dataDir = process.env.PGLITE_DATA_DIR ?? join(homedir(), '.hookfish', 'pglite')
-  mkdirSync(dataDir, { recursive: true })
-}
-
-function warmupOrigin(host: string, port: number, serverUrl?: string | URL) {
+function listenOrigin(host: string, port: number, serverUrl?: string | URL) {
   if (host === '0.0.0.0' || host === '::' || host === '[::]') {
     return `http://127.0.0.1:${port}/`
   }
   return String(serverUrl ?? `http://${host}:${port}/`)
 }
 
-async function warmupLocalApp(listenUrl: string) {
-  try {
-    await fetch(new URL('/api/registry/feed', listenUrl), {
-      signal: AbortSignal.timeout(30_000),
-    })
-  } catch {
-    // First browser request can still finish database setup.
-  }
-}
-
 async function startServer(options: { host: string; port: number }) {
-  ensureLocalPgliteDataDir()
-
   const serverEntryUrl = pathToFileURL(
     fileURLToPath(new URL('../web/server/server.js', import.meta.url)),
   )
@@ -97,8 +73,7 @@ async function startServer(options: { host: string; port: number }) {
       })
 
       await server.ready()
-      const listenUrl = warmupOrigin(options.host, port, server.url)
-      await warmupLocalApp(listenUrl)
+      const listenUrl = listenOrigin(options.host, port, server.url)
       console.log(`${pkg.name} ${version} listening on ${listenUrl}`)
 
       let closing = false
@@ -108,7 +83,7 @@ async function startServer(options: { host: string; port: number }) {
         }
         closing = true
 
-        // Never let a stuck connection or database handle keep the CLI alive.
+        // Never let a stuck connection keep the CLI alive.
         setTimeout(() => process.exit(0), SHUTDOWN_TIMEOUT_MS).unref()
         const exit = () => process.exit(0)
         void server.close(true).then(exit, exit)
