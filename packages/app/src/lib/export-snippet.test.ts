@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { z } from 'zod'
+import { saveApiHeaders } from './auth.ts'
 import type { Executable } from './client-types.ts'
 import type { InvocationContext } from './executable-adapters.ts'
 import { mcpExecutableAdapter } from './mcp/executable.ts'
@@ -330,17 +331,7 @@ assert.match(
 )
 assert.doesNotMatch(mcpSnippet, /requestInit/)
 
-const exportStorage = new Map([['oc:headers:weather', JSON.stringify({ 'X-Api-Key': 'key-1' })]])
-Object.defineProperty(globalThis, 'window', {
-  value: {
-    localStorage: {
-      getItem: (key: string) => exportStorage.get(key) ?? null,
-      setItem: (key: string, value: string) => exportStorage.set(key, value),
-      removeItem: (key: string) => exportStorage.delete(key),
-    },
-  },
-  configurable: true,
-})
+saveApiHeaders('weather', { 'X-Api-Key': 'key-1' })
 const mcpHeaderSnippet = mcpExecutableAdapter.exportSnippet?.({
   source: { id: 'weather', kind: 'mcp' } as InvocationContext['source'],
   executable: mcpTool,

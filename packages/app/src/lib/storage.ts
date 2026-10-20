@@ -1,8 +1,7 @@
-const APIS_KEY = 'oc:apis'
+import { atom } from 'jotai'
+import { store } from './chrome'
 
-function authKey(apiId: string) {
-  return `oc:auth:${apiId}`
-}
+const APIS_KEY = 'oc:apis'
 
 function browserStorage() {
   if (typeof window === 'undefined') {
@@ -46,38 +45,72 @@ export function writeApisJson(value: unknown) {
   writeJson(APIS_KEY, value)
 }
 
+// Credentials live only in memory: a reload or a new tab starts signed out, and nothing
+// written to disk outlives the page.
+type Credentials = Record<string, Record<string, string>>
+
+const credentialsAtom = atom<{ auth: Credentials; headers: Credentials }>({
+  auth: {},
+  headers: {},
+})
+
+const LEGACY_CREDENTIAL_PREFIXES = ['oc:auth:', 'oc:headers:', 'oc:mcp-oauth:']
+
+// Earlier builds kept credentials in localStorage. Wipe them so they don't linger on disk.
+function purgeLegacyCredentials() {
+  const storage = browserStorage()
+  if (!storage || typeof storage.key !== 'function') {
+    return
+  }
+  const stale: string[] = []
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index)
+    if (key && LEGACY_CREDENTIAL_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+      stale.push(key)
+    }
+  }
+  for (const key of stale) {
+    storage.removeItem(key)
+  }
+}
+
+purgeLegacyCredentials()
+
+function writeCredentials(
+  kind: 'auth' | 'headers',
+  apiId: string,
+  fields: Record<string, string>,
+) {
+  const credentials = store.get(credentialsAtom)
+  const next = { ...credentials[kind] }
+  if (Object.keys(fields).length === 0) {
+    delete next[apiId]
+  } else {
+    next[apiId] = { ...fields }
+  }
+  store.set(credentialsAtom, { ...credentials, [kind]: next })
+}
+
 export function readAuth(apiId: string) {
-  return readJson<Record<string, string>>(authKey(apiId), {})
+  return { ...store.get(credentialsAtom).auth[apiId] }
 }
 
 export function writeAuth(apiId: string, fields: Record<string, string>) {
-  if (Object.keys(fields).length === 0) {
-    browserStorage()?.removeItem(authKey(apiId))
-    return
-  }
-  writeJson(authKey(apiId), fields)
+  writeCredentials('auth', apiId, fields)
 }
 
 export function clearAuth(apiId: string) {
-  browserStorage()?.removeItem(authKey(apiId))
-}
-
-function headersKey(apiId: string) {
-  return `oc:headers:${apiId}`
+  writeCredentials('auth', apiId, {})
 }
 
 export function readHeaders(apiId: string) {
-  return readJson<Record<string, string>>(headersKey(apiId), {})
+  return { ...store.get(credentialsAtom).headers[apiId] }
 }
 
 export function writeHeaders(apiId: string, headers: Record<string, string>) {
-  if (Object.keys(headers).length === 0) {
-    browserStorage()?.removeItem(headersKey(apiId))
-    return
-  }
-  writeJson(headersKey(apiId), headers)
+  writeCredentials('headers', apiId, headers)
 }
 
 export function clearHeaders(apiId: string) {
-  browserStorage()?.removeItem(headersKey(apiId))
+  writeCredentials('headers', apiId, {})
 }
