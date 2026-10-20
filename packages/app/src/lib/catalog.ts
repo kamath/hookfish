@@ -5,6 +5,25 @@ export type CatalogEntry = {
   detail: string
   url: string
   description?: string
+  /** How the source authenticates, when known (web search results). */
+  auth?: 'none' | 'oauth' | 'headers' | 'unknown'
+  /** Headers the source requires; the launcher pre-fills them for the user to complete. */
+  headers?: readonly string[]
+}
+
+export function catalogAuthLabel(entry: CatalogEntry): string | undefined {
+  switch (entry.auth) {
+    case 'none':
+      return 'no auth'
+    case 'oauth':
+      return 'OAuth'
+    case 'headers': {
+      const headers = entry.headers ?? []
+      return headers.length > 0 ? headers.join(', ') : 'headers'
+    }
+    default:
+      return undefined
+  }
 }
 
 export function carouselActionId(index: number) {

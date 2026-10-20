@@ -1,3 +1,4 @@
+import { isAllowedCustomHeader } from './headers'
 import { isHttpUrl } from './http'
 import type { RegistrySearchResult } from './schemas'
 
@@ -22,6 +23,18 @@ const outputSchema = {
           },
           homepage: { type: 'string', description: 'Documentation page for the server.' },
           description: { type: 'string', description: 'One sentence on what it does.' },
+          authType: {
+            type: 'string',
+            enum: ['none', 'oauth', 'headers'],
+            description:
+              'How clients authenticate to this endpoint. oauth if it supports an OAuth sign-in flow, even when it also accepts API keys. headers if it only accepts an API key or token sent in a request header. none if it needs no credentials.',
+          },
+          requiredHeaders: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'HTTP header names the client must send, such as Authorization or X-API-Key. One header per credential: when the docs accept several names for the same key, give only the recommended one. Leave out optional headers. Empty unless authType is headers.',
+          },
         },
         required: ['name', 'mcpUrl'],
       },
@@ -35,10 +48,52 @@ type ExaServer = {
   mcpUrl?: unknown
   homepage?: unknown
   description?: unknown
+  authType?: unknown
+  requiredHeaders?: unknown
 }
+
+type SearchAuth = RegistrySearchResult['auth']
+
+const CREDENTIAL_HEADER = /auth|key|token/i
 
 function optionalString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function requiredHeaders(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  const names = new Map<string, string>()
+  for (const item of value) {
+    const name = optionalString(item)
+    if (name && isAllowedCustomHeader(name) && !names.has(name.toLowerCase())) {
+      names.set(name.toLowerCase(), name)
+    }
+  }
+  // Credential headers listed together are almost always alternatives for one secret (docs
+  // offering Authorization or X-API-Key), so keep one, preferring Authorization.
+  const all = [...names.values()]
+  const credentials = all.filter((name) => CREDENTIAL_HEADER.test(name))
+  const credential =
+    credentials.find((name) => name.toLowerCase() === 'authorization') ?? credentials[0]
+  return all.filter((name) => !CREDENTIAL_HEADER.test(name) || name === credential)
+}
+
+function searchAuth(server: ExaServer): { auth: SearchAuth; headers: string[] } {
+  // OAuth needs nothing up front, so it wins over any headers listed alongside it.
+  if (server.authType === 'none' || server.authType === 'oauth') {
+    return { auth: server.authType, headers: [] }
+  }
+  const headers = requiredHeaders(server.requiredHeaders)
+  if (headers.length > 0) {
+    return { auth: 'headers', headers }
+  }
+  if (server.authType === 'headers') {
+    // A token server that didn't name its header almost always wants Authorization.
+    return { auth: 'headers', headers: ['Authorization'] }
+  }
+  return { auth: 'unknown', headers: [] }
 }
 
 /** Pull MCP servers out of an Exa structured-output response, dropping unusable ones. */
@@ -64,6 +119,7 @@ export function exaSearchResults(body: unknown): RegistrySearchResult[] {
       type: 'MCP',
       homepage: homepage && isHttpUrl(homepage) ? homepage : undefined,
       description: optionalString(server.description),
+      ...searchAuth(server),
     })
   }
   return results.slice(0, MAX_RESULTS)

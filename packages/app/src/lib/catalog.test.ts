@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { registryFeedToCarousel, registrySearchToEntries } from './catalog-data'
-import { catalogSourceUrl } from './catalog'
+import { catalogAuthLabel, catalogSourceUrl } from './catalog'
 
 const carousel = registryFeedToCarousel({
   'MCP Servers': [
@@ -49,6 +49,8 @@ assert.deepEqual(
         title: 'Linear MCP Server',
         type: 'MCP',
         description: 'Read and write Linear issues.',
+        auth: 'headers',
+        headers: ['Authorization'],
       },
     ],
   }),
@@ -60,8 +62,25 @@ assert.deepEqual(
       detail: 'mcp.linear.app',
       url: 'https://mcp.linear.app/mcp',
       description: 'Read and write Linear issues.',
+      auth: 'headers',
+      headers: ['Authorization'],
     },
   ],
 )
+
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a', auth: 'oauth' }), 'OAuth')
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a', auth: 'none' }), 'no auth')
+assert.equal(
+  catalogAuthLabel({
+    id: 'a',
+    title: 'A',
+    detail: 'a',
+    url: 'https://a',
+    auth: 'headers',
+    headers: ['X-API-Key', 'X-Workspace'],
+  }),
+  'X-API-Key, X-Workspace',
+)
+assert.equal(catalogAuthLabel({ id: 'a', title: 'A', detail: 'a', url: 'https://a' }), undefined)
 
 console.log('suggestions group into category panes and web results become entries')

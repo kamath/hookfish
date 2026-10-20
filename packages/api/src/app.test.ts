@@ -25,6 +25,7 @@ const upstreamFetch: typeof fetch = async (input, init) => {
               mcpUrl: 'https://mcp.linear.app/mcp',
               homepage: 'https://linear.app/docs/mcp',
               description: 'Read and write Linear issues.',
+              authType: 'oauth',
             },
           ],
         },
@@ -97,6 +98,8 @@ assert.deepEqual(await search.json(), {
       type: 'MCP',
       homepage: 'https://linear.app/docs/mcp',
       description: 'Read and write Linear issues.',
+      auth: 'oauth',
+      headers: [],
     },
   ],
 })

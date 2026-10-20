@@ -14,6 +14,7 @@ import { addApi, removeApi } from '../lib/apis'
 import { saveApiHeaders } from '../lib/auth'
 import {
   carouselActionId,
+  catalogAuthLabel,
   catalogSourceUrl,
   sourceUrlKey,
   type CatalogEntry,
@@ -70,6 +71,8 @@ type CarouselItem =
       title: string
       detail: string
       entry: CatalogEntry
+      /** Fill the launcher for the user to confirm instead of connecting straight away. */
+      prefill?: boolean
     }
   | {
       /** Runs a web search for the current query; trails the search row's matches. */
@@ -80,6 +83,13 @@ type CarouselItem =
       disabled: boolean
       failed: boolean
     }
+
+/** A search result copied into the launcher, awaiting the user's Connect. */
+type Prefill = {
+  url: string
+  kind?: string
+  headers: readonly string[]
+}
 
 type CarouselRow = {
   id: string
@@ -105,6 +115,7 @@ export function HomePage() {
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
   // The query last sent to web search; only searched on request, never per keystroke.
   const [webQuery, setWebQuery] = useState<string>()
+  const [prefill, setPrefill] = useState<Prefill>()
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
     return pending
@@ -193,8 +204,11 @@ export function HomePage() {
           type: 'catalog' as const,
           id: entry.id,
           title: entry.title,
-          detail: `${entry.kind} · ${entry.detail}`,
+          detail: [entry.kind, entry.detail, catalogAuthLabel(entry)]
+            .filter(Boolean)
+            .join(' · '),
           entry,
+          prefill: true,
         })),
         ...(webSearchItem ? [webSearchItem] : []),
       ]
@@ -235,6 +249,7 @@ export function HomePage() {
       setUrl('')
       setHeaderRows([])
       setHeadersOpen(false)
+      setPrefill(undefined)
       await router.navigate({
         to: '/apis/$apiId/$pane/{-$operationId}',
         params: { apiId: id, pane: 'routes', operationId: undefined },
@@ -398,8 +413,24 @@ export function HomePage() {
         headersRef.current?.focus()
         return
       }
+      const prefilled = prefill?.url === sourceUrl ? prefill : undefined
+      // A required header the user removed is their call; one left blank is a mistake.
+      const blankIndex = headersOpen
+        ? headerRows.findIndex(
+            (row) =>
+              !row.value.trim() &&
+              prefilled?.headers.some(
+                (name) => name.toLowerCase() === row.name.trim().toLowerCase(),
+              ),
+          )
+        : -1
+      if (blankIndex >= 0) {
+        setHeadersError(`Fill in ${headerRows[blankIndex]?.name.trim()}.`)
+        focusHeaderField(blankIndex, 'value')
+        return
+      }
       setHeadersError(undefined)
-      openSource.mutate({ url: sourceUrl, headers: parsed.headers })
+      openSource.mutate({ url: sourceUrl, kind: prefilled?.kind, headers: parsed.headers })
       return
     }
     const item = searchItems[activeItems[SEARCH_ROW_ID] ?? 0]
@@ -424,9 +455,34 @@ export function HomePage() {
     openSource.mutate({ url: catalogSourceUrl(entry), kind: entry.kind, entryId: entry.id })
   }
 
+  /** Copy a search result into the launcher so the user can review it and add headers. */
+  function prefillSource(entry: CatalogEntry) {
+    const sourceUrl = catalogSourceUrl(entry)
+    const headers = entry.headers ?? []
+    if (pendingAuth) {
+      cancelAuthorization()
+    }
+    openSource.reset()
+    setPrefill({ url: sourceUrl, kind: entry.kind, headers })
+    setUrl(sourceUrl)
+    setHeaderRows(headers.map((name) => ({ name, value: '' })))
+    setHeadersOpen(headers.length > 0)
+    setHeadersError(undefined)
+    activate('specs', 'edit')
+    if (headers.length > 0) {
+      focusHeaderField(0, 'value')
+    } else {
+      requestAnimationFrame(() => urlRef.current?.focus())
+    }
+  }
+
   function openCarouselItem(item: CarouselItem) {
     if (item.type === 'catalog') {
-      launch(item.entry)
+      if (item.prefill) {
+        prefillSource(item.entry)
+      } else {
+        launch(item.entry)
+      }
       return
     }
     if (item.type === 'web-search') {

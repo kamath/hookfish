@@ -93,6 +93,9 @@ export const registrySearchResultSchema = z
     type: z.literal('MCP'),
     homepage: z.string().optional(),
     description: z.string().optional(),
+    /** How the server authenticates; `headers` means the client must send `headers`. */
+    auth: z.enum(['none', 'oauth', 'headers', 'unknown']),
+    headers: z.array(z.string()),
   })
   .openapi('RegistrySearchResult')
 

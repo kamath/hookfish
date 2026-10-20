@@ -105,9 +105,12 @@ keyed by category; the homepage renders each category as a pane in the listed or
 that file to change the suggestions.
 
 `GET /api/registry/search?q=` asks [Exa](https://exa.ai) for remote MCP servers matching the
-query, using structured output (`name`, `mcpUrl`, `homepage`, `description`). It needs an
+query, using structured output: name, MCP URL, homepage, description, and how it
+authenticates (`none`, `oauth`, or `headers` with the header names it needs). It needs an
 `EXA_API_KEY` passed to `mountApi` as `exaApiKey` and answers `503` without one. The
-homepage only calls it when you ask it to search the web.
+homepage only calls it when you ask it to search the web. Picking a search result fills the
+launcher with its URL and a blank row for each required header, for you to complete and
+confirm with Connect.
 
 Build every workspace package:
 
