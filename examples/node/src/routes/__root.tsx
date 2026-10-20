@@ -14,6 +14,12 @@ import {
 import appCss from '@hookfish/app/styles.css?url'
 import { type ReactNode, useEffect, useRef } from 'react'
 
+const TITLE = 'Hookfish'
+const DESCRIPTION =
+  'Browse, configure, and run MCP servers and OpenAPI endpoints from your browser.'
+// Link unfurlers ignore relative image URLs, so point at the public deployment.
+const SHARE_IMAGE = 'https://hookfish.dev/og.png'
+
 export const Route = createRootRoute({
   // Only rendered pages carry the policy; API responses set their own headers.
   headers: ({ ssr }) =>
@@ -29,11 +35,20 @@ export const Route = createRootRoute({
       },
       { name: 'color-scheme', content: 'light dark' },
       { name: 'theme-color', content: THEME_COLORS.light },
-      { title: 'Hookfish' },
-      {
-        name: 'description',
-        content: 'Browse, configure, and run executables from pluggable sources.',
-      },
+      { title: TITLE },
+      { name: 'description', content: DESCRIPTION },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: TITLE },
+      { property: 'og:title', content: TITLE },
+      { property: 'og:description', content: DESCRIPTION },
+      { property: 'og:image', content: SHARE_IMAGE },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      { property: 'og:image:alt', content: `${TITLE}: ${DESCRIPTION}` },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: TITLE },
+      { name: 'twitter:description', content: DESCRIPTION },
+      { name: 'twitter:image', content: SHARE_IMAGE },
     ],
     links: [
       { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
