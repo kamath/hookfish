@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { MCP_PROXY_AUTHORIZATION_HEADER, MCP_PROXY_HEADERS_HEADER } from '@hookfish/api'
 import { SdkHttpError, UnauthorizedError } from '@modelcontextprotocol/client'
+import { clearApiAuth, saveApiHeaders } from '../auth'
 import { setCloudProxy } from '../cloud'
 import { closeMcpConnection, getMcpTrace } from './client'
 import { mcpExecutableAdapter } from './executable'
@@ -15,6 +16,7 @@ import {
 import { loadMcpSource } from './source'
 
 const browserStorage = new Map<string, string>()
+const browserSession = new Map<string, string>()
 let assignedUrl: string | undefined
 const location = {
   origin: 'http://hookfish.test',
@@ -38,6 +40,11 @@ Object.defineProperty(globalThis, 'window', {
       getItem: (key: string) => browserStorage.get(key) ?? null,
       setItem: (key: string, value: string) => browserStorage.set(key, value),
       removeItem: (key: string) => browserStorage.delete(key),
+    },
+    sessionStorage: {
+      getItem: (key: string) => browserSession.get(key) ?? null,
+      setItem: (key: string, value: string) => browserSession.set(key, value),
+      removeItem: (key: string) => browserSession.delete(key),
     },
     prompt: () => null,
   },
@@ -519,6 +526,9 @@ oauth.saveTokens(
 assert.equal(oauth.codeVerifier(), 'test-verifier')
 assert.equal(oauth.tokens()?.access_token, 'test-access-token')
 assert.equal(hasMcpOAuthTokens('oauth-source'), true)
+for (const value of [...browserStorage.values(), ...browserSession.values()]) {
+  assert.ok(!value.includes('test-access-token'), 'tokens never reach browser storage')
+}
 location.href = `http://hookfish.test/apis/oauth-source/routes?code=test-code&state=${oauthState}`
 assert.equal(oauth.callbackParameters()?.get('code'), 'test-code')
 oauth.finishCallback()
@@ -558,10 +568,7 @@ assert.ok(
 await closeMcpConnection('direct')
 setCloudProxy(true)
 
-browserStorage.set(
-  'oc:headers:custom-headers',
-  JSON.stringify({ 'X-Api-Key': 'key-1', Authorization: 'Bearer custom' }),
-)
+saveApiHeaders('custom-headers', { 'X-Api-Key': 'key-1', Authorization: 'Bearer custom' })
 const customStart = proxiedAuthorizationHeaders.length
 await loadMcpSource('https://mcp.test/modern', 'custom-headers', {})
 const customProxied = proxiedAuthorizationHeaders.slice(customStart)
@@ -575,7 +582,7 @@ for (const headers of customProxied) {
   })
 }
 
-browserStorage.set('oc:headers:custom-headers', JSON.stringify({ 'X-Api-Key': 'key-2' }))
+saveApiHeaders('custom-headers', { 'X-Api-Key': 'key-2' })
 const changedStart = proxiedAuthorizationHeaders.length
 await loadMcpSource('https://mcp.test/modern', 'custom-headers', {})
 const changedProxied = proxiedAuthorizationHeaders.slice(changedStart)
@@ -595,7 +602,7 @@ assert.ok(directCustom.length > 0)
 assert.ok(directCustom.every((request) => request.headers.get('x-api-key') === 'key-2'))
 assert.ok(directCustom.every((request) => request.headers.get(MCP_PROXY_HEADERS_HEADER) === null))
 await closeMcpConnection('custom-headers')
-browserStorage.delete('oc:headers:custom-headers')
+clearApiAuth('custom-headers')
 setCloudProxy(true)
 
 console.log('mcp modern, legacy SHTTP, OAuth, and direct-browser transport ok')

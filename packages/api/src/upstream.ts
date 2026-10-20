@@ -133,8 +133,22 @@ export async function executeUpstreamRequest(
     headers,
     body: request.body,
     signal: AbortSignal.timeout(20_000),
+    // Following a redirect would resend custom credential headers (e.g. X-API-Key) to
+    // whatever host the API points at. Show the redirect instead.
+    redirect: 'manual',
   })
   const elapsedMs = Date.now() - started
+  // In a browser a manual redirect comes back opaque: no status, headers, or body to show.
+  if (response.type === 'opaqueredirect') {
+    return {
+      status: { code: 0, text: 'Redirect not followed' },
+      details: { label: 'Headers', items: [] },
+      body: 'The API answered with a redirect. Hookfish does not follow redirects, so your credentials are never sent to another host.',
+      elapsedMs,
+      target: request.url,
+      action: request.method.toUpperCase(),
+    }
+  }
   const responseBody = await readLimited(response)
 
   return {

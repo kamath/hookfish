@@ -7,7 +7,9 @@ import type {
   StoredOAuthClientInformation,
   StoredOAuthTokens,
 } from '@modelcontextprotocol/client'
+import { atom } from 'jotai'
 import { getApi } from '../api'
+import { store } from '../chrome'
 
 type OAuthStore = {
   clients?: Record<string, StoredOAuthClientInformation>
@@ -37,25 +39,57 @@ type PendingAuthorization = {
 
 let pendingAuthorization: PendingAuthorization | undefined
 
-function storageKey(sourceId: string) {
-  return `oc:mcp-oauth:${sourceId}`
+type TokenStore = Pick<OAuthStore, 'tokens' | 'latestTokenIssuer'>
+type HandshakeStore = Omit<OAuthStore, keyof TokenStore>
+
+// Access and refresh tokens are held only in memory, so a reload starts signed out. The
+// handshake (state, PKCE verifier, client registration, discovery) has to survive the redirect
+// to the authorization server, so it sits in this tab's sessionStorage instead. None of it
+// grants access on its own, and the verifier and state are dropped once the callback lands.
+const tokensAtom = atom<Record<string, TokenStore>>({})
+
+function handshakeKey(sourceId: string) {
+  return `oc:mcp-oauth-handshake:${sourceId}`
 }
 
-function readStore(sourceId: string): OAuthStore {
-  const raw = window.localStorage.getItem(storageKey(sourceId))
+function sessionStore() {
+  return typeof window === 'undefined' ? undefined : window.sessionStorage
+}
+
+function readHandshake(sourceId: string): HandshakeStore {
+  const storage = sessionStore()
+  const raw = storage?.getItem(handshakeKey(sourceId))
   if (!raw) {
     return {}
   }
   try {
-    return JSON.parse(raw) as OAuthStore
+    return JSON.parse(raw) as HandshakeStore
   } catch {
-    window.localStorage.removeItem(storageKey(sourceId))
+    storage?.removeItem(handshakeKey(sourceId))
     return {}
   }
 }
 
+function readStore(sourceId: string): OAuthStore {
+  return { ...readHandshake(sourceId), ...store.get(tokensAtom)[sourceId] }
+}
+
 function writeStore(sourceId: string, value: OAuthStore) {
-  window.localStorage.setItem(storageKey(sourceId), JSON.stringify(value))
+  const { tokens, latestTokenIssuer, ...handshake } = value
+  const next = { ...store.get(tokensAtom) }
+  if (tokens || latestTokenIssuer) {
+    next[sourceId] = { tokens, latestTokenIssuer }
+  } else {
+    delete next[sourceId]
+  }
+  store.set(tokensAtom, next)
+
+  const storage = sessionStore()
+  if (Object.keys(handshake).length === 0) {
+    storage?.removeItem(handshakeKey(sourceId))
+  } else {
+    storage?.setItem(handshakeKey(sourceId), JSON.stringify(handshake))
+  }
 }
 
 function callbackUrl(sourceId: string, origin = window.location.origin) {
@@ -231,7 +265,7 @@ export class BrowserMcpOAuthProvider implements OAuthClientProvider {
 }
 
 export function clearMcpOAuth(sourceId: string) {
-  window.localStorage.removeItem(storageKey(sourceId))
+  writeStore(sourceId, {})
 }
 
 export function hasMcpOAuthTokens(sourceId: string) {

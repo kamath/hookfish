@@ -117,6 +117,21 @@ assert.deepEqual(
   { name: 'x-upstream', value: 'direct' },
 )
 
+assert.equal(seen[1]?.init?.redirect, 'manual', 'redirects are not followed with credentials')
+
+const redirected = await executeUpstreamRequest(
+  {
+    transport: 'http',
+    method: 'get',
+    url: 'http://localhost:8787/moved',
+    headers: { 'x-api-key': 'secret' },
+  },
+  // What a browser hands back for redirect: 'manual'; Node can't construct status 0.
+  async () => ({ type: 'opaqueredirect', status: 0, headers: new Headers() }) as Response,
+)
+assert.equal(redirected.status.text, 'Redirect not followed')
+assert.match(redirected.body, /does not follow redirects/)
+
 await assert.rejects(
   () => fetchUpstreamSpec('file:///tmp/openapi.yaml', upstreamFetch),
   /http or https OpenAPI URL/,
