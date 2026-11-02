@@ -16,7 +16,8 @@ function suggestionDetail(url: string) {
 
 function catalogEntry(suggestion: RegistryFeed[string][number]): CatalogEntry {
   return {
-    id: suggestion.url,
+    // Several suggestions can share one gateway URL, so the title keeps their ids distinct.
+    id: `${suggestion.url}#${suggestion.title}`,
     kind: suggestion.type === 'MCP' ? 'mcp' : 'openapi',
     title: suggestion.title,
     detail: suggestionDetail(suggestion.url),

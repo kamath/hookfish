@@ -3,15 +3,15 @@ import type { RegistryFeed } from './schemas'
 // MCP servers alternate between Arcade-hosted and first-party.
 export const registryFeed: RegistryFeed = {
   'MCP Servers': [
-    { url: 'https://server.smithery.ai/gmail', title: 'Gmail (Arcade)', type: 'MCP' },
+    { url: 'https://api.arcade.dev/mcp/arcade', title: 'Gmail (Arcade)', type: 'MCP' },
     { url: 'https://mcp.linear.app/mcp', title: 'Linear', type: 'MCP' },
     {
-      url: 'https://server.smithery.ai/googlecalendar',
+      url: 'https://api.arcade.dev/mcp/arcade',
       title: 'Google Calendar (Arcade)',
       type: 'MCP',
     },
     { url: 'https://mcp.notion.com/mcp', title: 'Notion', type: 'MCP' },
-    { url: 'https://server.smithery.ai/slack', title: 'Slack (Arcade)', type: 'MCP' },
+    { url: 'https://api.arcade.dev/mcp/arcade', title: 'Slack (Arcade)', type: 'MCP' },
   ],
   APIs: [
     {
