@@ -820,6 +820,7 @@ export function HomePage() {
                       setHeadersOpen(false)
                       urlRef.current?.focus()
                     }}
+                    onBackspaceRemove={() => urlRef.current?.focus()}
                   />
                 </div>
               ) : null}

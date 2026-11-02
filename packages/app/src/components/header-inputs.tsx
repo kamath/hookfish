@@ -23,6 +23,7 @@ export function HeaderInputs({
   firstInputRef,
   onFocus,
   onClose,
+  onBackspaceRemove,
 }: {
   rows: HeaderEntry[]
   onChange: (rows: HeaderEntry[]) => void
@@ -32,20 +33,42 @@ export function HeaderInputs({
   onFocus?: () => void
   /** Called when the last row is removed, so the caller can put the headers away. */
   onClose: () => void
+  /** Called after Backspace removes an empty row, so the caller can move focus back to search. */
+  onBackspaceRemove: () => void
 }) {
   const shown = headerRowsOrBlank(rows)
   // Values are masked until revealed, since they are usually credentials.
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set())
 
+  function remove(index: number) {
+    if (shown.length === 1) {
+      onClose()
+      return
+    }
+    onChange(headerRowsOrBlank(shown.filter((_, i) => i !== index)))
+    // Rows shift up, so start the remaining ones masked again.
+    setRevealed(new Set())
+  }
+
   // Enter on a filled name moves to its value; on a filled value it adds another row.
-  function enter(index: number, field: HeaderField) {
+  // Backspace on a row with no name and no value removes it.
+  function keyDown(index: number, field: HeaderField) {
     return (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.nativeEvent.isComposing) {
+        return
+      }
+      const row = shown[index]
+      if (event.key === 'Backspace' && row && !row.name && !row.value) {
+        event.preventDefault()
+        remove(index)
+        onBackspaceRemove()
+        return
+      }
       if (
         event.key !== 'Enter' ||
         event.metaKey ||
         event.ctrlKey ||
-        event.altKey ||
-        event.nativeEvent.isComposing
+        event.altKey
       ) {
         return
       }
@@ -102,7 +125,7 @@ export function HeaderInputs({
               value={row.name}
               onChange={(event) => update(index, 'name', event.target.value)}
               onPaste={paste(index, 'name')}
-              onKeyDown={enter(index, 'name')}
+              onKeyDown={keyDown(index, 'name')}
               onFocus={onFocus}
             />
           </div>
@@ -123,7 +146,7 @@ export function HeaderInputs({
               value={row.value}
               onChange={(event) => update(index, 'value', event.target.value)}
               onPaste={paste(index, 'value')}
-              onKeyDown={enter(index, 'value')}
+              onKeyDown={keyDown(index, 'value')}
               onFocus={onFocus}
             />
             <div className="absolute inset-y-0 right-0 flex">
@@ -151,13 +174,10 @@ export function HeaderInputs({
                 disabled={disabled}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
+                  remove(index)
                   if (shown.length === 1) {
-                    onClose()
                     return
                   }
-                  onChange(headerRowsOrBlank(shown.filter((_, i) => i !== index)))
-                  // Rows shift up, so start the remaining ones masked again.
-                  setRevealed(new Set())
                   focusHeaderField(Math.max(0, Math.min(index, shown.length - 2)))
                 }}
               >
