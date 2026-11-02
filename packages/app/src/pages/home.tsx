@@ -852,6 +852,9 @@ export function HomePage() {
                   type="submit"
                   className={`${primaryButtonClass} min-w-0 flex-1`}
                   disabled={openSource.isPending || dialogOpen}
+                  // Safari does not focus a tapped button, so the URL field's blur would hide
+                  // this button before its click fires. Keep focus in the field instead.
+                  onMouseDown={(event) => event.preventDefault()}
                 >
                   {submittingUrl ? 'Connecting…' : 'Connect'}
                   {showKeybindings ? null : <Kbd hotkey="Mod+Enter" persistent />}
