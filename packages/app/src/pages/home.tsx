@@ -118,6 +118,8 @@ export function HomePage() {
   const [activeItems, setActiveItems] = useState<Record<string, number>>({})
   // The query last sent to web search; only searched on request, never per keystroke.
   const [webQuery, setWebQuery] = useState<string>()
+  // The query whose top web result should fill the launcher once results arrive.
+  const autoPrefillQuery = useRef<string | undefined>(undefined)
   const [prefill, setPrefill] = useState<Prefill>()
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | undefined>(() => {
     const pending = pendingMcpAuthorization()
@@ -171,11 +173,6 @@ export function HomePage() {
       ? webSearch.data.filter((entry) => !localMatchKeys.has(sourceUrlKey(entry.url)))
       : []
   const searchEntries = visibleCarouselItems([...localMatches, ...webMatches])
-  // Index of the first web result, once results are in and fit in the row.
-  const firstWebIndex =
-    webMatches.length > 0 && localMatches.length < MAX_CAROUSEL_ITEMS
-      ? localMatches.length
-      : undefined
   // Stays in the row after a search that found nothing new, so the search visibly finished.
   const webFoundNothing = webSearched && webSearch.isSuccess && webMatches.length === 0
   const webSearchItem: CarouselItem | undefined =
@@ -322,18 +319,23 @@ export function HomePage() {
     })
   }, [searchItems.length])
 
+  // Fill the launcher with the top web result as if the user had picked it.
+  const topWebMatch = webSearched && webSearch.isSuccess ? webMatches[0] : undefined
   useEffect(() => {
-    if (firstWebIndex === undefined) {
+    if (!webSearched || !webSearch.isSuccess || autoPrefillQuery.current !== webQuery) {
       return
     }
-    setActiveRow(0)
-    setActiveItems((current) => ({ ...current, [SEARCH_ROW_ID]: firstWebIndex }))
-  }, [firstWebIndex, webQuery])
+    autoPrefillQuery.current = undefined
+    if (topWebMatch) {
+      prefillSource(topWebMatch)
+    }
+  }, [webSearched, webSearch.isSuccess, webQuery, topWebMatch])
 
   function searchWeb() {
     if (!query || isSourceUrl(query)) {
       return
     }
+    autoPrefillQuery.current = query
     if (webQuery !== query) {
       setWebQuery(query)
     } else if (webSearch.isError) {
