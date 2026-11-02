@@ -10,7 +10,7 @@
     "build": "vite build",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "start": "node serve.mjs",
+    "start": "node --env-file-if-exists=../../.env serve.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
